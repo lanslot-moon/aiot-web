@@ -1,11 +1,10 @@
-import { useParams } from 'react-router';
-import BreadcrumbComp from 'src/layouts/full/shared/breadcrumb/BreadcrumbComp';
-import StyleAwareWrapper from 'src/components/shared/StyleAwareWrapper';
-import StyleDivider from 'src/components/shared/StyleDivider';
+import { ProjectWorkspaceShell } from '@/components/open-platform/project-workspace-shell';
+import StyleAwareWrapper from '@/components/shared/StyleAwareWrapper';
+import StyleDivider from '@/components/shared/StyleDivider';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import BreadcrumbComp from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
 
-const ThingModelProductsPlaceholder = () => {
-  const { projectId } = useParams<{ projectId: string }>();
-
+const ProjectThingModelProductsPage = () => {
   return (
     <StyleAwareWrapper
       lyraClassName="flex flex-col p-px gap-px bg-border"
@@ -13,18 +12,23 @@ const ThingModelProductsPlaceholder = () => {
     >
       <BreadcrumbComp title="物模型" />
       <StyleDivider />
-      <div className="rounded-xl border bg-background p-6 text-sm text-muted-foreground">
-        物模型将在此 Project 下提供
-        {projectId ? (
-          <>
-            {' '}
-            （<span className="font-mono text-foreground">{projectId}</span>）
-          </>
-        ) : null}
-        。
-      </div>
+      <ProjectWorkspaceShell activeTab="thing-model">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">物模型（Project 作用域）</CardTitle>
+            <CardDescription>
+              产品 / 模型 / Profile / Data Policy 将挂在
+              /projects/:projectId/thing-model/... 下实现。
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="text-sm text-muted-foreground">
+            本期开放平台入口层只提供入口与页签，不单独在侧边栏暴露物模型分组，避免无
+            Project 上下文的操作。
+          </CardContent>
+        </Card>
+      </ProjectWorkspaceShell>
     </StyleAwareWrapper>
   );
 };
 
-export default ThingModelProductsPlaceholder;
+export default ProjectThingModelProductsPage;
