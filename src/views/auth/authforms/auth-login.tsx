@@ -10,29 +10,69 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useNavigate } from "react-router";
-import React from "react";
+import React, { useState } from "react";
+import { toast } from "sonner";
 import SocialButtons from "./social-buttons";
 import logodark from "@/assets/images/logos/logoicon-dark.svg"
 import logoicon from "@/assets/images/logos/logoicon.svg"
+import {
+  OpenPlatformApiError,
+  useOpenPlatform,
+} from "@/context/open-platform-context";
+import {
+  REST_SUCCESS_CODE,
+  type LoginRequest,
+  type RestResult,
+  type TokenResponse,
+} from "@/types/apps/open-platform";
 
 
 const AuthLogin = () => {
   const router = useNavigate();
+  const { setSession } = useOpenPlatform();
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     const form = e.currentTarget;
-    const username = form.username.value.trim();
-    const password = form.password.value.trim();
+    const identifier = (
+      form.elements.namedItem("identifier") as HTMLInputElement
+    ).value.trim();
+    const password = (
+      form.elements.namedItem("password") as HTMLInputElement
+    ).value;
 
-    if (!username || !password) {
-      alert("Please fill in all fields");
+    if (!identifier || !password) {
+      toast.error("请填写账号和密码");
       return;
     }
 
-    // Success - redirect or call API
-    router("/");
+    setSubmitting(true);
+    try {
+      const body: LoginRequest = {
+        identifier,
+        password,
+        clientType: "CONSOLE",
+      };
+      const res = await fetch("/api/v1/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const json = (await res.json()) as RestResult<TokenResponse>;
+      if (json.code !== REST_SUCCESS_CODE) {
+        throw new OpenPlatformApiError(json.code, json.message);
+      }
+      setSession(json.data);
+      toast.success("登录成功");
+      router("/projects");
+    } catch (err) {
+      const e2 = err as OpenPlatformApiError;
+      toast.error(e2.message || "登录失败");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -76,16 +116,18 @@ const AuthLogin = () => {
           <div className="space-y-4">
             <div className="space-y-1.5">
               <Label
-                htmlFor="email"
+                htmlFor="identifier"
                 className="text-sm font-normal text-muted-foreground"
               >
-                Email*
+                用户名 / 邮箱 / 手机号*
               </Label>
               <Input
-                id="email"
-                type="email"
-                placeholder="Enter Your Email"
+                id="identifier"
+                name="identifier"
+                type="text"
+                placeholder="demo 或 demo@example.com"
                 required
+                defaultValue="demo"
               />
             </div>
             <div className="space-y-1.5">
@@ -93,13 +135,15 @@ const AuthLogin = () => {
                 htmlFor="password"
                 className="text-sm font-normal text-muted-foreground"
               >
-                Password*
+                密码*
               </Label>
               <Input
                 id="password"
+                name="password"
                 type="password"
-                placeholder="Enter your password"
+                placeholder="Password123!"
                 required
+                defaultValue="Password123!"
               />
             </div>
             <div className="flex items-center justify-between text-sm flex-wrap gap-4">
@@ -125,10 +169,12 @@ const AuthLogin = () => {
           </div>
 
           <Button
+            type="submit"
             size="lg"
             className="w-full rounded-lg"
+            disabled={submitting}
           >
-            Sign in
+            {submitting ? "登录中…" : "登录"}
           </Button>
           <p className="text-center text-sm font-normal text-muted-foreground">
             Don&apos;t have an account?{" "}

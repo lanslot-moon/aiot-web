@@ -597,6 +597,280 @@ export const OpenPlatformHandlers = [
       return fail('500', 'Internal server error', 500);
     }
   }),
+
+  http.get('/api/v1/projects/:projectId/members', ({ params, request }) => {
+    try {
+      const projectId = String(params.projectId);
+      const url = new URL(request.url);
+      const role = url.searchParams.get('role') ?? undefined;
+      const membershipStatus = url.searchParams.get('membershipStatus') ?? undefined;
+      const pageSize = Math.min(
+        100,
+        Math.max(1, Number(url.searchParams.get('pageSize') ?? 20) || 20),
+      );
+      let items = members.filter((m) => m.projectId === projectId);
+      if (role) items = items.filter((m) => m.role === role);
+      if (membershipStatus) {
+        items = items.filter((m) => m.membershipStatus === membershipStatus);
+      }
+      return HttpResponse.json(
+        ok({
+          items: items.slice(0, pageSize),
+          nextCursor: null,
+          hasMore: false,
+        } satisfies CursorResult<ProjectMemberView>),
+      );
+    } catch {
+      return fail('500', 'Internal server error', 500);
+    }
+  }),
+
+  http.get('/api/v1/projects/:projectId/invitations', ({ params, request }) => {
+    try {
+      const projectId = String(params.projectId);
+      const url = new URL(request.url);
+      const status = url.searchParams.get('status') ?? undefined;
+      const email = url.searchParams.get('email') ?? undefined;
+      let items = invitations.filter((i) => i.projectId === projectId);
+      if (status) items = items.filter((i) => i.status === status);
+      if (email) {
+        const q = email.toLowerCase();
+        items = items.filter((i) => i.inviteeEmail?.toLowerCase().includes(q));
+      }
+      return HttpResponse.json(
+        ok({
+          items,
+          nextCursor: null,
+          hasMore: false,
+        } satisfies CursorResult<InvitationView>),
+      );
+    } catch {
+      return fail('500', 'Internal server error', 500);
+    }
+  }),
+
+  http.post('/api/v1/projects/:projectId/invitations', async ({ params, request }) => {
+    try {
+      const projectId = String(params.projectId);
+      const accountId = resolveBearerAccountId(request) ?? seedAccount.accountId;
+      const body = (await request.json()) as {
+        inviteeEmail?: string;
+        inviteeAccountId?: string;
+        role?: string;
+      };
+      const email = body.inviteeEmail?.trim() || null;
+      const inviteeAccountId = body.inviteeAccountId?.trim() || null;
+      if ((email && inviteeAccountId) || (!email && !inviteeAccountId)) {
+        return fail('400', 'Provide inviteeEmail or inviteeAccountId, not both');
+      }
+      const role = body.role?.trim() || 'DEVELOPER';
+      if (role === 'OWNER') {
+        return fail('400', 'OWNER cannot be invited; use ownership transfer');
+      }
+      const duplicate = invitations.find(
+        (i) =>
+          i.projectId === projectId &&
+          i.status === 'PENDING' &&
+          ((email && i.inviteeEmail === email) ||
+            (inviteeAccountId && i.inviteeAccountId === inviteeAccountId)),
+      );
+      if (duplicate) {
+        return fail('409', 'A PENDING invitation already exists for this target', 409);
+      }
+      const invitation: InvitationView = {
+        invitationId: newId('inv'),
+        projectId,
+        inviteeEmail: email,
+        inviteeAccountId,
+        role,
+        status: 'PENDING',
+        expiresAt: Date.now() + 7 * 86_400_000,
+        invitedBy: accountId,
+        acceptedAt: null,
+        createTime: Date.now(),
+      };
+      invitations = [invitation, ...invitations];
+      return HttpResponse.json(ok(invitation));
+    } catch {
+      return fail('500', 'Internal server error', 500);
+    }
+  }),
+
+  http.post('/api/v1/project-invitations/:invitationId/revoke', ({ params }) => {
+    try {
+      const invitationId = String(params.invitationId);
+      const idx = invitations.findIndex((i) => i.invitationId === invitationId);
+      if (idx < 0) return fail('404', 'Invitation not found', 404);
+      if (invitations[idx].status !== 'PENDING') {
+        return fail('409', 'Only PENDING invitations can be revoked', 409);
+      }
+      invitations[idx] = { ...invitations[idx], status: 'REVOKED' };
+      return HttpResponse.json(ok(true));
+    } catch {
+      return fail('500', 'Internal server error', 500);
+    }
+  }),
+
+  http.post(
+    '/api/v1/project-invitations/:invitationId/accept',
+    async ({ params, request }) => {
+      try {
+        const invitationId = String(params.invitationId);
+        const accountId = resolveBearerAccountId(request) ?? seedAccount.accountId;
+        const body = (await request.json()) as { token?: string };
+        if (!body?.token?.trim()) {
+          return fail('400', 'token is required');
+        }
+        const idx = invitations.findIndex((i) => i.invitationId === invitationId);
+        if (idx < 0) return fail('404', 'Invitation not found', 404);
+        const invitation = invitations[idx];
+        if (invitation.status !== 'PENDING') {
+          return fail('409', 'Invitation is not pending', 409);
+        }
+        const account = accounts.find((a) => a.accountId === accountId) ?? seedAccount;
+        const member: ProjectMemberView = {
+          projectId: invitation.projectId,
+          accountId: account.accountId,
+          username: account.username,
+          email: account.email,
+          role: invitation.role,
+          membershipStatus: 'ACTIVE',
+          joinedAt: Date.now(),
+          createTime: Date.now(),
+          updateTime: Date.now(),
+        };
+        members = [...members.filter((m) => !(m.projectId === member.projectId && m.accountId === member.accountId)), member];
+        invitations[idx] = {
+          ...invitation,
+          status: 'ACCEPTED',
+          acceptedAt: Date.now(),
+          inviteeAccountId: account.accountId,
+        };
+        return HttpResponse.json(
+          ok({ invitation: invitations[idx], member }),
+        );
+      } catch {
+        return fail('500', 'Internal server error', 500);
+      }
+    },
+  ),
+
+  http.get('/api/v1/projects/:projectId/authorization', ({ params }) => {
+    try {
+      const projectId = String(params.projectId);
+      const authz = authorizations.find((a) => a.projectId === projectId);
+      if (!authz) return fail('404', 'Authorization not found', 404);
+      return HttpResponse.json(ok(authz));
+    } catch {
+      return fail('500', 'Internal server error', 500);
+    }
+  }),
+
+  http.get('/api/v1/projects/:projectId/authorization/key-pair', ({ params }) => {
+    try {
+      const projectId = String(params.projectId);
+      const authz = authorizations.find((a) => a.projectId === projectId);
+      if (!authz) return fail('404', 'Authorization not found', 404);
+      if (authz.status === 'REVOKED') {
+        return fail('409', 'Revoked authorization has no active key pair', 409);
+      }
+      const keyPair = keyPairs.find((k) => k.projectId === projectId);
+      if (!keyPair) return fail('404', 'Key pair not found', 404);
+      return HttpResponse.json(ok(keyPair));
+    } catch {
+      return fail('500', 'Internal server error', 500);
+    }
+  }),
+
+  http.post('/api/v1/projects/:projectId/authorization/rotate', ({ params }) => {
+    try {
+      const projectId = String(params.projectId);
+      const authIdx = authorizations.findIndex((a) => a.projectId === projectId);
+      if (authIdx < 0) return fail('404', 'Authorization not found', 404);
+      const keyPair: ProjectKeyPairView = {
+        projectId,
+        clientId: newId('cli'),
+        clientSecret: newId('sec'),
+      };
+      keyPairs = [
+        ...keyPairs.filter((k) => k.projectId !== projectId),
+        keyPair,
+      ];
+      authorizations[authIdx] = {
+        ...authorizations[authIdx],
+        status: 'ACTIVE',
+        lastRotatedAt: Date.now(),
+      };
+      return HttpResponse.json(ok(keyPair));
+    } catch {
+      return fail('500', 'Internal server error', 500);
+    }
+  }),
+
+  http.post('/api/v1/projects/:projectId/authorization/enable', ({ params }) => {
+    try {
+      const projectId = String(params.projectId);
+      const idx = authorizations.findIndex((a) => a.projectId === projectId);
+      if (idx < 0) return fail('404', 'Authorization not found', 404);
+      if (authorizations[idx].status === 'REVOKED') {
+        return fail('409', 'REVOKED cannot be enabled; rotate instead', 409);
+      }
+      authorizations[idx] = { ...authorizations[idx], status: 'ACTIVE' };
+      return HttpResponse.json(ok(true));
+    } catch {
+      return fail('500', 'Internal server error', 500);
+    }
+  }),
+
+  http.post('/api/v1/projects/:projectId/authorization/disable', ({ params }) => {
+    try {
+      const projectId = String(params.projectId);
+      const idx = authorizations.findIndex((a) => a.projectId === projectId);
+      if (idx < 0) return fail('404', 'Authorization not found', 404);
+      if (authorizations[idx].status === 'REVOKED') {
+        return fail('409', 'REVOKED cannot be disabled', 409);
+      }
+      authorizations[idx] = { ...authorizations[idx], status: 'DISABLED' };
+      return HttpResponse.json(ok(true));
+    } catch {
+      return fail('500', 'Internal server error', 500);
+    }
+  }),
+
+  http.post('/api/v1/projects/:projectId/authorization/revoke', ({ params }) => {
+    try {
+      const projectId = String(params.projectId);
+      const idx = authorizations.findIndex((a) => a.projectId === projectId);
+      if (idx < 0) return fail('404', 'Authorization not found', 404);
+      authorizations[idx] = { ...authorizations[idx], status: 'REVOKED' };
+      return HttpResponse.json(ok(true));
+    } catch {
+      return fail('500', 'Internal server error', 500);
+    }
+  }),
+
+  http.put(
+    '/api/v1/projects/:projectId/authorization/network-policy',
+    async ({ params, request }) => {
+      try {
+        const projectId = String(params.projectId);
+        const idx = authorizations.findIndex((a) => a.projectId === projectId);
+        if (idx < 0) return fail('404', 'Authorization not found', 404);
+        const body = (await request.json()) as {
+          networkPolicyEnabled?: boolean;
+          ipAllowlist?: string[];
+        };
+        authorizations[idx] = {
+          ...authorizations[idx],
+          networkPolicyEnabled: Boolean(body.networkPolicyEnabled),
+          ipAllowlist: Array.isArray(body.ipAllowlist) ? body.ipAllowlist : [],
+        };
+        return HttpResponse.json(ok(authorizations[idx]));
+      } catch {
+        return fail('500', 'Internal server error', 500);
+      }
+    },
+  ),
 ];
 
 /** Seed snapshots for later tasks (members / invitations / authz handlers). */
