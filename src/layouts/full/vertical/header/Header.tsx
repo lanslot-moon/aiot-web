@@ -1,6 +1,3 @@
-
-
-
 import { useSidebar } from "src/components/ui/sidebar";
 import { Button } from "src/components/ui/button";
 import { PanelLeft } from 'lucide-react';
@@ -9,6 +6,7 @@ import { Separator } from "src/components/ui/separator";
 import { cn } from "src/lib/utils";
 import FullLogo from "../../shared/logo/FullLogo";
 import Search from "./Search";
+import ProjectSwitcher from "src/components/open-platform/project-switcher";
 
 import Profile from "./Profile";
 import LightDark from "./Light-Dark";
@@ -53,6 +51,9 @@ const Header = () => {
                 className="h-4 mr-4 w-px  ml-2   bg-border self-center max-lg:hidden"
               />
 
+              <div className="sm:block hidden">
+                <ProjectSwitcher />
+              </div>
 
               <div className="sm:block hidden">
                 <Search />

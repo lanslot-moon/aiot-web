@@ -74,10 +74,22 @@ import {
   ChartBar,
   ShoppingCart,
   GraduationCap,
-  HeartPulse
+  HeartPulse,
+  FolderKanban,
 } from "lucide-react"
 
 const SidebarContent: MenuItem[] = [
+  {
+    heading: "AIoT 开放平台",
+    items: [
+      {
+        id: uniqueId(),
+        name: "Project",
+        icon: FolderKanban,
+        url: "/projects",
+      },
+    ],
+  },
   {
     heading: "Dashboard",
     items: [

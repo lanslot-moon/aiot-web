@@ -27,6 +27,29 @@ const Notes = Loadable(lazy(() => import('../views/apps/notes')));
 const Tickets = Loadable(lazy(() => import('../views/apps/tickets')));
 const TicketCreate = Loadable(lazy(() => import('../views/apps/tickets/create')));
 
+// open platform
+const ProjectsList = Loadable(lazy(() => import('../views/apps/open-platform/projects')));
+const ProjectCreate = Loadable(lazy(() => import('../views/apps/open-platform/projects/new')));
+const ProjectOverview = Loadable(
+  lazy(() => import('../views/apps/open-platform/projects/overview')),
+);
+const ProjectMembers = Loadable(
+  lazy(() => import('../views/apps/open-platform/projects/members')),
+);
+const ProjectAuthorization = Loadable(
+  lazy(() => import('../views/apps/open-platform/projects/authorization')),
+);
+const ProjectUsage = Loadable(lazy(() => import('../views/apps/open-platform/projects/usage')));
+const ProjectSubscriptions = Loadable(
+  lazy(() => import('../views/apps/open-platform/projects/subscriptions')),
+);
+const ProjectThingModelProducts = Loadable(
+  lazy(() => import('../views/apps/open-platform/projects/thing-model/products')),
+);
+const ProjectInvitation = Loadable(
+  lazy(() => import('../views/apps/open-platform/invitations')),
+);
+
 // pages
 const TablesPage = Loadable(lazy(() => import('../views/pages/tables')));
 const FormPage = Loadable(lazy(() => import('../views/pages/form')));
@@ -66,6 +89,19 @@ const Router = [
 
       { path: '/apps/tickets', element: <Tickets /> },
       { path: '/apps/tickets/create', element: <TicketCreate /> },
+
+      { path: '/projects', element: <ProjectsList /> },
+      { path: '/projects/new', element: <ProjectCreate /> },
+      { path: '/projects/:projectId/overview', element: <ProjectOverview /> },
+      { path: '/projects/:projectId/members', element: <ProjectMembers /> },
+      { path: '/projects/:projectId/authorization', element: <ProjectAuthorization /> },
+      { path: '/projects/:projectId/usage', element: <ProjectUsage /> },
+      { path: '/projects/:projectId/subscriptions', element: <ProjectSubscriptions /> },
+      {
+        path: '/projects/:projectId/thing-model/products',
+        element: <ProjectThingModelProducts />,
+      },
+      { path: '/project-invitations/:invitationId', element: <ProjectInvitation /> },
 
       { path: '/pages/tables', element: <TablesPage /> },
       { path: '/pages/form', element: <FormPage /> },
