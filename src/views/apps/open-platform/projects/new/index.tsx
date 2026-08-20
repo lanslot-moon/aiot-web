@@ -1,6 +1,7 @@
-import BreadcrumbComp from 'src/layouts/full/shared/breadcrumb/BreadcrumbComp';
-import StyleAwareWrapper from 'src/components/shared/StyleAwareWrapper';
-import StyleDivider from 'src/components/shared/StyleDivider';
+import { CreateProjectWizard } from '@/components/open-platform/create-project-wizard';
+import StyleAwareWrapper from '@/components/shared/StyleAwareWrapper';
+import StyleDivider from '@/components/shared/StyleDivider';
+import BreadcrumbComp from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
 
 const BCrumb = [
   { to: '/', title: 'Home' },
@@ -16,9 +17,7 @@ const CreateProjectPage = () => {
     >
       <BreadcrumbComp title="Create Project" items={BCrumb} />
       <StyleDivider />
-      <div className="rounded-xl border bg-background p-6 text-sm text-muted-foreground">
-        Create Project wizard will be implemented in a later task.
-      </div>
+      <CreateProjectWizard />
     </StyleAwareWrapper>
   );
 };
