@@ -352,7 +352,7 @@ function PropertyList({
         const constraint = schemaConstraintSummary(property.schema);
         return (
           <AccordionItem key={property.code} value={property.code} className="px-3">
-            <div className="flex items-start gap-1">
+            <div className="flex items-center gap-1">
               <div className="min-w-0 flex-1">
                 <AccordionTrigger className="w-full rounded-md px-2 py-2.5 font-normal hover:bg-muted/50 hover:no-underline">
                   <div className="min-w-0 flex-1">
@@ -413,7 +413,7 @@ function ActionList({
     <Accordion aria-label="物模型动作列表" className="rounded-lg border">
       {items.map((action) => (
         <AccordionItem key={action.code} value={action.code} className="px-3">
-          <div className="flex items-start gap-1">
+          <div className="flex items-center gap-1">
             <div className="min-w-0 flex-1">
               <AccordionTrigger className="w-full rounded-md px-2 py-2.5 font-normal hover:bg-muted/50 hover:no-underline">
                 <div className="min-w-0 flex-1">
@@ -461,7 +461,7 @@ function EventList({
     <Accordion aria-label="物模型事件列表" className="rounded-lg border">
       {items.map((event) => (
         <AccordionItem key={event.code} value={event.code} className="px-3">
-          <div className="flex items-start gap-1">
+          <div className="flex items-center gap-1">
             <div className="min-w-0 flex-1">
               <AccordionTrigger className="w-full rounded-md px-2 py-2.5 font-normal hover:bg-muted/50 hover:no-underline">
                 <div className="min-w-0 flex-1">
