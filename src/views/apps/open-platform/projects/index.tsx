@@ -4,7 +4,6 @@ import { Plus, SearchIcon, X } from 'lucide-react';
 
 import { ProjectListTable } from '@/components/open-platform/project-list-table';
 import StyleAwareWrapper from '@/components/shared/StyleAwareWrapper';
-import StyleDivider from '@/components/shared/StyleDivider';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -156,11 +155,10 @@ const ProjectsListPage = () => {
 
   return (
     <StyleAwareWrapper
-      lyraClassName="flex flex-col p-px gap-px bg-border"
+      lyraClassName="flex flex-col gap-px bg-border p-px"
       defaultClassName="flex flex-col gap-4"
     >
       <BreadcrumbComp title="项目" items={BCrumb} />
-      <StyleDivider />
 
       <Card className="gap-0 py-0">
         <CardHeader className="border-b py-4">
