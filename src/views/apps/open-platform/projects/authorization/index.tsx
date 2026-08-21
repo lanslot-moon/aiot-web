@@ -172,7 +172,7 @@ const ProjectAuthorizationPage = () => {
     >
       <BreadcrumbComp title="API 授权" />
       <StyleDivider />
-      <ProjectWorkspaceShell activeTab="authorization">
+      <ProjectWorkspaceShell activePrimary="settings">
         {error ? (
           <ApiErrorAlert
             code={(error as OpenPlatformApiError).code}

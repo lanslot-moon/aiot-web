@@ -159,7 +159,7 @@ export function ProjectListTable({
                 <button
                   type="button"
                   className="text-left hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
-                  onClick={() => navigate(`/projects/${project.projectId}/overview`)}
+                  onClick={() => navigate(`/projects/${project.projectId}/products`)}
                 >
                   <span className="font-medium line-clamp-1">{project.projectName}</span>
                 </button>
@@ -196,7 +196,7 @@ export function ProjectListTable({
                     size="sm"
                     variant="outline"
                     className="hidden sm:inline-flex"
-                    onClick={() => navigate(`/projects/${project.projectId}/overview`)}
+                    onClick={() => navigate(`/projects/${project.projectId}/products`)}
                   >
                     Open
                   </Button>
@@ -215,7 +215,7 @@ export function ProjectListTable({
                     />
                     <DropdownMenuContent align="end" className="min-w-40">
                       <DropdownMenuItem
-                        onClick={() => navigate(`/projects/${project.projectId}/overview`)}
+                        onClick={() => navigate(`/projects/${project.projectId}/products`)}
                       >
                         <FolderOpen aria-hidden />
                         Open workspace

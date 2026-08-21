@@ -12,7 +12,7 @@ const ProjectSubscriptionsPage = () => {
     >
       <BreadcrumbComp title="订阅" />
       <StyleDivider />
-      <ProjectWorkspaceShell activeTab="subscriptions">
+      <ProjectWorkspaceShell activePrimary="settings">
         <Card>
           <CardHeader>
             <CardTitle className="text-base">服务订阅</CardTitle>

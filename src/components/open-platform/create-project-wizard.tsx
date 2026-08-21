@@ -142,8 +142,8 @@ export function CreateProjectWizard() {
   const keyPair: ProjectKeyPairView | null = result?.keyPair ?? null;
   const createdProjectId = result?.project.projectId;
 
-  const overviewPath = useMemo(
-    () => (createdProjectId ? `/projects/${createdProjectId}/overview` : null),
+  const productsPath = useMemo(
+    () => (createdProjectId ? `/projects/${createdProjectId}/products` : null),
     [createdProjectId],
   );
 
@@ -183,9 +183,9 @@ export function CreateProjectWizard() {
     });
   };
 
-  const handleGoOverview = () => {
-    if (!overviewPath) return;
-    navigate(overviewPath);
+  const handleGoProducts = () => {
+    if (!productsPath) return;
+    navigate(productsPath);
   };
 
   const apiErr =
@@ -374,7 +374,7 @@ export function CreateProjectWizard() {
           </>
         ) : null}
 
-        {step === 3 && overviewPath ? (
+        {step === 3 && productsPath ? (
           <>
             <Button
               type="button"
@@ -384,8 +384,8 @@ export function CreateProjectWizard() {
             >
               Back to list
             </Button>
-            <Button type="button" onClick={handleGoOverview}>
-              Go to Project overview
+            <Button type="button" onClick={handleGoProducts}>
+              开始管理产品
             </Button>
           </>
         ) : null}

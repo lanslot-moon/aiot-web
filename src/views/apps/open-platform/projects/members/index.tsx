@@ -135,7 +135,7 @@ const ProjectMembersPage = () => {
     >
       <BreadcrumbComp title="成员与邀请" />
       <StyleDivider />
-      <ProjectWorkspaceShell activeTab="members">
+      <ProjectWorkspaceShell activePrimary="settings">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
             <CardTitle className="text-base">成员与邀请</CardTitle>

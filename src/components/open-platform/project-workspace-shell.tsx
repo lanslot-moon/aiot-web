@@ -17,6 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -37,30 +38,41 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import {
   OpenPlatformApiError,
   useOpenPlatform,
   useProjectDetail,
 } from '@/context/open-platform-context';
-import { cn } from '@/lib/utils';
 import type { ProjectView } from '@/types/apps/open-platform';
 
-type WorkspaceTab =
-  | 'overview'
-  | 'thing-model'
+/** Primary IA: 产品 / 设备 / 设置 — settings holds former heavy tabs. */
+type PrimaryTab = 'products' | 'devices' | 'settings';
+
+type SettingsTab =
+  | 'settings'
   | 'members'
   | 'authorization'
   | 'usage'
   | 'subscriptions';
 
-const TABS: { id: WorkspaceTab; label: string; path: (id: string) => string }[] = [
-  { id: 'overview', label: '概览', path: (id) => `/projects/${id}/overview` },
-  {
-    id: 'thing-model',
-    label: '物模型',
-    path: (id) => `/projects/${id}/thing-model/products`,
-  },
+const PRIMARY_TABS: {
+  id: PrimaryTab;
+  label: string;
+  path: (id: string) => string;
+}[] = [
+  { id: 'products', label: '产品', path: (id) => `/projects/${id}/products` },
+  { id: 'devices', label: '设备', path: (id) => `/projects/${id}/devices` },
+  { id: 'settings', label: '设置', path: (id) => `/projects/${id}/settings` },
+];
+
+const SETTINGS_TABS: {
+  id: SettingsTab;
+  label: string;
+  path: (id: string) => string;
+}[] = [
+  { id: 'settings', label: '基本信息', path: (id) => `/projects/${id}/settings` },
   { id: 'members', label: '成员与邀请', path: (id) => `/projects/${id}/members` },
   {
     id: 'authorization',
@@ -75,23 +87,38 @@ const TABS: { id: WorkspaceTab; label: string; path: (id: string) => string }[] 
   },
 ];
 
-function tabFromPath(pathname: string): WorkspaceTab {
-  if (pathname.includes('/thing-model')) return 'thing-model';
+function primaryFromPath(pathname: string): PrimaryTab {
+  if (pathname.includes('/devices')) return 'devices';
+  if (
+    pathname.includes('/settings') ||
+    pathname.includes('/overview') ||
+    pathname.includes('/members') ||
+    pathname.includes('/authorization') ||
+    pathname.includes('/usage') ||
+    pathname.includes('/subscriptions')
+  ) {
+    return 'settings';
+  }
+  return 'products';
+}
+
+function settingsFromPath(pathname: string): SettingsTab {
   if (pathname.includes('/members')) return 'members';
   if (pathname.includes('/authorization')) return 'authorization';
   if (pathname.includes('/usage')) return 'usage';
   if (pathname.includes('/subscriptions')) return 'subscriptions';
-  return 'overview';
+  return 'settings';
 }
 
 type LifecycleAction = 'activate' | 'suspend' | 'archive' | 'close';
 
 export function ProjectWorkspaceShell({
   children,
-  activeTab,
+  activePrimary,
 }: {
   children: React.ReactNode;
-  activeTab?: WorkspaceTab;
+  /** Optional override; otherwise derived from URL. */
+  activePrimary?: PrimaryTab;
 }) {
   const { projectId = '' } = useParams<{ projectId: string }>();
   const location = useLocation();
@@ -105,7 +132,9 @@ export function ProjectWorkspaceShell({
   } = useOpenPlatform();
 
   const { data: project, error, isLoading, mutate } = useProjectDetail(projectId);
-  const currentTab = activeTab ?? tabFromPath(location.pathname);
+  const primaryTab = activePrimary ?? primaryFromPath(location.pathname);
+  const settingsTab = settingsFromPath(location.pathname);
+  const onSettings = primaryTab === 'settings';
 
   const [editOpen, setEditOpen] = useState(false);
   const [editName, setEditName] = useState('');
@@ -274,86 +303,103 @@ export function ProjectWorkspaceShell({
                 ) : null}
               </div>
 
-              <div className="flex flex-wrap gap-2">
-                {canEdit ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="gap-1"
-                    onClick={() => openEdit(project)}
-                  >
-                    <Pencil className="size-3.5" aria-hidden />
-                    编辑
-                  </Button>
-                ) : null}
-                {canManageStatus && statusActions.length > 0 ? (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger
-                      render={
-                        <Button type="button" variant="outline" size="sm" className="gap-1">
-                          状态操作
-                          <ChevronDown className="size-3.5" aria-hidden />
-                        </Button>
-                      }
-                    />
-                    <DropdownMenuContent align="end">
-                      {statusActions.includes('activate') ? (
-                        <DropdownMenuItem onClick={() => setLifecycleAction('activate')}>
-                          恢复
-                        </DropdownMenuItem>
-                      ) : null}
-                      {statusActions.includes('suspend') ? (
-                        <DropdownMenuItem onClick={() => setLifecycleAction('suspend')}>
-                          暂停
-                        </DropdownMenuItem>
-                      ) : null}
-                      {statusActions.includes('archive') ? (
-                        <DropdownMenuItem onClick={() => setLifecycleAction('archive')}>
-                          归档
-                        </DropdownMenuItem>
-                      ) : null}
-                      {statusActions.includes('close') ? (
-                        <DropdownMenuItem
-                          className="text-destructive"
-                          onClick={() => {
-                            setCloseNameConfirm('');
-                            setCloseAck(false);
-                            setLifecycleAction('close');
-                          }}
-                        >
-                          关闭
-                        </DropdownMenuItem>
-                      ) : null}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                ) : null}
-              </div>
+              {onSettings ? (
+                <div className="flex flex-wrap gap-2">
+                  {canEdit ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="gap-1"
+                      onClick={() => openEdit(project)}
+                    >
+                      <Pencil className="size-3.5" aria-hidden />
+                      编辑
+                    </Button>
+                  ) : null}
+                  {canManageStatus && statusActions.length > 0 ? (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger
+                        render={
+                          <Button type="button" variant="outline" size="sm" className="gap-1">
+                            状态操作
+                            <ChevronDown className="size-3.5" aria-hidden />
+                          </Button>
+                        }
+                      />
+                      <DropdownMenuContent align="end">
+                        {statusActions.includes('activate') ? (
+                          <DropdownMenuItem onClick={() => setLifecycleAction('activate')}>
+                            恢复
+                          </DropdownMenuItem>
+                        ) : null}
+                        {statusActions.includes('suspend') ? (
+                          <DropdownMenuItem onClick={() => setLifecycleAction('suspend')}>
+                            暂停
+                          </DropdownMenuItem>
+                        ) : null}
+                        {statusActions.includes('archive') ? (
+                          <DropdownMenuItem onClick={() => setLifecycleAction('archive')}>
+                            归档
+                          </DropdownMenuItem>
+                        ) : null}
+                        {statusActions.includes('close') ? (
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={() => {
+                              setCloseNameConfirm('');
+                              setCloseAck(false);
+                              setLifecycleAction('close');
+                            }}
+                          >
+                            关闭
+                          </DropdownMenuItem>
+                        ) : null}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
 
-            <nav
-              className="flex flex-wrap gap-1 border-b border-border pb-0"
-              aria-label="Project workspace tabs"
+            <Tabs
+              value={primaryTab}
+              onValueChange={(value) => {
+                const tab = PRIMARY_TABS.find((t) => t.id === value);
+                if (tab) navigate(tab.path(project.projectId));
+              }}
             >
-              {TABS.map((tab) => {
-                const active = currentTab === tab.id;
-                return (
-                  <Link
-                    key={tab.id}
-                    to={tab.path(project.projectId)}
-                    className={cn(
-                      'rounded-t-md px-3 py-2 text-sm transition-colors',
-                      active
-                        ? 'border-b-2 border-primary font-medium text-foreground'
-                        : 'text-muted-foreground hover:text-foreground',
-                    )}
-                    aria-current={active ? 'page' : undefined}
-                  >
+              <TabsList variant="line" className="w-full justify-start">
+                {PRIMARY_TABS.map((tab) => (
+                  <TabsTrigger key={tab.id} value={tab.id} className="gap-1.5">
                     {tab.label}
-                  </Link>
-                );
-              })}
-            </nav>
+                    {tab.id === 'devices' ? (
+                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                        未发布
+                      </Badge>
+                    ) : null}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+
+            {onSettings ? (
+              <Tabs
+                value={settingsTab}
+                onValueChange={(value) => {
+                  const tab = SETTINGS_TABS.find((t) => t.id === value);
+                  if (tab) navigate(tab.path(project.projectId));
+                }}
+              >
+                <TabsList className="h-auto flex-wrap justify-start">
+                  {SETTINGS_TABS.map((tab) => (
+                    <TabsTrigger key={tab.id} value={tab.id}>
+                      {tab.label}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </Tabs>
+            ) : null}
           </CardContent>
         </Card>
       ) : null}

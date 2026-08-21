@@ -17,6 +17,9 @@ import { useOpenPlatform } from 'src/context/open-platform-context';
 import { cn } from 'src/lib/utils';
 
 const WORKSPACE_SEGMENTS = [
+  'products',
+  'devices',
+  'settings',
   'overview',
   'members',
   'authorization',
@@ -34,16 +37,19 @@ function projectIdFromPath(pathname: string): string | undefined {
   return id;
 }
 
+/** Prefer product main path when switching; keep settings sub-routes. */
 function resolveWorkspaceSuffix(pathname: string, projectId: string | undefined): string {
-  if (!projectId) return 'overview';
+  if (!projectId) return 'products';
   const prefix = `/projects/${projectId}/`;
-  if (!pathname.startsWith(prefix)) return 'overview';
+  if (!pathname.startsWith(prefix)) return 'products';
   const rest = pathname.slice(prefix.length);
   const head = rest.split('/')[0];
+  if (head === 'thing-model') return 'products';
+  if (head === 'overview') return 'settings';
   if (WORKSPACE_SEGMENTS.includes(head as (typeof WORKSPACE_SEGMENTS)[number])) {
-    return rest || 'overview';
+    return rest || 'products';
   }
-  return 'overview';
+  return 'products';
 }
 
 const ProjectSwitcher = () => {

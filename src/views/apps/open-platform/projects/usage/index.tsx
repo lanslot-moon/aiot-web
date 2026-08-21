@@ -12,7 +12,7 @@ const ProjectUsagePage = () => {
     >
       <BreadcrumbComp title="用量" />
       <StyleDivider />
-      <ProjectWorkspaceShell activeTab="usage">
+      <ProjectWorkspaceShell activePrimary="settings">
         <Card>
           <CardHeader>
             <CardTitle className="text-base">用量</CardTitle>
