@@ -846,7 +846,7 @@ const ProductModelPage = () => {
         ) : productLoading && !product ? (
           <div className="space-y-4">
             <Skeleton className="h-8 w-72" />
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,1.05fr)_minmax(18rem,0.95fr)]">
               <Skeleton className="h-[32rem] w-full" />
               <Skeleton className="h-72 w-full" />
             </div>
@@ -904,7 +904,7 @@ const ProductModelPage = () => {
               <ApiErrorAlert code={actionError?.code} message={actionErrorMessage} />
             ) : null}
 
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,1.05fr)_minmax(18rem,0.95fr)]">
               <Card className="min-w-0">
                 <CardHeader className="gap-3 border-b">
                   <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
