@@ -56,7 +56,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
 import StyleAwareWrapper from '@/components/shared/StyleAwareWrapper';
-import StyleDivider from '@/components/shared/StyleDivider';
 import {
   OpenPlatformApiError,
   openPlatformDelete,
@@ -556,7 +555,6 @@ const ProductDetailPage = () => {
       defaultClassName="flex flex-col gap-4"
     >
       <BreadcrumbComp title="产品详情" items={breadcrumbItems} />
-      <StyleDivider />
       <ProjectWorkspaceShell activePrimary="products">
         {actionError ? (
           <ApiErrorAlert
