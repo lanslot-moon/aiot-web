@@ -204,6 +204,7 @@ const ProjectProductsPage = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>产品</TableHead>
+                  <TableHead>产品 ID</TableHead>
                   <TableHead>型号</TableHead>
                   <TableHead>品类</TableHead>
                   <TableHead>生命周期</TableHead>
@@ -215,7 +216,7 @@ const ProjectProductsPage = () => {
               <TableBody>
                 {error ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="h-32 px-6">
+                    <TableCell colSpan={8} className="h-32 px-6">
                       <ApiErrorAlert
                         code={productError?.code}
                         message={error.message}
@@ -228,8 +229,8 @@ const ProjectProductsPage = () => {
                     <TableRow key={`product-skeleton-${index}`}>
                       <TableCell>
                         <Skeleton className="h-5 w-36" />
-                        <Skeleton className="mt-1 h-3 w-28" />
                       </TableCell>
+                      <TableCell><Skeleton className="h-4 w-28" /></TableCell>
                       <TableCell><Skeleton className="h-4 w-20" /></TableCell>
                       <TableCell><Skeleton className="h-4 w-20" /></TableCell>
                       <TableCell><Skeleton className="h-5 w-14" /></TableCell>
@@ -240,7 +241,7 @@ const ProjectProductsPage = () => {
                   ))
                 ) : filtered.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="h-32 text-center text-muted-foreground">
+                    <TableCell colSpan={8} className="h-32 text-center text-muted-foreground">
                       {products.length === 0
                         ? '当前项目还没有产品，点击“创建产品”开始。'
                         : '没有符合条件的产品'}
@@ -250,26 +251,26 @@ const ProjectProductsPage = () => {
                   filtered.map((product) => (
                     <TableRow key={product.productId}>
                       <TableCell>
-                        <div className="space-y-0.5">
-                          <Button
-                            type="button"
-                            variant="link"
-                            className="h-auto p-0 font-medium"
-                            nativeButton={false}
-                            render={
-                              <Link
-                                to={`/projects/${projectId}/products/${product.productId}`}
-                              />
-                            }
-                          >
-                            {product.productName}
-                          </Button>
-                          <div className="flex items-center gap-0.5">
-                            <code className="font-mono text-xs text-muted-foreground">
-                              {product.productId}
-                            </code>
-                            <CopyIdButton value={product.productId} label="Product ID" />
-                          </div>
+                        <Button
+                          type="button"
+                          variant="link"
+                          className="h-auto p-0 font-medium"
+                          nativeButton={false}
+                          render={
+                            <Link
+                              to={`/projects/${projectId}/products/${product.productId}`}
+                            />
+                          }
+                        >
+                          {product.productName}
+                        </Button>
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        <div className="flex items-center gap-0.5">
+                          <code className="font-mono text-xs text-muted-foreground">
+                            {product.productId}
+                          </code>
+                          <CopyIdButton value={product.productId} label="Product ID" />
                         </div>
                       </TableCell>
                       <TableCell>{product.productModel || '—'}</TableCell>
