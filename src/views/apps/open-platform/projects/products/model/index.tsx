@@ -72,7 +72,6 @@ import {
 } from '@/lib/open-platform-labels';
 import type {
   CategoryMergeView,
-  CategoryVersionView,
   ModelDiffView,
   ModelDraftView,
   ModelVersionView,
@@ -370,10 +369,6 @@ function validationKey(productId: string) {
   return `${modelKey(productId)}/validation`;
 }
 
-function categoryVersionsKey(categoryCode: string) {
-  return `/api/v1/categories/${encodeURIComponent(categoryCode)}/versions`;
-}
-
 function cloneDefinition(definition: ThingModelDefinition): ThingModelDefinition {
   return {
     ...definition,
@@ -510,11 +505,6 @@ const ProductModelPage = () => {
     productId ? validationKey(productId) : null,
     openPlatformGetFetcher,
   );
-  const { data: categoryVersions } = useSWR<CategoryVersionView[]>(
-    product?.categoryCode ? categoryVersionsKey(product.categoryCode) : null,
-    openPlatformGetFetcher,
-  );
-
   const [localDefinition, setLocalDefinition] = useState<ThingModelDefinition | null>(null);
   const [dirty, setDirty] = useState(false);
   const [busyAction, setBusyAction] = useState<string | null>(null);
@@ -525,7 +515,6 @@ const ProductModelPage = () => {
   const [capabilityJson, setCapabilityJson] = useState('');
   const [capabilityJsonError, setCapabilityJsonError] = useState<string | null>(null);
   const [mergeOpen, setMergeOpen] = useState(false);
-  const [targetVersion, setTargetVersion] = useState('');
   const [selectedMergeCodes, setSelectedMergeCodes] = useState<string[]>([]);
   const [viewingRevision, setViewingRevision] = useState<number | null>(null);
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
@@ -551,18 +540,13 @@ const ProductModelPage = () => {
     ? published ?? null
     : currentDefinition ?? published ?? null;
   const readOnlyDefinition = publishedOnly || (!currentDefinition && Boolean(published));
+  const targetVersion = product?.categoryCatalogVersion ?? '';
   const publishedVersion = useMemo(
     () => {
       const publishedVersions = (versions ?? []).filter((version) => version.status === 'PUBLISHED');
       return publishedVersions[publishedVersions.length - 1] ?? versions?.[versions.length - 1];
     },
     [versions],
-  );
-  const latestCategoryVersion = useMemo(
-    () =>
-      categoryVersions?.find((version) => version.versionStatus === 'PUBLISHED') ??
-      categoryVersions?.[categoryVersions.length - 1],
-    [categoryVersions],
   );
   const mergeDiffKey =
     mergeOpen && product && targetVersion
@@ -590,12 +574,6 @@ const ProductModelPage = () => {
         toRevision: Number(diffTo),
       }),
   );
-
-  useEffect(() => {
-    if (mergeOpen && !targetVersion && latestCategoryVersion) {
-      setTargetVersion(latestCategoryVersion.categoryVersion);
-    }
-  }, [latestCategoryVersion, mergeOpen, targetVersion]);
 
   useEffect(() => {
     if (mergeDiff) {
@@ -832,7 +810,6 @@ const ProductModelPage = () => {
   };
 
   const openMergeDialog = () => {
-    setTargetVersion(latestCategoryVersion?.categoryVersion ?? product?.categoryCatalogVersion ?? '');
     setSelectedMergeCodes([]);
     setMergeOpen(true);
   };
@@ -964,7 +941,7 @@ const ProductModelPage = () => {
                         </Button>
                       ) : (
                         <>
-                          <Button type="button" variant="outline" size="sm" className="gap-1" onClick={openMergeDialog} disabled={busyAction != null || !categoryVersions?.length}>
+                          <Button type="button" variant="outline" size="sm" className="gap-1" onClick={openMergeDialog} disabled={busyAction != null || !product?.categoryCatalogVersion}>
                             <RefreshCw className="size-3.5" aria-hidden />
                             从品类新增
                           </Button>
@@ -1045,7 +1022,7 @@ const ProductModelPage = () => {
                       <p className="mt-1 max-w-md text-xs leading-5 text-muted-foreground">
                         产品已绑定品类，但能力需要复制到产品草稿后才能修改、校验和发布。
                       </p>
-                      <Button type="button" className="mt-4 gap-1" onClick={openMergeDialog} disabled={!categoryVersions?.length}>
+                      <Button type="button" className="mt-4 gap-1" onClick={openMergeDialog} disabled={!product?.categoryCatalogVersion}>
                         <RefreshCw className="size-3.5" aria-hidden />
                         从品类模板开始
                       </Button>
@@ -1383,25 +1360,10 @@ const ProductModelPage = () => {
           <DialogHeader>
             <DialogTitle>新增能力</DialogTitle>
             <DialogDescription>
-              从当前品类模板中选择要加入产品草稿的能力；必选属性会自动纳入，已有能力不会被覆盖。
+              从产品创建时绑定的品类模板中选择要加入产品草稿的能力；必选属性会自动纳入，已有能力不会被覆盖。
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="grid gap-1.5">
-              <span className="text-sm font-medium">品类模板版本</span>
-              <Select value={targetVersion} onValueChange={(value) => setTargetVersion(value ?? '')}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="选择品类版本" />
-                </SelectTrigger>
-                <SelectContent>
-                  {(categoryVersions ?? []).map((version) => (
-                    <SelectItem key={version.categoryVersion} value={version.categoryVersion}>
-                      {version.categoryVersion} · {version.versionStatus === 'PUBLISHED' ? '已发布' : version.versionStatus}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
             {mergeDiffError ? (
               <ApiErrorAlert message={(mergeDiffError as Error).message} />
             ) : mergeDiff ? (
