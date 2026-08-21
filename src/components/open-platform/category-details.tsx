@@ -484,7 +484,7 @@ export function CategoryDetails({
 }) {
   if (!category) {
     return (
-      <div className="flex min-h-48 items-center justify-center rounded-lg border border-dashed px-5 text-center text-sm text-muted-foreground">
+      <div className="flex h-full min-h-48 items-center justify-center rounded-lg border border-dashed px-5 text-center text-sm text-muted-foreground">
         选择左侧品类查看详情
       </div>
     );
