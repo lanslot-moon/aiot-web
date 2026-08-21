@@ -199,7 +199,7 @@ const ProjectsListPage = () => {
                   if (e.key === 'Enter') applyKeyword(keywordDraft);
                 }}
                 placeholder="搜索名称或 Project ID…"
-                className="pl-8"
+                className="!pr-8 !pl-8"
                 aria-label="按关键词筛选项目"
               />
             </div>
