@@ -126,3 +126,21 @@ export interface ProjectKeyPairView {
   clientId: string;
   clientSecret: string;
 }
+
+/**
+ * Product row for Project-scoped product list (thing-model).
+ * `categoryCode` remains the stable identity; `categoryName` is the UI label
+ * that backend should return (see list-display-labels CR).
+ */
+export interface ProductListItem {
+  productId: string;
+  productName: string;
+  productModel: string | null;
+  categoryCode: string;
+  /** zh-CN (or current locale) display name — backend to add */
+  categoryName: string;
+  /** optional multilingual map — backend optional */
+  categoryNames?: Record<string, string>;
+  lifecycleStatus: string;
+  updatedAt: number;
+}

@@ -43,6 +43,11 @@ import {
   getStoredAccessToken,
 } from '@/context/open-platform-context';
 import BreadcrumbComp from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
+import {
+  INVITATION_STATUS_LABEL,
+  MEMBERSHIP_STATUS_LABEL,
+  labelOf,
+} from '@/lib/open-platform-labels';
 import { REST_SUCCESS_CODE, type CursorResult, type InvitationView, type ProjectMemberView, type RestResult } from '@/types/apps/open-platform';
 
 async function postJson<T>(url: string, body: unknown): Promise<T> {
@@ -198,7 +203,9 @@ const ProjectMembersPage = () => {
                         <TableCell>
                           <RoleBadge role={m.role} />
                         </TableCell>
-                        <TableCell>{m.membershipStatus}</TableCell>
+                        <TableCell>
+                          {labelOf(MEMBERSHIP_STATUS_LABEL, m.membershipStatus)}
+                        </TableCell>
                         <TableCell>{new Date(m.joinedAt).toLocaleString()}</TableCell>
                       </TableRow>
                     ))}
@@ -272,7 +279,9 @@ const ProjectMembersPage = () => {
                         <TableCell>
                           <RoleBadge role={i.role} />
                         </TableCell>
-                        <TableCell>{i.status}</TableCell>
+                        <TableCell>
+                          {labelOf(INVITATION_STATUS_LABEL, i.status)}
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

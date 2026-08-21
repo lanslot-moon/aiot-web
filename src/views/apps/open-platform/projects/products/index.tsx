@@ -5,8 +5,9 @@ import { MoreHorizontal, PackagePlus, SearchIcon } from 'lucide-react';
 import { ProjectWorkspaceShell } from '@/components/open-platform/project-workspace-shell';
 import StyleAwareWrapper from '@/components/shared/StyleAwareWrapper';
 import StyleDivider from '@/components/shared/StyleDivider';
-import { Badge } from '@/components/ui/badge';
+import { ProductLifecycleBadge } from '@/components/open-platform/product-lifecycle-badge';
 import { Button } from '@/components/ui/button';
+import { PRODUCT_LIFECYCLE_LABEL } from '@/lib/open-platform-labels';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -36,7 +37,13 @@ type DemoProduct = {
   productId: string;
   productName: string;
   productModel: string;
+  /** Stable identity — keep for API/joins. */
   categoryCode: string;
+  /**
+   * Display name from backend (CR: Product list VO should return this).
+   * Prefer over categoryCode in UI.
+   */
+  categoryName: string;
   lifecycleStatus: 'DRAFT' | 'PUBLISHED' | 'DISABLED' | 'DEPRECATED';
   updatedAt: number;
 };
@@ -48,6 +55,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     productName: '智能温控器',
     productModel: 'TH-100',
     categoryCode: 'hvac.thermostat',
+    categoryName: '温控器',
     lifecycleStatus: 'PUBLISHED',
     updatedAt: Date.UTC(2026, 7, 18, 10, 0, 0),
   },
@@ -56,6 +64,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     productName: '边缘网关',
     productModel: 'GW-200',
     categoryCode: 'gateway.edge',
+    categoryName: '边缘网关',
     lifecycleStatus: 'DRAFT',
     updatedAt: Date.UTC(2026, 7, 19, 14, 30, 0),
   },
@@ -64,6 +73,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     productName: '温湿度传感器',
     productModel: 'STH-10',
     categoryCode: 'sensor.env',
+    categoryName: '环境传感器',
     lifecycleStatus: 'PUBLISHED',
     updatedAt: Date.UTC(2026, 7, 15, 9, 12, 0),
   },
@@ -72,6 +82,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     productName: '智能门锁',
     productModel: 'LK-Pro',
     categoryCode: 'security.lock',
+    categoryName: '智能门锁',
     lifecycleStatus: 'DISABLED',
     updatedAt: Date.UTC(2026, 7, 10, 16, 45, 0),
   },
@@ -173,10 +184,16 @@ const ProjectProductsPage = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value={STATUS_ALL}>全部状态</SelectItem>
-                <SelectItem value="DRAFT">DRAFT</SelectItem>
-                <SelectItem value="PUBLISHED">PUBLISHED</SelectItem>
-                <SelectItem value="DISABLED">DISABLED</SelectItem>
-                <SelectItem value="DEPRECATED">DEPRECATED</SelectItem>
+                <SelectItem value="DRAFT">{PRODUCT_LIFECYCLE_LABEL.DRAFT}</SelectItem>
+                <SelectItem value="PUBLISHED">
+                  {PRODUCT_LIFECYCLE_LABEL.PUBLISHED}
+                </SelectItem>
+                <SelectItem value="DISABLED">
+                  {PRODUCT_LIFECYCLE_LABEL.DISABLED}
+                </SelectItem>
+                <SelectItem value="DEPRECATED">
+                  {PRODUCT_LIFECYCLE_LABEL.DEPRECATED}
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -213,26 +230,10 @@ const ProjectProductsPage = () => {
                       </TableCell>
                       <TableCell>{p.productModel}</TableCell>
                       <TableCell>
-                        <Badge variant="outline" className="font-mono text-xs">
-                          {p.categoryCode}
-                        </Badge>
+                        <span className="text-sm">{p.categoryName || p.categoryCode}</span>
                       </TableCell>
                       <TableCell>
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            p.lifecycleStatus === 'PUBLISHED' &&
-                              'border-transparent bg-chart-2/12 text-chart-2',
-                            p.lifecycleStatus === 'DRAFT' &&
-                              'border-transparent bg-chart-4/12 text-chart-4',
-                            p.lifecycleStatus === 'DISABLED' &&
-                              'border-transparent bg-muted text-muted-foreground',
-                            p.lifecycleStatus === 'DEPRECATED' &&
-                              'border-transparent bg-destructive/12 text-destructive',
-                          )}
-                        >
-                          {p.lifecycleStatus}
-                        </Badge>
+                        <ProductLifecycleBadge status={p.lifecycleStatus} />
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
                         {new Date(p.updatedAt).toLocaleString()}

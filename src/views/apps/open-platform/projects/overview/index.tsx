@@ -14,6 +14,11 @@ import {
 } from '@/components/ui/card';
 import { useProjectDetail } from '@/context/open-platform-context';
 import BreadcrumbComp from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
+import {
+  PROJECT_ROLE_LABEL,
+  PROJECT_STATUS_LABEL,
+  labelOf,
+} from '@/lib/open-platform-labels';
 
 const BCrumb = [
   { to: '/projects', title: '项目' },
@@ -44,10 +49,12 @@ const ProjectOverviewPage = () => {
             <Card>
               <CardHeader className="pb-2">
                 <CardDescription>项目状态</CardDescription>
-                <CardTitle className="text-lg">{project?.status ?? '—'}</CardTitle>
+                <CardTitle className="text-lg">
+                  {labelOf(PROJECT_STATUS_LABEL, project?.status)}
+                </CardTitle>
               </CardHeader>
               <CardContent className="text-xs text-muted-foreground">
-                角色 {project?.myRole ?? '—'}
+                角色 {labelOf(PROJECT_ROLE_LABEL, project?.myRole)}
               </CardContent>
             </Card>
             <Card>

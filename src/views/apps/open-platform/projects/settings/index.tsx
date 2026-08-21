@@ -15,6 +15,11 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { useProjectDetail } from '@/context/open-platform-context';
 import BreadcrumbComp from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
+import {
+  PROJECT_ROLE_LABEL,
+  PROJECT_STATUS_LABEL,
+  labelOf,
+} from '@/lib/open-platform-labels';
 
 const BCrumb = [
   { to: '/projects', title: 'Projects' },
@@ -54,11 +59,15 @@ const ProjectSettingsPage = () => {
                   </div>
                   <div>
                     <dt className="text-muted-foreground">状态</dt>
-                    <dd className="mt-0.5 font-medium">{project.status}</dd>
+                    <dd className="mt-0.5 font-medium">
+                      {labelOf(PROJECT_STATUS_LABEL, project.status)}
+                    </dd>
                   </div>
                   <div>
                     <dt className="text-muted-foreground">我的角色</dt>
-                    <dd className="mt-0.5 font-medium">{project.myRole}</dd>
+                    <dd className="mt-0.5 font-medium">
+                      {labelOf(PROJECT_ROLE_LABEL, project.myRole)}
+                    </dd>
                   </div>
                   <div>
                     <dt className="text-muted-foreground">更新时间</dt>

@@ -33,6 +33,10 @@ import {
 } from '@/context/open-platform-context';
 import BreadcrumbComp from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
 import {
+  AUTHORIZATION_STATUS_LABEL,
+  labelOf,
+} from '@/lib/open-platform-labels';
+import {
   REST_SUCCESS_CODE,
   type AuthorizationMetadataView,
   type ProjectKeyPairView,
@@ -189,7 +193,9 @@ const ProjectAuthorizationPage = () => {
                   <CardTitle className="text-base">授权状态</CardTitle>
                   <CardDescription>Project 与授权状态分开展示</CardDescription>
                 </div>
-                <Badge variant="outline">{data.status}</Badge>
+                <Badge variant="outline">
+                  {labelOf(AUTHORIZATION_STATUS_LABEL, data.status)}
+                </Badge>
               </CardHeader>
               <CardContent className="flex flex-wrap gap-2">
                 {data.status === 'DISABLED' ? (

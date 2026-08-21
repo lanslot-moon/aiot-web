@@ -21,6 +21,7 @@ import {
   useOpenPlatform,
 } from '@/context/open-platform-context';
 import BreadcrumbComp from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
+import { PROJECT_STATUS_LABEL } from '@/lib/open-platform-labels';
 import type { CursorResult, ProjectView } from '@/types/apps/open-platform';
 
 const BCrumb = [
@@ -216,7 +217,7 @@ const ProjectsListPage = () => {
                 <SelectItem value={STATUS_ALL}>全部状态</SelectItem>
                 {STATUS_OPTIONS.map((status) => (
                   <SelectItem key={status} value={status}>
-                    {status}
+                    {PROJECT_STATUS_LABEL[status]}
                   </SelectItem>
                 ))}
               </SelectContent>
