@@ -121,6 +121,11 @@ const ProjectSwitcher = () => {
                     <CommandItem
                       key={project.projectId}
                       value={project.projectId}
+                      className={
+                        project.projectId === projectId
+                          ? 'bg-accent text-accent-foreground [&_svg]:text-accent-foreground'
+                          : undefined
+                      }
                       data-checked={project.projectId === projectId || undefined}
                       onSelect={() => handleSelect(project.projectId)}
                     >
