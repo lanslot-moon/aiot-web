@@ -1,6 +1,6 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
-import { ArrowLeft, PackagePlus } from 'lucide-react';
+import { ArrowLeft, Braces, PackagePlus } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { toast } from 'sonner';
 
@@ -28,6 +28,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   OpenPlatformApiError,
   openPlatformPost,
@@ -49,6 +50,7 @@ type ProductForm = {
   productModel: string;
   categoryCode: string;
 };
+type CategoryMode = 'STANDARD' | 'CUSTOM';
 type ProductField = keyof ProductForm;
 type FieldErrors = Partial<Record<ProductField, string>>;
 
@@ -64,6 +66,7 @@ const productListKey = (projectId: string) =>
 function validateProduct(
   form: ProductForm,
   selectedCategory?: CategoryView,
+  categoryMode: CategoryMode = 'STANDARD',
 ): FieldErrors {
   const errors: FieldErrors = {};
   const name = form.productName.trim();
@@ -74,9 +77,11 @@ function validateProduct(
   else if (name.length > 128) errors.productName = '产品名称不能超过 128 个字符。';
 
   if (model.length > 128) errors.productModel = '产品型号不能超过 128 个字符。';
-  if (!category) errors.categoryCode = '请选择品类。';
-  else if (!selectedCategory) errors.categoryCode = '请选择有效的品类。';
-  else if (!selectedCategory.leaf) errors.categoryCode = '请选择叶子品类。';
+  if (categoryMode === 'STANDARD') {
+    if (!category) errors.categoryCode = '请选择品类。';
+    else if (!selectedCategory) errors.categoryCode = '请选择有效的品类。';
+    else if (!selectedCategory.leaf) errors.categoryCode = '请选择叶子品类。';
+  }
 
   return errors;
 }
@@ -95,6 +100,7 @@ const CreateProductPage = () => {
     revalidateOnFocus: false,
   });
   const [form, setForm] = useState<ProductForm>(initialForm);
+  const [categoryMode, setCategoryMode] = useState<CategoryMode>('STANDARD');
   const [errors, setErrors] = useState<FieldErrors>({});
   const [submitError, setSubmitError] = useState<Error | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -128,7 +134,7 @@ const CreateProductPage = () => {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const nextErrors = validateProduct(form, selectedCategory);
+    const nextErrors = validateProduct(form, selectedCategory, categoryMode);
     setErrors(nextErrors);
     setSubmitError(null);
     if (Object.keys(nextErrors).length > 0 || !projectId || !canCreate) return;
@@ -140,7 +146,10 @@ const CreateProductPage = () => {
         {
           productName: form.productName.trim(),
           productModel: form.productModel.trim() || undefined,
-          categoryCode: form.categoryCode.trim(),
+          categoryType: categoryMode,
+          ...(categoryMode === 'STANDARD'
+            ? { categoryCode: form.categoryCode.trim() }
+            : {}),
         } satisfies ProductCreateRequest,
       );
 
@@ -154,6 +163,13 @@ const CreateProductPage = () => {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const selectCategoryMode = (nextMode: CategoryMode) => {
+    setCategoryMode(nextMode);
+    setForm((current) => ({ ...current, categoryCode: '' }));
+    setErrors((current) => ({ ...current, categoryCode: undefined }));
+    setSubmitError(null);
   };
 
   const breadcrumbItems = [
@@ -271,11 +287,9 @@ const CreateProductPage = () => {
                 <div className="rounded-lg border bg-muted/10 p-4">
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                     <div>
-                      <p className="text-sm font-medium">
-                        选择品类 <span className="text-destructive">*</span>
-                      </p>
+                      <p className="text-sm font-medium">品类来源</p>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        从平台品类树中选择叶子品类，产品创建后会保留这个品类关联。
+                        标准品类会带入平台能力；自定义品类不继承任何品类能力，创建后由你自行定义物模型。
                       </p>
                     </div>
                     <Button
@@ -291,57 +305,88 @@ const CreateProductPage = () => {
                         />
                       }
                     >
-                      查看品类
+                      查看标准品类
                     </Button>
                   </div>
 
-                  <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(16rem,0.9fr)]">
-                    <Field data-invalid={Boolean(errors.categoryCode) || undefined}>
-                      {categoriesError ? (
-                        <ApiErrorAlert
-                          code={categoryApiError?.code}
-                          message={categoriesError.message}
-                          onRetry={() => void mutateCategories()}
-                        />
-                      ) : categoriesLoading && !categories ? (
-                        <div className="space-y-3">
-                          <Skeleton className="h-9 w-full" />
-                          <Skeleton className="h-9 w-full" />
-                          <Skeleton className="h-9 w-11/12" />
-                          <Skeleton className="h-9 w-10/12" />
-                        </div>
-                      ) : (
-                        <CategoryTree
-                          categories={categories ?? []}
-                          selectedCode={form.categoryCode}
-                          selectableLeafOnly
-                          disabled={!canCreate}
-                          onSelect={(category) =>
-                            updateField('categoryCode', category.categoryCode)
-                          }
-                        />
-                      )}
-                      {errors.categoryCode ? (
-                        <FieldError>{errors.categoryCode}</FieldError>
-                      ) : null}
-                    </Field>
+                  <Tabs
+                    value={categoryMode}
+                    onValueChange={(value) => {
+                      if (value === 'STANDARD' || value === 'CUSTOM') {
+                        selectCategoryMode(value);
+                      }
+                    }}
+                    className="mt-4 gap-3"
+                  >
+                    <TabsList variant="line" className="h-8 w-full justify-start border-b">
+                      <TabsTrigger value="STANDARD" className="h-8 px-3 text-xs">
+                        标准品类
+                      </TabsTrigger>
+                      <TabsTrigger value="CUSTOM" className="h-8 px-3 text-xs">
+                        自定义品类
+                      </TabsTrigger>
+                    </TabsList>
 
-                    <div className="min-w-0">
-                      <p className="mb-2 text-sm font-medium">品类预览</p>
-                      {selectedCategoryVersionsError ? (
-                        <ApiErrorAlert
-                          code={selectedVersionsApiError?.code}
-                          message={selectedCategoryVersionsError.message}
-                        />
-                      ) : (
-                        <CategoryDetails
-                          category={selectedCategory}
-                          versions={selectedCategoryVersions}
-                          compact
-                        />
-                      )}
-                    </div>
-                  </div>
+                    <TabsContent value="STANDARD" className="mt-0">
+                      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(16rem,0.9fr)]">
+                        <Field data-invalid={Boolean(errors.categoryCode) || undefined}>
+                          {categoriesError ? (
+                            <ApiErrorAlert
+                              code={categoryApiError?.code}
+                              message={categoriesError.message}
+                              onRetry={() => void mutateCategories()}
+                            />
+                          ) : categoriesLoading && !categories ? (
+                            <div className="space-y-3">
+                              <Skeleton className="h-9 w-full" />
+                              <Skeleton className="h-9 w-full" />
+                              <Skeleton className="h-9 w-11/12" />
+                              <Skeleton className="h-9 w-10/12" />
+                            </div>
+                          ) : (
+                            <CategoryTree
+                              categories={categories ?? []}
+                              selectedCode={form.categoryCode}
+                              selectableLeafOnly
+                              disabled={!canCreate}
+                              onSelect={(category) =>
+                                updateField('categoryCode', category.categoryCode)
+                              }
+                            />
+                          )}
+                          {errors.categoryCode ? (
+                            <FieldError>{errors.categoryCode}</FieldError>
+                          ) : null}
+                        </Field>
+
+                        <div className="min-w-0">
+                          <p className="mb-2 text-sm font-medium">品类预览</p>
+                          {selectedCategoryVersionsError ? (
+                            <ApiErrorAlert
+                              code={selectedVersionsApiError?.code}
+                              message={selectedCategoryVersionsError.message}
+                            />
+                          ) : (
+                            <CategoryDetails
+                              category={selectedCategory}
+                              versions={selectedCategoryVersions}
+                              compact
+                            />
+                          )}
+                        </div>
+                      </div>
+                    </TabsContent>
+
+                    <TabsContent value="CUSTOM" className="mt-0">
+                      <div className="flex min-h-56 flex-col items-center justify-center rounded-lg border border-dashed px-5 text-center">
+                        <Braces className="size-7 text-muted-foreground" aria-hidden />
+                        <p className="mt-3 text-sm font-medium">自定义品类</p>
+                        <p className="mt-1 max-w-xl text-xs leading-5 text-muted-foreground">
+                          不绑定平台标准品类，也不会带入任何属性、动作或事件。产品创建后进入空白物模型草稿，由你自行定义全部能力。
+                        </p>
+                      </div>
+                    </TabsContent>
+                  </Tabs>
                 </div>
 
               </FieldGroup>

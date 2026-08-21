@@ -455,6 +455,8 @@ const ProductDetailPage = () => {
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [actionError, setActionError] = useState<OpenPlatformApiError | null>(null);
   const [confirmAction, setConfirmAction] = useState<ProductLifecycleAction | null>(null);
+  const isCustomCategory =
+    product?.categoryType === 'CUSTOM' || product?.categoryCode === 'CUSTOM';
 
   const productListKey = projectId
     ? `/api/v1/projects/${encodeURIComponent(projectId)}/products?pageSize=100`
@@ -730,7 +732,11 @@ const ProductDetailPage = () => {
               <Card>
                 <CardHeader>
                   <CardTitle className="text-base">产品信息</CardTitle>
-                  <CardDescription>产品创建后，品类关联保持不变。</CardDescription>
+                  <CardDescription>
+                    {isCustomCategory
+                      ? '该产品不关联平台标准品类，物模型能力由你自行定义。'
+                      : '产品创建后，品类关联保持不变。'}
+                  </CardDescription>
                 </CardHeader>
                 <CardContent className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
                   <div>
@@ -739,18 +745,27 @@ const ProductDetailPage = () => {
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">所属品类</p>
-                    <Button
-                      type="button"
-                      variant="link"
-                      className="mt-0.5 h-auto p-0 text-sm"
-                      nativeButton={false}
-                      render={<Link to={`/projects/${projectId}/categories/${product.categoryCode}`} />}
-                    >
-                      {product.categoryName || product.categoryCode}
-                    </Button>
-                    <p className="font-mono text-[11px] text-muted-foreground">
-                      {product.categoryCode}
-                    </p>
+                    {isCustomCategory ? (
+                      <>
+                        <p className="mt-1 text-sm">自定义品类</p>
+                        <p className="text-xs text-muted-foreground">不继承平台品类能力</p>
+                      </>
+                    ) : (
+                      <>
+                        <Button
+                          type="button"
+                          variant="link"
+                          className="mt-0.5 h-auto p-0 text-sm"
+                          nativeButton={false}
+                          render={<Link to={`/projects/${projectId}/categories/${product.categoryCode}`} />}
+                        >
+                          {product.categoryName || product.categoryCode}
+                        </Button>
+                        <p className="font-mono text-[11px] text-muted-foreground">
+                          {product.categoryCode}
+                        </p>
+                      </>
+                    )}
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">创建时间</p>

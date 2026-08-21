@@ -541,6 +541,8 @@ const ProductModelPage = () => {
     ? published ?? null
     : currentDefinition ?? published ?? null;
   const readOnlyDefinition = publishedOnly || (!currentDefinition && Boolean(published));
+  const isCustomCategory =
+    product?.categoryType === 'CUSTOM' || product?.categoryCode === 'CUSTOM';
   const targetVersion = product?.categoryCatalogVersion ?? '';
   const publishedVersion = useMemo(
     () => {
@@ -624,6 +626,28 @@ const ProductModelPage = () => {
         setLocalDefinition(null);
       },
       '物模型草稿已保存。',
+    );
+  };
+
+  const createEmptyDraft = async () => {
+    if (!productId || draft || currentDefinition) return;
+    await runMutation(
+      'create-empty',
+      async () => {
+        await openPlatformPut<boolean>(modelKey(productId), {
+          version: null,
+          definition: {
+            productId,
+            modelRevision: 0,
+            modelDigest: '',
+            status: 'DRAFT',
+            properties: [],
+            actions: [],
+            events: [],
+          },
+        });
+      },
+      '已创建空白物模型草稿。',
     );
   };
 
@@ -937,7 +961,11 @@ const ProductModelPage = () => {
                         {publishedOnly
                           ? '当前查看设备运行时使用的已发布 Revision，只读查看能力定义。'
                           : readOnlyDefinition
-                          ? '当前没有草稿，以下为已发布 Revision 的只读能力定义。'
+                          ? isCustomCategory
+                            ? '当前没有草稿，以下为已发布 Revision 的只读能力定义；自定义品类不会继承平台能力。'
+                            : '当前没有草稿，以下为已发布 Revision 的只读能力定义。'
+                          : isCustomCategory
+                          ? '自定义品类不继承平台能力，请在此定义产品自己的属性、动作和事件。'
                           : '按属性、动作、事件管理产品可用能力；JSON 仅在展开单项能力后查看。'}
                       </CardDescription>
                     </div>
@@ -956,10 +984,12 @@ const ProductModelPage = () => {
                         </Button>
                       ) : (
                         <>
-                          <Button type="button" variant="outline" size="sm" className="gap-1" onClick={openMergeDialog} disabled={busyAction != null || !product?.categoryCatalogVersion}>
-                            <RefreshCw className="size-3.5" aria-hidden />
-                            从品类新增
-                          </Button>
+                          {!isCustomCategory ? (
+                            <Button type="button" variant="outline" size="sm" className="gap-1" onClick={openMergeDialog} disabled={busyAction != null || !product?.categoryCatalogVersion}>
+                              <RefreshCw className="size-3.5" aria-hidden />
+                              从品类新增
+                            </Button>
+                          ) : null}
                           <Button type="button" variant="outline" size="sm" className="gap-1" onClick={() => void saveDraft()} disabled={!dirty || busyAction != null}>
                             {busyAction === 'save' ? <Spinner /> : <Save className="size-3.5" aria-hidden />}
                             保存草稿
@@ -1035,11 +1065,18 @@ const ProductModelPage = () => {
                       <Braces className="size-7 text-muted-foreground" aria-hidden />
                       <p className="mt-3 text-sm font-medium">还没有物模型草稿</p>
                       <p className="mt-1 max-w-md text-xs leading-5 text-muted-foreground">
-                        产品已绑定品类，但能力需要复制到产品草稿后才能修改、校验和发布。
+                        {isCustomCategory
+                          ? '这是自定义品类产品，不会带入任何平台能力；创建空白草稿后即可自行定义物模型。'
+                          : '产品已绑定品类，但能力需要复制到产品草稿后才能修改、校验和发布。'}
                       </p>
-                      <Button type="button" className="mt-4 gap-1" onClick={openMergeDialog} disabled={!product?.categoryCatalogVersion}>
-                        <RefreshCw className="size-3.5" aria-hidden />
-                        从品类模板开始
+                      <Button
+                        type="button"
+                        className="mt-4 gap-1"
+                        onClick={isCustomCategory ? () => void createEmptyDraft() : openMergeDialog}
+                        disabled={isCustomCategory ? busyAction != null : !product?.categoryCatalogVersion}
+                      >
+                        {isCustomCategory ? <Braces className="size-3.5" aria-hidden /> : <RefreshCw className="size-3.5" aria-hidden />}
+                        {isCustomCategory ? '创建空白草稿' : '从品类模板开始'}
                       </Button>
                     </div>
                   )}

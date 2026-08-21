@@ -1110,6 +1110,7 @@ function toProductListItem(product: ProductRecord): ProductListItem {
     categoryCode: product.categoryCode,
     categoryName: product.categoryName,
     categoryNames: product.categoryNames,
+    categoryType: product.categoryType ?? (product.categoryCode === 'CUSTOM' ? 'CUSTOM' : 'STANDARD'),
     lifecycleStatus: product.lifecycleStatus,
     createdAt: product.createdAt,
     updatedAt: product.updatedAt,
@@ -2200,8 +2201,9 @@ export const OpenPlatformHandlers = [
       const body = (await request.json()) as ProductCreateRequest;
       const productName = body?.productName?.trim() ?? '';
       const productModel = body?.productModel?.trim() ?? '';
-      const categoryCode = body?.categoryCode?.trim() ?? '';
-      const category = findCategory(categoryCode);
+      const categoryType = body?.categoryType === 'CUSTOM' ? 'CUSTOM' : 'STANDARD';
+      const categoryCode = categoryType === 'CUSTOM' ? 'CUSTOM' : body?.categoryCode?.trim() ?? '';
+      const category = categoryType === 'STANDARD' ? findCategory(categoryCode) : null;
 
       if (!productName) {
         return fail('400', 'productName is required');
@@ -2209,18 +2211,20 @@ export const OpenPlatformHandlers = [
       if (productName.length > 128) {
         return fail('400', 'productName cannot exceed 128 characters');
       }
-      if (!category) {
-        return fail('CATEGORY_NOT_FOUND', '请选择有效的品类', 400);
-      }
-      if (!category.leaf) {
-        return fail('CATEGORY_LEAF_REQUIRED', '请选择一个叶子品类', 400);
-      }
-      if ((categoryVersions[categoryCode] ?? []).length === 0) {
-        return fail(
-          'CATEGORY_VERSION_NOT_PUBLISHED',
-          '该品类暂无已发布版本，暂不能创建产品',
-          409,
-        );
+      if (categoryType === 'STANDARD') {
+        if (!category) {
+          return fail('CATEGORY_NOT_FOUND', '请选择有效的品类', 400);
+        }
+        if (!category.leaf) {
+          return fail('CATEGORY_LEAF_REQUIRED', '请选择一个叶子品类', 400);
+        }
+        if ((categoryVersions[categoryCode] ?? []).length === 0) {
+          return fail(
+            'CATEGORY_VERSION_NOT_PUBLISHED',
+            '该品类暂无已发布版本，暂不能创建产品',
+            409,
+          );
+        }
       }
 
       const ts = Date.now();
@@ -2230,12 +2234,15 @@ export const OpenPlatformHandlers = [
         productName,
         productModel: productModel || null,
         categoryCode,
-        categoryName: categoryLabel(category),
+        categoryName: categoryType === 'CUSTOM' ? '自定义品类' : categoryLabel(category!),
+        categoryType,
         description: null,
         manufacturer: null,
         categoryCatalogVersion:
-          categoryVersions[categoryCode]?.find((item) => item.versionStatus === 'PUBLISHED')
-            ?.categoryVersion ?? null,
+          categoryType === 'CUSTOM'
+            ? null
+            : categoryVersions[categoryCode]?.find((item) => item.versionStatus === 'PUBLISHED')
+                ?.categoryVersion ?? null,
         nodeType: null,
         transport: null,
         authModes: [],
@@ -2250,6 +2257,13 @@ export const OpenPlatformHandlers = [
         updatedAt: ts,
       };
       products = [product, ...products];
+      if (categoryType === 'CUSTOM') {
+        modelDrafts.set(product.productId, {
+          definition: emptyThingModel(product.productId),
+          status: 'DRAFT',
+          version: 1,
+        });
+      }
       return HttpResponse.json(ok(toProductListItem(product)), { status: 201 });
     } catch {
       return fail('500', 'Internal server error', 500);

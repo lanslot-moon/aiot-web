@@ -98,7 +98,9 @@ export interface UpdateProjectRequest {
 
 export interface ProductCreateRequest {
   productName: string;
-  categoryCode: string;
+  /** CUSTOM products intentionally omit categoryCode and start with an empty model draft. */
+  categoryType?: 'STANDARD' | 'CUSTOM';
+  categoryCode?: string;
   productModel?: string;
 }
 
@@ -234,6 +236,8 @@ export interface ProductListItem {
   categoryName: string;
   /** optional multilingual map — backend optional */
   categoryNames?: Record<string, string>;
+  /** 自定义品类产品不继承平台品类能力；旧数据可能没有该字段。 */
+  categoryType?: 'STANDARD' | 'CUSTOM';
   lifecycleStatus: string;
   createdAt: number;
   updatedAt: number;
