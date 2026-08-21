@@ -138,7 +138,7 @@ const CategoryCatalogPage = () => {
               </CardContent>
             </Card>
 
-            <div className="min-w-0 xl:pt-8 xl:pb-8">
+            <div className="min-w-0">
               {detailError ? (
                 <ApiErrorAlert
                   code={selectedCategoryError?.code}
