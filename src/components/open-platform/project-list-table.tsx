@@ -149,7 +149,7 @@ export function ProjectListTable({
             <TableHead>状态</TableHead>
             <TableHead>创建时间</TableHead>
             <TableHead>更新时间</TableHead>
-            <TableHead className="text-end">操作</TableHead>
+            <TableHead className="text-start">操作</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -189,8 +189,8 @@ export function ProjectListTable({
               <TableCell className="whitespace-nowrap text-muted-foreground text-xs">
                 {formatEpoch(project.updateTime)}
               </TableCell>
-              <TableCell className="text-end">
-                <div className="inline-flex items-center justify-end gap-1">
+              <TableCell className="text-start">
+                <div className="inline-flex items-center justify-start gap-1">
                   <Button
                     type="button"
                     size="sm"
