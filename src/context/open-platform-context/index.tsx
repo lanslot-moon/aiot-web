@@ -17,6 +17,7 @@ import {
   type RestResult,
   type TokenResponse,
 } from 'src/types/apps/open-platform';
+import { reloadForMockWorkerRecovery } from 'src/lib/mock-worker-recovery';
 
 const ACCESS_TOKEN_KEY = 'open-platform:accessToken';
 const REFRESH_TOKEN_KEY = 'open-platform:refreshToken';
@@ -90,8 +91,30 @@ function unwrapRest<T>(payload: RestResult<T>): T {
   return payload.data;
 }
 
-async function parseJson<T>(res: Response): Promise<RestResult<T>> {
-  const json = (await res.json()) as RestResult<T>;
+export async function parseOpenPlatformResponse<T>(
+  res: Response,
+): Promise<RestResult<T>> {
+  const body = await res.text();
+  let json: RestResult<T>;
+  try {
+    json = JSON.parse(body) as RestResult<T>;
+  } catch {
+    const looksLikeHtml =
+      res.headers.get('content-type')?.includes('text/html') ||
+      body.trimStart().startsWith('<');
+    const endpoint = res.url ? new URL(res.url).pathname : '当前接口';
+    if (looksLikeHtml && res.ok) {
+      // A Vite HTML fallback means the current MSW worker missed this API.
+      // Recover once automatically instead of leaving the user on a broken page.
+      reloadForMockWorkerRecovery();
+    }
+    throw new OpenPlatformApiError(
+      looksLikeHtml && res.ok ? 'MOCK_NOT_INTERCEPTED' : String(res.status),
+      looksLikeHtml
+        ? `接口 ${endpoint} 返回了 HTML 页面（HTTP ${res.status}），请刷新页面以更新 mock Service Worker。`
+        : '接口返回了无法解析的响应，请稍后重试。',
+    );
+  }
   if (!res.ok && json?.code == null) {
     throw new OpenPlatformApiError(String(res.status), res.statusText || 'Request failed');
   }
@@ -103,27 +126,37 @@ export async function openPlatformGetFetcher<T>(url: string): Promise<T> {
   const res = await fetch(url, {
     headers: authHeaders(),
   });
-  const json = await parseJson<T>(res);
+  const json = await parseOpenPlatformResponse<T>(res);
   return unwrapRest(json);
 }
 
-async function openPlatformPost<T>(url: string, body: unknown): Promise<T> {
+export async function openPlatformPost<T>(url: string, body: unknown): Promise<T> {
   const res = await fetch(url, {
     method: 'POST',
     headers: authHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify(body ?? {}),
   });
-  const json = await parseJson<T>(res);
+  const json = await parseOpenPlatformResponse<T>(res);
   return unwrapRest(json);
 }
 
-async function openPlatformPut<T>(url: string, body: unknown): Promise<T> {
+export async function openPlatformPut<T>(url: string, body: unknown): Promise<T> {
   const res = await fetch(url, {
     method: 'PUT',
     headers: authHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify(body ?? {}),
   });
-  const json = await parseJson<T>(res);
+  const json = await parseOpenPlatformResponse<T>(res);
+  return unwrapRest(json);
+}
+
+export async function openPlatformDelete<T>(url: string, body: unknown): Promise<T> {
+  const res = await fetch(url, {
+    method: 'DELETE',
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify(body ?? {}),
+  });
+  const json = await parseOpenPlatformResponse<T>(res);
   return unwrapRest(json);
 }
 

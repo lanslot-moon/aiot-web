@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
-import { Check, ChevronsUpDown, FolderKanban, Loader2 } from 'lucide-react';
+import { ChevronsUpDown, FolderKanban, Loader2 } from 'lucide-react';
 
 import { Button } from 'src/components/ui/button';
 import {
@@ -14,7 +14,6 @@ import {
 } from 'src/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from 'src/components/ui/popover';
 import { useOpenPlatform } from 'src/context/open-platform-context';
-import { cn } from 'src/lib/utils';
 
 const WORKSPACE_SEGMENTS = [
   'overview',
@@ -127,12 +126,6 @@ const ProjectSwitcher = () => {
                     >
                       <FolderKanban className="size-4 text-muted-foreground" />
                       <span className="truncate">{project.projectName}</span>
-                      <Check
-                        className={cn(
-                          'ml-auto size-4',
-                          project.projectId === projectId ? 'opacity-100' : 'opacity-0',
-                        )}
-                      />
                     </CommandItem>
                   ))}
                 </CommandGroup>

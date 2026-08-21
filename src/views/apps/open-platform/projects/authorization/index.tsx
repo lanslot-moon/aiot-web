@@ -30,6 +30,7 @@ import {
   OpenPlatformApiError,
   getStoredAccessToken,
   openPlatformGetFetcher,
+  parseOpenPlatformResponse,
 } from '@/context/open-platform-context';
 import BreadcrumbComp from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
 import {
@@ -40,7 +41,6 @@ import {
   REST_SUCCESS_CODE,
   type AuthorizationMetadataView,
   type ProjectKeyPairView,
-  type RestResult,
 } from '@/types/apps/open-platform';
 
 async function mutateAuth<T>(
@@ -57,7 +57,7 @@ async function mutateAuth<T>(
     },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
-  const json = (await res.json()) as RestResult<T>;
+  const json = await parseOpenPlatformResponse<T>(res);
   if (json.code !== REST_SUCCESS_CODE) {
     throw new OpenPlatformApiError(json.code, json.message);
   }

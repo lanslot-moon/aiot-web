@@ -41,6 +41,7 @@ import {
   OpenPlatformApiError,
   openPlatformGetFetcher,
   getStoredAccessToken,
+  parseOpenPlatformResponse,
 } from '@/context/open-platform-context';
 import BreadcrumbComp from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
 import {
@@ -48,7 +49,12 @@ import {
   MEMBERSHIP_STATUS_LABEL,
   labelOf,
 } from '@/lib/open-platform-labels';
-import { REST_SUCCESS_CODE, type CursorResult, type InvitationView, type ProjectMemberView, type RestResult } from '@/types/apps/open-platform';
+import {
+  REST_SUCCESS_CODE,
+  type CursorResult,
+  type InvitationView,
+  type ProjectMemberView,
+} from '@/types/apps/open-platform';
 
 async function postJson<T>(url: string, body: unknown): Promise<T> {
   const token = getStoredAccessToken();
@@ -60,7 +66,7 @@ async function postJson<T>(url: string, body: unknown): Promise<T> {
     },
     body: JSON.stringify(body ?? {}),
   });
-  const json = (await res.json()) as RestResult<T>;
+  const json = await parseOpenPlatformResponse<T>(res);
   if (json.code !== REST_SUCCESS_CODE) {
     throw new OpenPlatformApiError(json.code, json.message);
   }

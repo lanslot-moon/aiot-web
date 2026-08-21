@@ -8,13 +8,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import {
   OpenPlatformApiError,
   getStoredAccessToken,
+  parseOpenPlatformResponse,
   useOpenPlatform,
 } from '@/context/open-platform-context';
 import {
   REST_SUCCESS_CODE,
   type InvitationView,
   type ProjectMemberView,
-  type RestResult,
 } from '@/types/apps/open-platform';
 
 const ProjectInvitationPage = () => {
@@ -41,10 +41,10 @@ const ProjectInvitationPage = () => {
         // Mock accepts any non-empty token string; real token never logged.
         body: JSON.stringify({ token: `invite_token_${invitationId}` }),
       });
-      const json = (await res.json()) as RestResult<{
+      const json = await parseOpenPlatformResponse<{
         invitation: InvitationView;
         member: ProjectMemberView;
-      }>;
+      }>(res);
       if (json.code !== REST_SUCCESS_CODE) {
         throw new OpenPlatformApiError(json.code, json.message);
       }

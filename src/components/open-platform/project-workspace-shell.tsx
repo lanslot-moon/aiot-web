@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   ChevronDown,
   Cpu,
+  ListTree,
   LayoutDashboard,
   Loader2,
   Package,
@@ -15,7 +16,6 @@ import { toast } from 'sonner';
 import { ApiErrorAlert } from '@/components/open-platform/api-error-alert';
 import { CopyIdButton } from '@/components/open-platform/copy-id-button';
 import { ProjectStatusBadge } from '@/components/open-platform/project-status-badge';
-import { RoleBadge } from '@/components/open-platform/role-badge';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,6 +30,11 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import {
   Dialog,
   DialogContent,
@@ -46,8 +51,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -58,7 +61,7 @@ import {
 import { cn } from '@/lib/utils';
 import type { ProjectView } from '@/types/apps/open-platform';
 
-type PrimaryTab = 'overview' | 'products' | 'devices' | 'settings';
+type PrimaryTab = 'overview' | 'products' | 'categories' | 'devices' | 'settings';
 
 type SettingsTab =
   | 'settings'
@@ -79,6 +82,12 @@ const PRIMARY_NAV: {
     label: '概览',
     icon: LayoutDashboard,
     path: (id) => `/projects/${id}/overview`,
+  },
+  {
+    id: 'categories',
+    label: '品类',
+    icon: ListTree,
+    path: (id) => `/projects/${id}/categories`,
   },
   {
     id: 'products',
@@ -122,6 +131,7 @@ const SETTINGS_NAV: {
 ];
 
 function primaryFromPath(pathname: string): PrimaryTab {
+  if (pathname.includes('/categories')) return 'categories';
   if (pathname.includes('/products') || pathname.includes('/thing-model')) {
     return 'products';
   }
@@ -144,6 +154,10 @@ function settingsFromPath(pathname: string): SettingsTab {
   if (pathname.includes('/usage')) return 'usage';
   if (pathname.includes('/subscriptions')) return 'subscriptions';
   return 'settings';
+}
+
+function formatProjectDate(value: number) {
+  return new Date(value).toLocaleString('zh-CN');
 }
 
 type LifecycleAction = 'activate' | 'suspend' | 'archive' | 'close';
@@ -172,6 +186,7 @@ export function ProjectWorkspaceShell({
   const onSettings = primaryTab === 'settings';
 
   const [editOpen, setEditOpen] = useState(false);
+  const [projectHeaderOpen, setProjectHeaderOpen] = useState(true);
   const [editName, setEditName] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editSaving, setEditSaving] = useState(false);
@@ -308,49 +323,38 @@ export function ProjectWorkspaceShell({
   if (!project) return null;
 
   return (
-    <div className="flex flex-col gap-4">
-      {/* Project header — denser than first draft, richer than one-line strip */}
-      <Card className="gap-0 px-5 py-4">
-        <div className="flex flex-col gap-3">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="min-w-0 flex-1 space-y-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 -ml-2 gap-1 px-2 text-muted-foreground"
-                nativeButton={false}
-                render={<Link to="/projects" />}
-              >
-                <ArrowLeft className="size-3.5" aria-hidden />
-                全部项目
-              </Button>
-              <div className="flex flex-wrap items-center gap-2">
-                <h2 className="truncate text-xl font-semibold tracking-tight">
-                  {project.projectName}
-                </h2>
-                <ProjectStatusBadge status={project.status} />
-                <RoleBadge role={project.myRole} />
-              </div>
-              <p className="max-w-3xl text-sm text-muted-foreground">
-                {project.description?.trim()
-                  ? project.description
-                  : '暂无项目描述，可在「项目设置」中补充。'}
-              </p>
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                <span className="inline-flex items-center gap-1">
-                  <span>ID</span>
-                  <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[11px] text-foreground">
-                    {project.projectId}
-                  </code>
-                  <CopyIdButton value={project.projectId} label="Project ID" />
-                </span>
-                <span>
-                  创建 {new Date(project.createTime).toLocaleString()}
-                </span>
-                <span>
-                  更新 {new Date(project.updateTime).toLocaleString()}
-                </span>
-              </div>
+    <div className="flex flex-col gap-px">
+      <Collapsible open={projectHeaderOpen} onOpenChange={setProjectHeaderOpen}>
+        <Card className="gap-0 px-5 py-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 -ml-2 gap-1 px-2 text-muted-foreground"
+              nativeButton={false}
+              render={<Link to="/projects" />}
+            >
+              <ArrowLeft className="size-3.5" aria-hidden />
+              全部项目
+            </Button>
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+              <h2 className="truncate text-lg font-semibold tracking-tight">
+                {project.projectName}
+              </h2>
+              <ProjectStatusBadge status={project.status} />
+              <span className="inline-flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
+                <span>ID</span>
+                <code className="max-w-40 truncate rounded bg-muted px-1.5 py-0.5 font-mono text-[11px]">
+                  {project.projectId}
+                </code>
+                <CopyIdButton value={project.projectId} label="Project ID" className="-mx-1" />
+              </span>
+              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                <span>创建</span>
+                <time dateTime={new Date(project.createTime).toISOString()}>
+                  {formatProjectDate(project.createTime)}
+                </time>
+              </span>
             </div>
 
             {onSettings ? (
@@ -410,76 +414,110 @@ export function ProjectWorkspaceShell({
                 ) : null}
               </div>
             ) : null}
+
+            <CollapsibleTrigger
+              type="button"
+              className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-transparent text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
+              aria-label={projectHeaderOpen ? '收起项目信息' : '展开项目信息'}
+              title={projectHeaderOpen ? '收起项目信息' : '展开项目信息'}
+            >
+              <ChevronDown
+                className={cn(
+                  'size-4 transition-transform duration-200',
+                  projectHeaderOpen && 'rotate-180',
+                )}
+                aria-hidden
+              />
+            </CollapsibleTrigger>
           </div>
-        </div>
-      </Card>
 
-      {/* Left nav + content — fills viewport like Tuya cloud console */}
+          <CollapsibleContent className="pt-3">
+            <div className="border-t pt-3">
+              <p className="max-w-3xl text-sm text-muted-foreground">
+                {project.description?.trim()
+                  ? project.description
+                  : '暂无项目描述，可在「项目设置」中补充。'}
+              </p>
+            </div>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
+
+      {/* Project navigation + content */}
       <Card className="overflow-hidden p-0">
-        <div className="grid min-h-[calc(100vh-16rem)] md:grid-cols-[220px_1fr]">
-          <aside className="border-b bg-muted/20 md:border-r md:border-b-0">
-            <ScrollArea className="h-full">
-              <nav className="flex flex-col gap-1 p-3" aria-label="项目功能">
-                <p className="px-2 pb-1 text-xs font-medium text-muted-foreground">
-                  云开发
-                </p>
-                {PRIMARY_NAV.map((item) => {
-                  const Icon = item.icon;
-                  const active = primaryTab === item.id;
-                  return (
-                    <Button
-                      key={item.id}
-                      type="button"
-                      variant={active ? 'secondary' : 'ghost'}
-                      className={cn(
-                        'h-9 justify-start gap-2 px-2 font-normal',
-                        active && 'bg-background shadow-sm',
-                      )}
-                      onClick={() => navigate(item.path(project.projectId))}
-                    >
-                      <Icon className="size-4 shrink-0" aria-hidden />
-                      <span className="flex-1 text-left">{item.label}</span>
-                      {item.badge ? (
-                        <Badge variant="outline" className="h-5 px-1.5 text-[10px]">
-                          {item.badge}
-                        </Badge>
-                      ) : null}
-                    </Button>
-                  );
-                })}
+        <div className="border-b bg-muted/20">
+          <div className="overflow-x-auto">
+            <nav
+              className="flex min-w-max items-center gap-1 p-2"
+              aria-label="项目功能"
+            >
+              <span className="shrink-0 px-2 text-xs font-medium text-muted-foreground">
+                云开发
+              </span>
+              {PRIMARY_NAV.map((item) => {
+                const Icon = item.icon;
+                const active = primaryTab === item.id;
+                return (
+                  <Button
+                    key={item.id}
+                    type="button"
+                    variant={active ? 'secondary' : 'ghost'}
+                    className={cn(
+                      'h-8 shrink-0 gap-1.5 px-2.5 font-normal',
+                      active && 'bg-background shadow-sm',
+                    )}
+                    nativeButton={false}
+                    render={<Link to={item.path(project.projectId)} />}
+                    aria-current={active ? 'page' : undefined}
+                  >
+                    <Icon className="size-3.5 shrink-0" aria-hidden />
+                    <span>{item.label}</span>
+                    {item.badge ? (
+                      <Badge variant="outline" className="h-5 px-1.5 text-[10px]">
+                        {item.badge}
+                      </Badge>
+                    ) : null}
+                  </Button>
+                );
+              })}
+            </nav>
+          </div>
 
-                {onSettings ? (
-                  <>
-                    <Separator className="my-2" />
-                    <p className="px-2 pb-1 text-xs font-medium text-muted-foreground">
-                      设置
-                    </p>
-                    {SETTINGS_NAV.map((item) => {
-                      const active = settingsTab === item.id;
-                      return (
-                        <Button
-                          key={item.id}
-                          type="button"
-                          variant={active ? 'secondary' : 'ghost'}
-                          size="sm"
-                          className={cn(
-                            'h-8 justify-start px-2 font-normal',
-                            active && 'bg-background shadow-sm',
-                          )}
-                          onClick={() => navigate(item.path(project.projectId))}
-                        >
-                          {item.label}
-                        </Button>
-                      );
-                    })}
-                  </>
-                ) : null}
-              </nav>
-            </ScrollArea>
-          </aside>
-
-          <section className="min-w-0 p-4 md:p-6">{children}</section>
+          {onSettings ? (
+            <div className="border-t bg-background/70 px-2 py-1.5">
+              <div className="overflow-x-auto">
+                <nav
+                  className="flex min-w-max items-center gap-1"
+                  aria-label="项目设置"
+                >
+                  <span className="shrink-0 px-2 text-xs text-muted-foreground">设置</span>
+                  {SETTINGS_NAV.map((item) => {
+                    const active = settingsTab === item.id;
+                    return (
+                      <Button
+                        key={item.id}
+                        type="button"
+                        variant={active ? 'secondary' : 'ghost'}
+                        size="sm"
+                        className={cn(
+                          'h-7 shrink-0 px-2.5 font-normal',
+                          active && 'bg-muted shadow-sm',
+                        )}
+                        nativeButton={false}
+                        render={<Link to={item.path(project.projectId)} />}
+                        aria-current={active ? 'page' : undefined}
+                      >
+                        {item.label}
+                      </Button>
+                    );
+                  })}
+                </nav>
+              </div>
+            </div>
+          ) : null}
         </div>
+
+        <section className="min-h-[calc(100vh-16rem)] min-w-0 p-4 md:p-6">{children}</section>
       </Card>
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>

@@ -66,6 +66,20 @@ export interface ProjectView {
   updateTime: number;
 }
 
+export interface ProjectSummaryView {
+  projectId: string;
+  resourceCounts: {
+    products: number;
+    devices: number;
+    rules: number;
+    groups: number;
+  };
+  memberCount: number;
+  productCount: number;
+  deviceCount: number;
+  lastActivityAt: number | null;
+}
+
 export interface CreateProjectRequest {
   projectName: string;
   description?: string;
@@ -80,6 +94,85 @@ export interface CreateProjectResult {
 export interface UpdateProjectRequest {
   projectName?: string;
   description?: string;
+}
+
+export interface ProductCreateRequest {
+  productName: string;
+  categoryCode: string;
+  productModel?: string;
+}
+
+/** Product metadata and connection contract update for DRAFT products. */
+export interface ProductUpdateRequest {
+  version: string;
+  productName?: string;
+  productModel?: string;
+  description?: string;
+  manufacturer?: string;
+  iconUrl?: string;
+  nodeType?: string;
+  transport?: string;
+  authModes?: string[];
+  customAuthProviderId?: string | null;
+  dataMode?: string;
+  bootstrapMode?: string;
+  protocolProfile?: ProtocolProfileRefView | null;
+  topicTemplates?: Record<string, string>;
+}
+
+export interface CategoryBriefView {
+  categoryCode: string;
+  names: Record<string, string>;
+}
+
+export interface CategoryTemplateProperty {
+  code: string;
+  title: string;
+  access: string;
+  schema: unknown;
+  required: boolean;
+}
+
+export interface CategoryTemplateAction {
+  code: string;
+  title: string;
+  inputSchema: unknown;
+  outputSchema: unknown;
+  invokeMode: string;
+}
+
+export interface CategoryTemplateEvent {
+  code: string;
+  title: string;
+  outputSchema: unknown;
+  eventType: string;
+}
+
+export interface CategoryTemplateView {
+  properties: CategoryTemplateProperty[];
+  actions: CategoryTemplateAction[];
+  events: CategoryTemplateEvent[];
+}
+
+export interface CategoryVersionView {
+  categoryCode: string;
+  categoryVersion: string;
+  versionStatus: string;
+  template: CategoryTemplateView;
+  versionDigest: string;
+  publishedAt: number | null;
+  createdAt: number | null;
+}
+
+export interface CategoryView {
+  categoryCode: string;
+  parentCode: string | null;
+  level: number;
+  names: Record<string, string>;
+  status: string;
+  leaf: boolean;
+  parentPath: CategoryBriefView[];
+  sort: number;
 }
 
 export interface ProjectMemberView {
@@ -142,5 +235,106 @@ export interface ProductListItem {
   /** optional multilingual map — backend optional */
   categoryNames?: Record<string, string>;
   lifecycleStatus: string;
+  createdAt: number;
   updatedAt: number;
+}
+
+/** Product detail contract aligned with the thing-model ProductVO. */
+export interface ProductDetailView extends ProductListItem {
+  projectId: string;
+  description: string | null;
+  manufacturer: string | null;
+  iconUrl?: string | null;
+  categoryCatalogVersion: string | null;
+  nodeType: string | null;
+  transport: string | null;
+  authModes: string[];
+  customAuthProviderId: string | null;
+  dataMode: string | null;
+  bootstrapMode: string | null;
+  protocolProfile: ProtocolProfileRefView | null;
+  topicTemplates: Record<string, string>;
+  version: number;
+}
+
+export interface ProtocolProfileRefView {
+  profileId: string;
+  profileVersion: string;
+}
+
+export interface ThingModelProperty {
+  code: string;
+  title: string;
+  access: string;
+  schema: unknown;
+  required: boolean;
+}
+
+export interface ThingModelAction {
+  code: string;
+  title: string;
+  inputSchema: unknown;
+  outputSchema: unknown;
+  invokeMode: string;
+}
+
+export interface ThingModelEvent {
+  code: string;
+  title: string;
+  outputSchema: unknown;
+  eventType: string;
+}
+
+/** Published or draft definition aligned with ThingModelDefinitionVO. */
+export interface ThingModelDefinition {
+  productId: string;
+  modelRevision: number;
+  modelDigest: string;
+  status: string;
+  properties: ThingModelProperty[];
+  actions: ThingModelAction[];
+  events: ThingModelEvent[];
+}
+
+export interface ModelDraftView {
+  definition: ThingModelDefinition;
+  status: 'DRAFT' | 'VALIDATED' | string;
+  version: number | null;
+}
+
+export interface ModelVersionView {
+  modelRevision: number;
+  modelDigest: string;
+  status: 'PUBLISHED' | 'DEPRECATED' | string;
+}
+
+export interface ModelCapabilitySummaryView {
+  type: 'PROPERTY' | 'ACTION' | 'EVENT' | string;
+  code: string;
+  title: string;
+  required: boolean;
+}
+
+export interface ModelDiffView {
+  added: ModelCapabilitySummaryView[];
+  removed: ModelCapabilitySummaryView[];
+  modified: ModelCapabilitySummaryView[];
+}
+
+export interface SchemaValidationView {
+  valid: boolean;
+  evaluationPath?: string;
+  schemaLocation?: string;
+  instanceLocation?: string;
+  errors?: unknown;
+  annotations?: unknown;
+  droppedAnnotations?: unknown;
+  details?: SchemaValidationView[];
+}
+
+export interface CategoryMergeView {
+  diffItems: ModelCapabilitySummaryView[];
+  mergedDefinition?: ThingModelDefinition | null;
+  status?: string;
+  version?: number | null;
 }

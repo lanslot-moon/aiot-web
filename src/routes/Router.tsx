@@ -36,6 +36,18 @@ const ProjectOverview = Loadable(
 const ProjectProducts = Loadable(
   lazy(() => import('../views/apps/open-platform/projects/products')),
 );
+const ProjectProductCreate = Loadable(
+  lazy(() => import('../views/apps/open-platform/projects/products/new')),
+);
+const ProjectProductDetail = Loadable(
+  lazy(() => import('../views/apps/open-platform/projects/products/detail')),
+);
+const ProjectProductModel = Loadable(
+  lazy(() => import('../views/apps/open-platform/projects/products/model')),
+);
+const ProjectProductCategories = Loadable(
+  lazy(() => import('../views/apps/open-platform/projects/products/categories')),
+);
 const ProjectDevices = Loadable(
   lazy(() => import('../views/apps/open-platform/projects/devices')),
 );
@@ -101,6 +113,23 @@ const Router = [
 
       { path: '/projects', element: <ProjectsList /> },
       { path: '/projects/new', element: <ProjectCreate /> },
+      { path: '/projects/:projectId/products/new', element: <ProjectProductCreate /> },
+      {
+        path: '/projects/:projectId/products/:productId/model',
+        element: <ProjectProductModel />,
+      },
+      {
+        path: '/projects/:projectId/products/:productId',
+        element: <ProjectProductDetail />,
+      },
+      {
+        path: '/projects/:projectId/categories/:categoryCode',
+        element: <ProjectProductCategories />,
+      },
+      {
+        path: '/projects/:projectId/categories',
+        element: <ProjectProductCategories />,
+      },
       { path: '/projects/:projectId/products', element: <ProjectProducts /> },
       { path: '/projects/:projectId/devices', element: <ProjectDevices /> },
       { path: '/projects/:projectId/settings', element: <ProjectSettings /> },

@@ -1,14 +1,13 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router';
 import useSWR from 'swr';
-import { Eye, EyeOff, KeyRound, Loader2, Shield } from 'lucide-react';
+import { Eye, EyeOff, KeyRound, Loader2, Shield, Users } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { ApiErrorAlert } from '@/components/open-platform/api-error-alert';
 import { CopyIdButton } from '@/components/open-platform/copy-id-button';
 import { ProjectWorkspaceShell } from '@/components/open-platform/project-workspace-shell';
 import StyleAwareWrapper from '@/components/shared/StyleAwareWrapper';
-import StyleDivider from '@/components/shared/StyleDivider';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -28,13 +27,13 @@ import {
 import BreadcrumbComp from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
 import {
   AUTHORIZATION_STATUS_LABEL,
-  PROJECT_ROLE_LABEL,
   PROJECT_STATUS_LABEL,
   labelOf,
 } from '@/lib/open-platform-labels';
 import type {
   AuthorizationMetadataView,
   ProjectKeyPairView,
+  ProjectSummaryView,
 } from '@/types/apps/open-platform';
 
 const BCrumb = [
@@ -50,6 +49,16 @@ function maskSecret(value: string): string {
 const ProjectOverviewPage = () => {
   const { projectId = '' } = useParams<{ projectId: string }>();
   const { data: project, isLoading: projectLoading } = useProjectDetail(projectId);
+
+  const {
+    data: summary,
+    error: summaryError,
+    isLoading: summaryLoading,
+    mutate: mutateSummary,
+  } = useSWR<ProjectSummaryView>(
+    projectId ? `/api/v1/projects/${projectId}/summary` : null,
+    openPlatformGetFetcher,
+  );
 
   const {
     data: authz,
@@ -88,35 +97,66 @@ const ProjectOverviewPage = () => {
       defaultClassName="flex flex-col gap-4"
     >
       <BreadcrumbComp title="概览" items={BCrumb} />
-      <StyleDivider />
       <ProjectWorkspaceShell activePrimary="overview">
         <div className="space-y-4">
-          <div>
-            <h3 className="text-base font-semibold">项目概览</h3>
-            <p className="text-sm text-muted-foreground">
-              查看项目状态与 API 凭证摘要；轮换、启用/禁用等请到授权管理页。
-            </p>
-          </div>
-
           <div className="grid gap-4 lg:grid-cols-3">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardDescription>项目状态</CardDescription>
-                <CardTitle className="text-base">
-                  {projectLoading && !project
-                    ? '…'
-                    : labelOf(PROJECT_STATUS_LABEL, project?.status)}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-1 text-sm text-muted-foreground">
-                <p>角色 {labelOf(PROJECT_ROLE_LABEL, project?.myRole)}</p>
-                {project?.description ? (
-                  <p className="line-clamp-3 text-foreground/80">{project.description}</p>
-                ) : (
-                  <p>暂无描述</p>
-                )}
-              </CardContent>
-            </Card>
+            <div className="space-y-4">
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardDescription>项目状态</CardDescription>
+                  <CardTitle className="text-base">
+                    {projectLoading && !project
+                      ? '…'
+                      : labelOf(PROJECT_STATUS_LABEL, project?.status)}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-1 text-sm text-muted-foreground">
+                  {project?.description ? (
+                    <p className="line-clamp-3 text-foreground/80">{project.description}</p>
+                  ) : (
+                    <p>暂无描述</p>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card size="sm">
+                <CardContent className="space-y-2 py-0">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-2 text-sm">
+                      <Users className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+                      <span className="shrink-0 font-medium">项目成员</span>
+                      <span className="text-muted-foreground">
+                        <span className="tabular-nums">
+                        {summaryLoading && !summary
+                          ? '…'
+                          : summaryError
+                            ? '—'
+                            : summary?.memberCount ?? '—'}
+                      </span>{' '}
+                        人
+                      </span>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="xs"
+                      className="shrink-0"
+                      nativeButton={false}
+                      render={<Link to={`/projects/${projectId}/members`} />}
+                    >
+                      管理成员
+                    </Button>
+                  </div>
+                  {summaryError ? (
+                    <ApiErrorAlert
+                      code={(summaryError as OpenPlatformApiError).code}
+                      message={summaryError.message}
+                      onRetry={() => void mutateSummary()}
+                    />
+                  ) : null}
+                </CardContent>
+              </Card>
+            </div>
 
             <Card className="lg:col-span-2">
               <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-2 space-y-0 pb-3">
@@ -233,7 +273,7 @@ const ProjectOverviewPage = () => {
                         </Badge>
                       </div>
                       {authz.ipAllowlist.length === 0 ? (
-                        <p className="rounded-lg border border-dashed px-3 py-4 text-sm text-muted-foreground">
+                        <p className="rounded-md border border-dashed bg-muted/20 px-3 py-2 text-sm leading-5 text-muted-foreground">
                           {authz.networkPolicyEnabled
                             ? '白名单为空：启用限制时将拒绝所有来源（请到授权管理页配置）。'
                             : '暂无白名单条目。可在授权管理页添加 IP / CIDR。'}

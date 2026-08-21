@@ -17,16 +17,19 @@ export function ApiErrorAlert({
   onRetry?: () => void;
   className?: string;
 }) {
-  const what = message?.trim() || 'Something went wrong while talking to the API.';
-  const why = code ? `Error code: ${code}.` : 'The request did not complete successfully.';
-  const next = onRetry
-    ? 'You can retry the request, or check your network and try again later.'
-    : 'Refresh the page or try again later.';
+  const what = message?.trim() || '请求接口时发生错误。';
+  const mockWorkerNotIntercepted = code === 'MOCK_NOT_INTERCEPTED';
+  const why = code ? `错误代码：${code}。` : '请求未能成功完成。';
+  const next = mockWorkerNotIntercepted
+    ? 'Mock Service Worker 未拦截到此 API 请求，页面正在刷新以更新 mock。'
+    : onRetry
+    ? '你可以重试请求，或检查网络后再试。'
+    : '请刷新页面后重试。';
 
   return (
     <Alert variant="destructive" className={cn(className)}>
       <CircleAlert aria-hidden />
-      <AlertTitle>Request failed</AlertTitle>
+      <AlertTitle>请求失败</AlertTitle>
       <AlertDescription>
         <p>{what}</p>
         <p className="mt-1">{why}</p>
@@ -37,8 +40,19 @@ export function ApiErrorAlert({
       </AlertDescription>
       {onRetry ? (
         <div data-slot="alert-action">
-          <Button type="button" variant="outline" size="sm" onClick={onRetry}>
-            Retry
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              if (mockWorkerNotIntercepted) {
+                window.location.reload();
+                return;
+              }
+              onRetry();
+            }}
+          >
+            {mockWorkerNotIntercepted ? '刷新页面' : '重试'}
           </Button>
         </div>
       ) : null}
