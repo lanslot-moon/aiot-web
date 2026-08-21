@@ -15,7 +15,6 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
@@ -255,18 +254,6 @@ const ProjectOverviewPage = () => {
                   </>
                 ) : null}
               </CardContent>
-              <CardFooter className="border-t">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="gap-1.5"
-                  nativeButton={false}
-                  render={<Link to={`/projects/${projectId}/authorization`} />}
-                >
-                  前往 API 授权管理
-                </Button>
-              </CardFooter>
             </Card>
           </div>
         </div>
