@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { Link, useParams } from 'react-router';
-import { Library, MoreHorizontal, PackagePlus, SearchIcon, X } from 'lucide-react';
+import { Library, PackagePlus, SearchIcon, X } from 'lucide-react';
 
 import { ApiErrorAlert } from '@/components/open-platform/api-error-alert';
 import { CopyIdButton } from '@/components/open-platform/copy-id-button';
@@ -9,12 +9,6 @@ import { ProductLifecycleBadge } from '@/components/open-platform/product-lifecy
 import { ProjectWorkspaceShell } from '@/components/open-platform/project-workspace-shell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import {
   Select,
   SelectContent,
@@ -215,7 +209,7 @@ const ProjectProductsPage = () => {
                   <TableHead>生命周期</TableHead>
                   <TableHead>创建时间</TableHead>
                   <TableHead>更新时间</TableHead>
-                  <TableHead className="text-end">操作</TableHead>
+                  <TableHead className="text-start">操作</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -293,36 +287,37 @@ const ProjectProductsPage = () => {
                       <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
                         {new Date(product.updatedAt).toLocaleString()}
                       </TableCell>
-                      <TableCell className="text-end">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger
+                      <TableCell className="text-start">
+                        <div className="flex items-center justify-start gap-1 whitespace-nowrap">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs"
+                            nativeButton={false}
                             render={
-                              <Button type="button" variant="ghost" size="icon-sm">
-                                <MoreHorizontal aria-hidden />
-                              </Button>
+                              <Link
+                                to={`/projects/${projectId}/products/${product.productId}`}
+                              />
                             }
-                          />
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              render={
-                                <Link
-                                  to={`/projects/${projectId}/products/${product.productId}`}
-                                />
-                              }
-                            >
-                              查看产品
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              render={
-                                <Link
-                                  to={`/projects/${projectId}/products/${product.productId}/model`}
-                                />
-                              }
-                            >
-                              查看物模型
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                          >
+                            查看产品
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs"
+                            nativeButton={false}
+                            render={
+                              <Link
+                                to={`/projects/${projectId}/products/${product.productId}/model`}
+                              />
+                            }
+                          >
+                            查看物模型
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
