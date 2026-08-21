@@ -56,7 +56,6 @@ import { Spinner } from '@/components/ui/spinner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import StyleAwareWrapper from '@/components/shared/StyleAwareWrapper';
-import StyleDivider from '@/components/shared/StyleDivider';
 import {
   OpenPlatformApiError,
   openPlatformDelete,
@@ -860,7 +859,6 @@ const ProductModelPage = () => {
       defaultClassName="flex flex-col gap-4"
     >
       <BreadcrumbComp title="物模型" items={breadcrumbItems} />
-      <StyleDivider />
       <ProjectWorkspaceShell activePrimary="products">
         {productError ? (
           <ApiErrorAlert
