@@ -158,17 +158,16 @@ const ProjectsListPage = () => {
       lyraClassName="flex flex-col p-px gap-px bg-border"
       defaultClassName="flex flex-col gap-4"
     >
-      <BreadcrumbComp title="Projects" items={BCrumb} />
+      <BreadcrumbComp title="项目" items={BCrumb} />
       <StyleDivider />
 
       <Card className="gap-0 py-0">
         <CardHeader className="border-b py-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="space-y-1">
-              <CardTitle>Projects</CardTitle>
+              <CardTitle>项目</CardTitle>
               <CardDescription>
-                Manage Account projects. Open a workspace to work with members, API
-                authorization, and thing models.
+                Project 是资源边界。打开后优先进入产品管理；成员与 API 授权在「设置」中。
               </CardDescription>
             </div>
             <Button
@@ -177,7 +176,7 @@ const ProjectsListPage = () => {
               className="shrink-0 self-start"
             >
               <Plus aria-hidden />
-              Create Project
+              创建项目
             </Button>
           </div>
         </CardHeader>
@@ -200,9 +199,9 @@ const ProjectsListPage = () => {
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') applyKeyword(keywordDraft);
                 }}
-                placeholder="Search by name or Project ID…"
+                placeholder="搜索名称或 Project ID…"
                 className="pl-8"
-                aria-label="Filter projects by keyword"
+                aria-label="按关键词筛选项目"
               />
             </div>
 
@@ -210,11 +209,11 @@ const ProjectsListPage = () => {
               value={listFilters.status ?? STATUS_ALL}
               onValueChange={handleStatusChange}
             >
-              <SelectTrigger className="w-full sm:w-44" aria-label="Filter by status">
-                <SelectValue placeholder="Status" />
+              <SelectTrigger className="w-full sm:w-44" aria-label="按状态筛选">
+                <SelectValue placeholder="状态" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={STATUS_ALL}>All statuses</SelectItem>
+                <SelectItem value={STATUS_ALL}>全部状态</SelectItem>
                 {STATUS_OPTIONS.map((status) => (
                   <SelectItem key={status} value={status}>
                     {status}
@@ -226,7 +225,7 @@ const ProjectsListPage = () => {
             {hasActiveFilters ? (
               <Button type="button" variant="ghost" size="sm" onClick={clearFilters}>
                 <X aria-hidden />
-                Clear
+                清除筛选
               </Button>
             ) : null}
           </div>

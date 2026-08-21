@@ -136,15 +136,17 @@ const ProjectMembersPage = () => {
       <BreadcrumbComp title="成员与邀请" />
       <StyleDivider />
       <ProjectWorkspaceShell activePrimary="settings">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
-            <CardTitle className="text-base">成员与邀请</CardTitle>
+        <Card className="gap-0 py-0">
+          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 border-b py-4">
+            <div>
+              <CardTitle className="text-base">成员与邀请</CardTitle>
+            </div>
             <Button type="button" size="sm" className="gap-1" onClick={() => setInviteOpen(true)}>
               <UserPlus className="size-3.5" aria-hidden />
               邀请成员
             </Button>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 py-4">
             <div className="flex flex-wrap gap-1 border-b border-border">
               {(
                 [

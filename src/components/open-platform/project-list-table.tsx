@@ -104,14 +104,14 @@ export function ProjectListTable({
             <EmptyMedia variant="icon">
               <SearchX aria-hidden />
             </EmptyMedia>
-            <EmptyTitle>No projects match your filters</EmptyTitle>
+            <EmptyTitle>没有符合筛选条件的项目</EmptyTitle>
             <EmptyDescription>
-              Try a different keyword or status, or clear filters to see all projects.
+              换个关键词或状态试试，或清除筛选查看全部项目。
             </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
             <Button type="button" variant="outline" onClick={onClearFilters}>
-              Clear filters
+              清除筛选
             </Button>
           </EmptyContent>
         </Empty>
@@ -124,14 +124,14 @@ export function ProjectListTable({
           <EmptyMedia variant="icon">
             <FolderKanban aria-hidden />
           </EmptyMedia>
-          <EmptyTitle>No projects yet</EmptyTitle>
+          <EmptyTitle>还没有项目</EmptyTitle>
           <EmptyDescription>
-            Create your first Project to start building, or wait for an invitation to join one.
+            创建第一个 Project 开始管理产品，或等待成员邀请加入。
           </EmptyDescription>
         </EmptyHeader>
         <EmptyContent>
           <Button nativeButton={false} render={<Link to="/projects/new" />}>
-            Create Project
+            创建项目
           </Button>
         </EmptyContent>
       </Empty>
@@ -143,13 +143,13 @@ export function ProjectListTable({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Name</TableHead>
+            <TableHead>名称</TableHead>
             <TableHead>Project ID</TableHead>
-            <TableHead>Role</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Created</TableHead>
-            <TableHead>Updated</TableHead>
-            <TableHead className="text-end">Actions</TableHead>
+            <TableHead>角色</TableHead>
+            <TableHead>状态</TableHead>
+            <TableHead>创建时间</TableHead>
+            <TableHead>更新时间</TableHead>
+            <TableHead className="text-end">操作</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -198,7 +198,7 @@ export function ProjectListTable({
                     className="hidden sm:inline-flex"
                     onClick={() => navigate(`/projects/${project.projectId}/products`)}
                   >
-                    Open
+                    打开
                   </Button>
                   <DropdownMenu>
                     <DropdownMenuTrigger
@@ -218,7 +218,7 @@ export function ProjectListTable({
                         onClick={() => navigate(`/projects/${project.projectId}/products`)}
                       >
                         <FolderOpen aria-hidden />
-                        Open workspace
+                        打开工作区
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>

@@ -19,8 +19,9 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardHeader } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Separator } from '@/components/ui/separator';
 import {
   Dialog,
   DialogContent,
@@ -250,26 +251,13 @@ export function ProjectWorkspaceShell({
 
   return (
     <div className="flex flex-col gap-4">
-      <div>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="mb-2 -ml-2 gap-1"
-          nativeButton={false}
-          render={<Link to="/projects" />}
-        >
-          <ArrowLeft className="size-4" aria-hidden />
-          返回 Project 列表
-        </Button>
-      </div>
-
       {isLoading && !project ? (
-        <Card>
-          <CardContent className="space-y-3 p-6">
-            <Skeleton className="h-7 w-56" />
-            <Skeleton className="h-4 w-80" />
-            <Skeleton className="h-4 w-64" />
-          </CardContent>
+        <Card className="p-6">
+          <div className="space-y-3">
+            <Skeleton className="h-5 w-40" />
+            <Skeleton className="h-8 w-64" />
+            <Skeleton className="h-9 w-full max-w-md" />
+          </div>
         </Card>
       ) : error && !project ? (
         <ApiErrorAlert
@@ -278,33 +266,42 @@ export function ProjectWorkspaceShell({
           onRetry={() => void mutate()}
         />
       ) : project ? (
-        <Card>
-          <CardContent className="flex flex-col gap-4 p-6">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="min-w-0 space-y-2">
+        <Card className="gap-0 overflow-hidden py-0">
+          <CardHeader className="space-y-4 border-b py-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-fit -ml-2 h-7 gap-1 text-muted-foreground"
+              nativeButton={false}
+              render={<Link to="/projects" />}
+            >
+              <ArrowLeft className="size-3.5" aria-hidden />
+              全部项目
+            </Button>
+
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0 space-y-1.5">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="text-xl font-semibold text-foreground">
+                  <h2 className="truncate text-xl font-semibold tracking-tight">
                     {project.projectName}
                   </h2>
                   <ProjectStatusBadge status={project.status} />
                   <RoleBadge role={project.myRole} />
                 </div>
-                <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                  <span>Project ID</span>
-                  <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-foreground">
-                    {project.projectId}
-                  </code>
+                <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+                  <span className="font-mono">{project.projectId}</span>
                   <CopyIdButton value={project.projectId} label="Project ID" />
+                  {project.description ? (
+                    <>
+                      <span className="text-border">·</span>
+                      <span className="line-clamp-1 max-w-xl">{project.description}</span>
+                    </>
+                  ) : null}
                 </div>
-                {project.description ? (
-                  <p className="max-w-3xl text-sm text-muted-foreground">
-                    {project.description}
-                  </p>
-                ) : null}
               </div>
 
               {onSettings ? (
-                <div className="flex flex-wrap gap-2">
+                <div className="flex shrink-0 flex-wrap gap-2">
                   {canEdit ? (
                     <Button
                       type="button"
@@ -369,12 +366,12 @@ export function ProjectWorkspaceShell({
                 if (tab) navigate(tab.path(project.projectId));
               }}
             >
-              <TabsList variant="line" className="w-full justify-start">
+              <TabsList variant="line" className="w-full justify-start gap-4 bg-transparent p-0">
                 {PRIMARY_TABS.map((tab) => (
-                  <TabsTrigger key={tab.id} value={tab.id} className="gap-1.5">
+                  <TabsTrigger key={tab.id} value={tab.id} className="gap-1.5 px-1">
                     {tab.label}
                     {tab.id === 'devices' ? (
-                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                      <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
                         未发布
                       </Badge>
                     ) : null}
@@ -384,23 +381,26 @@ export function ProjectWorkspaceShell({
             </Tabs>
 
             {onSettings ? (
-              <Tabs
-                value={settingsTab}
-                onValueChange={(value) => {
-                  const tab = SETTINGS_TABS.find((t) => t.id === value);
-                  if (tab) navigate(tab.path(project.projectId));
-                }}
-              >
-                <TabsList className="h-auto flex-wrap justify-start">
-                  {SETTINGS_TABS.map((tab) => (
-                    <TabsTrigger key={tab.id} value={tab.id}>
-                      {tab.label}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-              </Tabs>
+              <>
+                <Separator />
+                <Tabs
+                  value={settingsTab}
+                  onValueChange={(value) => {
+                    const tab = SETTINGS_TABS.find((t) => t.id === value);
+                    if (tab) navigate(tab.path(project.projectId));
+                  }}
+                >
+                  <TabsList className="h-auto w-full flex-wrap justify-start">
+                    {SETTINGS_TABS.map((tab) => (
+                      <TabsTrigger key={tab.id} value={tab.id}>
+                        {tab.label}
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+                </Tabs>
+              </>
             ) : null}
-          </CardContent>
+          </CardHeader>
         </Card>
       ) : null}
 
