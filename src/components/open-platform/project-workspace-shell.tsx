@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
 import {
   ArrowLeft,
@@ -160,6 +160,19 @@ function formatProjectDate(value: number) {
   return new Date(value).toLocaleString('zh-CN');
 }
 
+function projectHeaderOpenStorageKey(projectId: string) {
+  return `open-platform:project-header-open:${projectId}`;
+}
+
+function readProjectHeaderOpen(projectId: string) {
+  if (typeof window === 'undefined' || !projectId) return true;
+  try {
+    return window.localStorage.getItem(projectHeaderOpenStorageKey(projectId)) !== 'false';
+  } catch {
+    return true;
+  }
+}
+
 type LifecycleAction = 'activate' | 'suspend' | 'archive' | 'close';
 
 export function ProjectWorkspaceShell({
@@ -186,7 +199,9 @@ export function ProjectWorkspaceShell({
   const onSettings = primaryTab === 'settings';
 
   const [editOpen, setEditOpen] = useState(false);
-  const [projectHeaderOpen, setProjectHeaderOpen] = useState(true);
+  const [projectHeaderOpen, setProjectHeaderOpen] = useState(() =>
+    readProjectHeaderOpen(projectId),
+  );
   const [editName, setEditName] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editSaving, setEditSaving] = useState(false);
@@ -197,6 +212,20 @@ export function ProjectWorkspaceShell({
   const [lifecycleBusy, setLifecycleBusy] = useState(false);
   const [closeNameConfirm, setCloseNameConfirm] = useState('');
   const [closeAck, setCloseAck] = useState(false);
+
+  useEffect(() => {
+    setProjectHeaderOpen(readProjectHeaderOpen(projectId));
+  }, [projectId]);
+
+  const handleProjectHeaderOpenChange = (open: boolean) => {
+    setProjectHeaderOpen(open);
+    if (!projectId) return;
+    try {
+      window.localStorage.setItem(projectHeaderOpenStorageKey(projectId), String(open));
+    } catch {
+      // Ignore storage failures; the in-memory state still works for this render.
+    }
+  };
 
   const canManageStatus =
     project?.myRole === 'OWNER' || project?.myRole === 'ADMIN';
@@ -324,7 +353,7 @@ export function ProjectWorkspaceShell({
 
   return (
     <div className="flex flex-col gap-px">
-      <Collapsible open={projectHeaderOpen} onOpenChange={setProjectHeaderOpen}>
+      <Collapsible open={projectHeaderOpen} onOpenChange={handleProjectHeaderOpenChange}>
         <Card className="gap-0 px-5 py-3">
           <div className="flex flex-wrap items-center gap-2">
             <Button
