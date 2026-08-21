@@ -1271,7 +1271,7 @@ const ProductModelPage = () => {
                       checked={capabilityForm.required}
                       onCheckedChange={(checked) => setCapabilityForm((current) => ({ ...current, required: checked === true }))}
                     />
-                    <span className="text-sm">必选属性</span>
+                    <span className="text-sm">是否必选</span>
                     <span className="text-xs text-muted-foreground">设备上报时必须提供</span>
                   </label>
                 </div>
