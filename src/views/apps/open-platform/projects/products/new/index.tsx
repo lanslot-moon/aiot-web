@@ -316,7 +316,7 @@ const CreateProductPage = () => {
                         selectCategoryMode(value);
                       }
                     }}
-                    className="mt-4 gap-3"
+                    className="mt-4 flex-col gap-3"
                   >
                     <TabsList variant="line" className="h-8 w-full justify-start border-b">
                       <TabsTrigger value="STANDARD" className="h-8 px-3 text-xs">
@@ -327,7 +327,7 @@ const CreateProductPage = () => {
                       </TabsTrigger>
                     </TabsList>
 
-                    <TabsContent value="STANDARD" className="mt-0">
+                    <TabsContent value="STANDARD" className="mt-0 min-w-0 flex-col">
                       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(16rem,0.9fr)]">
                         <Field data-invalid={Boolean(errors.categoryCode) || undefined}>
                           {categoriesError ? (
@@ -377,7 +377,7 @@ const CreateProductPage = () => {
                       </div>
                     </TabsContent>
 
-                    <TabsContent value="CUSTOM" className="mt-0">
+                    <TabsContent value="CUSTOM" className="mt-0 min-w-0 flex-col">
                       <div className="flex min-h-56 flex-col items-center justify-center rounded-lg border border-dashed px-5 text-center">
                         <Braces className="size-7 text-muted-foreground" aria-hidden />
                         <p className="mt-3 text-sm font-medium">自定义品类</p>
