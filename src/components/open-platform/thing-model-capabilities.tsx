@@ -513,13 +513,22 @@ export function ThingModelCapabilityTabs({
   return (
     <Tabs defaultValue={defaultTab} className="flex-col gap-2">
       <TabsList variant="line" className="h-8 w-full justify-start border-b">
-        <TabsTrigger value="properties" className="h-8 px-2 text-xs">
+        <TabsTrigger
+          value="properties"
+          className="h-8 px-2 text-xs data-active:!rounded-md data-active:!bg-muted/70 data-active:!font-semibold data-active:!text-foreground"
+        >
           属性 <span className="text-[11px] text-muted-foreground">{properties.length}</span>
         </TabsTrigger>
-        <TabsTrigger value="actions" className="h-8 px-2 text-xs">
+        <TabsTrigger
+          value="actions"
+          className="h-8 px-2 text-xs data-active:!rounded-md data-active:!bg-muted/70 data-active:!font-semibold data-active:!text-foreground"
+        >
           动作 <span className="text-[11px] text-muted-foreground">{actions.length}</span>
         </TabsTrigger>
-        <TabsTrigger value="events" className="h-8 px-2 text-xs">
+        <TabsTrigger
+          value="events"
+          className="h-8 px-2 text-xs data-active:!rounded-md data-active:!bg-muted/70 data-active:!font-semibold data-active:!text-foreground"
+        >
           事件 <span className="text-[11px] text-muted-foreground">{events.length}</span>
         </TabsTrigger>
       </TabsList>
