@@ -353,32 +353,34 @@ function PropertyList({
         return (
           <AccordionItem key={property.code} value={property.code} className="px-3">
             <div className="flex items-start gap-1">
-              <AccordionTrigger className="min-w-0 flex-1 rounded-md px-2 py-2.5 font-normal hover:bg-muted/50 hover:no-underline">
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                    <span className="truncate text-xs font-medium">{property.title}</span>
-                    <code className="font-mono text-[11px] text-muted-foreground">
-                      {property.code}
-                    </code>
-                  </div>
-                  <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
-                    <Badge variant="outline" className="h-5 px-1.5 text-[10px]">
-                      {labelOf(PROPERTY_ACCESS_LABEL, property.access)}
-                    </Badge>
-                    {property.required ? (
-                      <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
-                        必选
+              <div className="min-w-0 flex-1">
+                <AccordionTrigger className="w-full rounded-md px-2 py-2.5 font-normal hover:bg-muted/50 hover:no-underline">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <span className="truncate text-xs font-medium">{property.title}</span>
+                      <code className="font-mono text-[11px] text-muted-foreground">
+                        {property.code}
+                      </code>
+                    </div>
+                    <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
+                      <Badge variant="outline" className="h-5 px-1.5 text-[10px]">
+                        {labelOf(PROPERTY_ACCESS_LABEL, property.access)}
                       </Badge>
-                    ) : null}
-                    <code className="font-mono text-[11px] text-muted-foreground">
-                      {schemaType(property.schema)}
-                    </code>
-                    {constraint !== '无额外约束' ? (
-                      <span className="text-muted-foreground">· {constraint}</span>
-                    ) : null}
+                      {property.required ? (
+                        <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
+                          必选
+                        </Badge>
+                      ) : null}
+                      <code className="font-mono text-[11px] text-muted-foreground">
+                        {schemaType(property.schema)}
+                      </code>
+                      {constraint !== '无额外约束' ? (
+                        <span className="text-muted-foreground">· {constraint}</span>
+                      ) : null}
+                    </div>
                   </div>
-                </div>
-              </AccordionTrigger>
+                </AccordionTrigger>
+              </div>
               {!property.required ? (
                 <RemoveCapabilityButton
                   kind="property"
@@ -412,27 +414,29 @@ function ActionList({
       {items.map((action) => (
         <AccordionItem key={action.code} value={action.code} className="px-3">
           <div className="flex items-start gap-1">
-            <AccordionTrigger className="min-w-0 flex-1 rounded-md px-2 py-2.5 font-normal hover:bg-muted/50 hover:no-underline">
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <span className="truncate text-xs font-medium">{action.title}</span>
-                  <code className="font-mono text-[11px] text-muted-foreground">
-                    {action.code}
-                  </code>
+            <div className="min-w-0 flex-1">
+              <AccordionTrigger className="w-full rounded-md px-2 py-2.5 font-normal hover:bg-muted/50 hover:no-underline">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <span className="truncate text-xs font-medium">{action.title}</span>
+                    <code className="font-mono text-[11px] text-muted-foreground">
+                      {action.code}
+                    </code>
+                  </div>
+                  <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
+                    <Badge variant="outline" className="h-5 px-1.5 text-[10px]">
+                      {labelOf(INVOKE_MODE_LABEL, action.invokeMode)}
+                    </Badge>
+                    <span className="text-muted-foreground">
+                      输入 {schemaShapeSummary(action.inputSchema)}
+                    </span>
+                    <span className="text-muted-foreground">
+                      输出 {schemaShapeSummary(action.outputSchema)}
+                    </span>
+                  </div>
                 </div>
-                <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
-                  <Badge variant="outline" className="h-5 px-1.5 text-[10px]">
-                    {labelOf(INVOKE_MODE_LABEL, action.invokeMode)}
-                  </Badge>
-                  <span className="text-muted-foreground">
-                    输入 {schemaShapeSummary(action.inputSchema)}
-                  </span>
-                  <span className="text-muted-foreground">
-                    输出 {schemaShapeSummary(action.outputSchema)}
-                  </span>
-                </div>
-              </div>
-            </AccordionTrigger>
+              </AccordionTrigger>
+            </div>
             <RemoveCapabilityButton kind="action" code={action.code} onRemove={onRemove} compact />
           </div>
           <AccordionContent className="px-2 pb-3">
@@ -458,27 +462,29 @@ function EventList({
       {items.map((event) => (
         <AccordionItem key={event.code} value={event.code} className="px-3">
           <div className="flex items-start gap-1">
-            <AccordionTrigger className="min-w-0 flex-1 rounded-md px-2 py-2.5 font-normal hover:bg-muted/50 hover:no-underline">
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <span className="truncate text-xs font-medium">{event.title}</span>
-                  <code className="font-mono text-[11px] text-muted-foreground">
-                    {event.code}
-                  </code>
+            <div className="min-w-0 flex-1">
+              <AccordionTrigger className="w-full rounded-md px-2 py-2.5 font-normal hover:bg-muted/50 hover:no-underline">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <span className="truncate text-xs font-medium">{event.title}</span>
+                    <code className="font-mono text-[11px] text-muted-foreground">
+                      {event.code}
+                    </code>
+                  </div>
+                  <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
+                    <Badge
+                      variant={event.eventType === 'FAULT' ? 'destructive' : 'outline'}
+                      className="h-5 px-1.5 text-[10px]"
+                    >
+                      {labelOf(EVENT_TYPE_LABEL, event.eventType)}
+                    </Badge>
+                    <span className="text-muted-foreground">
+                      输出 {schemaShapeSummary(event.outputSchema)}
+                    </span>
+                  </div>
                 </div>
-                <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
-                  <Badge
-                    variant={event.eventType === 'FAULT' ? 'destructive' : 'outline'}
-                    className="h-5 px-1.5 text-[10px]"
-                  >
-                    {labelOf(EVENT_TYPE_LABEL, event.eventType)}
-                  </Badge>
-                  <span className="text-muted-foreground">
-                    输出 {schemaShapeSummary(event.outputSchema)}
-                  </span>
-                </div>
-              </div>
-            </AccordionTrigger>
+              </AccordionTrigger>
+            </div>
             <RemoveCapabilityButton kind="event" code={event.code} onRemove={onRemove} compact />
           </div>
           <AccordionContent className="px-2 pb-3">
