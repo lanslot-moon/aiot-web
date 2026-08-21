@@ -1,29 +1,113 @@
+import { useMemo, useState } from 'react';
 import { useParams } from 'react-router';
-import { Package, PackagePlus, SearchIcon } from 'lucide-react';
+import { MoreHorizontal, PackagePlus, SearchIcon } from 'lucide-react';
 
 import { ProjectWorkspaceShell } from '@/components/open-platform/project-workspace-shell';
 import StyleAwareWrapper from '@/components/shared/StyleAwareWrapper';
 import StyleDivider from '@/components/shared/StyleDivider';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import {
-  Empty,
-  EmptyContent,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from '@/components/ui/empty';
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import BreadcrumbComp from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
+import { cn } from '@/lib/utils';
+
+type DemoProduct = {
+  productId: string;
+  productName: string;
+  productModel: string;
+  categoryCode: string;
+  lifecycleStatus: 'DRAFT' | 'PUBLISHED' | 'DISABLED' | 'DEPRECATED';
+  updatedAt: number;
+};
+
+/** UI-density demo rows until Project-scoped thing-model list is wired. */
+const DEMO_PRODUCTS: DemoProduct[] = [
+  {
+    productId: 'prod_thermostat_01',
+    productName: '智能温控器',
+    productModel: 'TH-100',
+    categoryCode: 'hvac.thermostat',
+    lifecycleStatus: 'PUBLISHED',
+    updatedAt: Date.UTC(2026, 7, 18, 10, 0, 0),
+  },
+  {
+    productId: 'prod_gateway_01',
+    productName: '边缘网关',
+    productModel: 'GW-200',
+    categoryCode: 'gateway.edge',
+    lifecycleStatus: 'DRAFT',
+    updatedAt: Date.UTC(2026, 7, 19, 14, 30, 0),
+  },
+  {
+    productId: 'prod_sensor_01',
+    productName: '温湿度传感器',
+    productModel: 'STH-10',
+    categoryCode: 'sensor.env',
+    lifecycleStatus: 'PUBLISHED',
+    updatedAt: Date.UTC(2026, 7, 15, 9, 12, 0),
+  },
+  {
+    productId: 'prod_lock_01',
+    productName: '智能门锁',
+    productModel: 'LK-Pro',
+    categoryCode: 'security.lock',
+    lifecycleStatus: 'DISABLED',
+    updatedAt: Date.UTC(2026, 7, 10, 16, 45, 0),
+  },
+];
 
 const BCrumb = [
-  { to: '/projects', title: 'Projects' },
+  { to: '/projects', title: '项目' },
   { title: '产品' },
 ];
 
+const STATUS_ALL = 'ALL';
+
 const ProjectProductsPage = () => {
-  const { projectId: _projectId = '' } = useParams<{ projectId: string }>();
+  const { projectId = '' } = useParams<{ projectId: string }>();
+  const [keyword, setKeyword] = useState('');
+  const [status, setStatus] = useState(STATUS_ALL);
+
+  const filtered = useMemo(() => {
+    const q = keyword.trim().toLowerCase();
+    return DEMO_PRODUCTS.filter((p) => {
+      if (status !== STATUS_ALL && p.lifecycleStatus !== status) return false;
+      if (!q) return true;
+      return (
+        p.productName.toLowerCase().includes(q) ||
+        p.productId.toLowerCase().includes(q) ||
+        p.productModel.toLowerCase().includes(q)
+      );
+    });
+  }, [keyword, status]);
+
+  const counts = useMemo(() => {
+    const all = DEMO_PRODUCTS.length;
+    const published = DEMO_PRODUCTS.filter((p) => p.lifecycleStatus === 'PUBLISHED').length;
+    const draft = DEMO_PRODUCTS.filter((p) => p.lifecycleStatus === 'DRAFT').length;
+    return { all, published, draft };
+  }, []);
 
   return (
     <StyleAwareWrapper
@@ -33,44 +117,14 @@ const ProjectProductsPage = () => {
       <BreadcrumbComp title="产品" items={BCrumb} />
       <StyleDivider />
       <ProjectWorkspaceShell activePrimary="products">
-        <Card className="p-6">
-          <div className="mb-6 grid grid-cols-12 gap-4">
-            <button
-              type="button"
-              className="col-span-12 rounded-lg border border-primary/20 bg-primary/5 p-6 text-center md:col-span-4"
-            >
-              <h3 className="text-2xl font-semibold tabular-nums">0</h3>
-              <p className="mt-1 text-sm text-muted-foreground">全部产品</p>
-            </button>
-            <button
-              type="button"
-              className="col-span-12 rounded-lg border border-chart-2/20 bg-chart-2/12 p-6 text-center md:col-span-4"
-            >
-              <h3 className="text-2xl font-semibold tabular-nums">0</h3>
-              <p className="mt-1 text-sm text-muted-foreground">已发布</p>
-            </button>
-            <button
-              type="button"
-              className="col-span-12 rounded-lg border border-chart-4/20 bg-chart-4/12 p-6 text-center md:col-span-4"
-            >
-              <h3 className="text-2xl font-semibold tabular-nums">0</h3>
-              <p className="mt-1 text-sm text-muted-foreground">草稿</p>
-            </button>
-          </div>
-
-          <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="relative w-full sm:max-w-72">
-              <SearchIcon
-                size={16}
-                className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-muted-foreground"
-                aria-hidden
-              />
-              <Input
-                placeholder="搜索产品名称或 ID…"
-                className="pl-8"
-                aria-label="搜索产品"
-                disabled
-              />
+        <div className="flex h-full min-h-[28rem] flex-col gap-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h3 className="text-base font-semibold">产品开发</h3>
+              <p className="text-sm text-muted-foreground">
+                当前项目 <span className="font-mono text-xs">{projectId}</span>{' '}
+                下的产品与物模型入口
+              </p>
             </div>
             <Button type="button" className="shrink-0 gap-1" disabled>
               <PackagePlus className="size-4" aria-hidden />
@@ -78,23 +132,134 @@ const ProjectProductsPage = () => {
             </Button>
           </div>
 
-          <Empty className="rounded-lg border border-dashed py-14">
-            <EmptyHeader>
-              <EmptyMedia variant="icon">
-                <Package aria-hidden />
-              </EmptyMedia>
-              <EmptyTitle>还没有产品</EmptyTitle>
-              <EmptyDescription>
-                创建产品后可编辑物模型（属性 / 动作 / 事件），校验并发布版本。设备管理稍后开放。
-              </EmptyDescription>
-            </EmptyHeader>
-            <EmptyContent>
-              <Button type="button" disabled>
-                创建第一个产品
-              </Button>
-            </EmptyContent>
-          </Empty>
-        </Card>
+          <div className="grid grid-cols-3 gap-3">
+            {(
+              [
+                ['全部', counts.all, 'bg-primary/5 border-primary/20'],
+                ['已发布', counts.published, 'bg-chart-2/12 border-chart-2/20'],
+                ['草稿', counts.draft, 'bg-chart-4/12 border-chart-4/20'],
+              ] as const
+            ).map(([label, value, tone]) => (
+              <div
+                key={label}
+                className={cn('rounded-lg border px-3 py-3 text-center', tone)}
+              >
+                <p className="text-xl font-semibold tabular-nums">{value}</p>
+                <p className="text-xs text-muted-foreground">{label}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="relative w-full sm:max-w-72">
+              <SearchIcon
+                size={16}
+                className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-muted-foreground"
+                aria-hidden
+              />
+              <Input
+                value={keyword}
+                onChange={(e) => setKeyword(e.target.value)}
+                placeholder="搜索产品名称 / 型号 / ID"
+                className="pl-8"
+              />
+            </div>
+            <Select value={status} onValueChange={(v) => setStatus(v ?? STATUS_ALL)}>
+              <SelectTrigger className="w-full sm:w-40">
+                <SelectValue placeholder="生命周期" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={STATUS_ALL}>全部状态</SelectItem>
+                <SelectItem value="DRAFT">DRAFT</SelectItem>
+                <SelectItem value="PUBLISHED">PUBLISHED</SelectItem>
+                <SelectItem value="DISABLED">DISABLED</SelectItem>
+                <SelectItem value="DEPRECATED">DEPRECATED</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-hidden rounded-lg border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>产品</TableHead>
+                  <TableHead>型号</TableHead>
+                  <TableHead>品类</TableHead>
+                  <TableHead>生命周期</TableHead>
+                  <TableHead>更新时间</TableHead>
+                  <TableHead className="text-end">操作</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
+                      没有符合条件的产品
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filtered.map((p) => (
+                    <TableRow key={p.productId}>
+                      <TableCell>
+                        <div className="space-y-0.5">
+                          <p className="font-medium">{p.productName}</p>
+                          <p className="font-mono text-xs text-muted-foreground">
+                            {p.productId}
+                          </p>
+                        </div>
+                      </TableCell>
+                      <TableCell>{p.productModel}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="font-mono text-xs">
+                          {p.categoryCode}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            p.lifecycleStatus === 'PUBLISHED' &&
+                              'border-transparent bg-chart-2/12 text-chart-2',
+                            p.lifecycleStatus === 'DRAFT' &&
+                              'border-transparent bg-chart-4/12 text-chart-4',
+                            p.lifecycleStatus === 'DISABLED' &&
+                              'border-transparent bg-muted text-muted-foreground',
+                            p.lifecycleStatus === 'DEPRECATED' &&
+                              'border-transparent bg-destructive/12 text-destructive',
+                          )}
+                        >
+                          {p.lifecycleStatus}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                        {new Date(p.updatedAt).toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-end">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger
+                            render={
+                              <Button type="button" variant="ghost" size="icon-sm">
+                                <MoreHorizontal aria-hidden />
+                              </Button>
+                            }
+                          />
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem disabled>查看物模型</DropdownMenuItem>
+                            <DropdownMenuItem disabled>编辑连接配置</DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            列表为界面密度演示数据；正式产品 CRUD 将按 Project 作用域物模型接口接入。
+          </p>
+        </div>
       </ProjectWorkspaceShell>
     </StyleAwareWrapper>
   );

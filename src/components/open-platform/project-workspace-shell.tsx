@@ -1,6 +1,14 @@
 import { useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
-import { ArrowLeft, ChevronDown, Loader2, Pencil } from 'lucide-react';
+import {
+  ArrowLeft,
+  ChevronDown,
+  Cpu,
+  Loader2,
+  Package,
+  Pencil,
+  Settings,
+} from 'lucide-react';
 import { toast } from 'sonner';
 
 import { ApiErrorAlert } from '@/components/open-platform/api-error-alert';
@@ -19,9 +27,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardHeader } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Separator } from '@/components/ui/separator';
 import {
   Dialog,
   DialogContent,
@@ -38,17 +45,18 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import {
   OpenPlatformApiError,
   useOpenPlatform,
   useProjectDetail,
 } from '@/context/open-platform-context';
+import { cn } from '@/lib/utils';
 import type { ProjectView } from '@/types/apps/open-platform';
 
-/** Primary IA: 产品 / 设备 / 设置 — settings holds former heavy tabs. */
 type PrimaryTab = 'products' | 'devices' | 'settings';
 
 type SettingsTab =
@@ -58,17 +66,35 @@ type SettingsTab =
   | 'usage'
   | 'subscriptions';
 
-const PRIMARY_TABS: {
+const PRIMARY_NAV: {
   id: PrimaryTab;
   label: string;
+  icon: typeof Package;
   path: (id: string) => string;
+  badge?: string;
 }[] = [
-  { id: 'products', label: '产品', path: (id) => `/projects/${id}/products` },
-  { id: 'devices', label: '设备', path: (id) => `/projects/${id}/devices` },
-  { id: 'settings', label: '设置', path: (id) => `/projects/${id}/settings` },
+  {
+    id: 'products',
+    label: '产品',
+    icon: Package,
+    path: (id) => `/projects/${id}/products`,
+  },
+  {
+    id: 'devices',
+    label: '设备',
+    icon: Cpu,
+    path: (id) => `/projects/${id}/devices`,
+    badge: '未发布',
+  },
+  {
+    id: 'settings',
+    label: '项目设置',
+    icon: Settings,
+    path: (id) => `/projects/${id}/settings`,
+  },
 ];
 
-const SETTINGS_TABS: {
+const SETTINGS_NAV: {
   id: SettingsTab;
   label: string;
   path: (id: string) => string;
@@ -118,7 +144,6 @@ export function ProjectWorkspaceShell({
   activePrimary,
 }: {
   children: React.ReactNode;
-  /** Optional override; otherwise derived from URL. */
   activePrimary?: PrimaryTab;
 }) {
   const { projectId = '' } = useParams<{ projectId: string }>();
@@ -149,7 +174,8 @@ export function ProjectWorkspaceShell({
   const [closeNameConfirm, setCloseNameConfirm] = useState('');
   const [closeAck, setCloseAck] = useState(false);
 
-  const canManageStatus = project?.myRole === 'OWNER' || project?.myRole === 'ADMIN';
+  const canManageStatus =
+    project?.myRole === 'OWNER' || project?.myRole === 'ADMIN';
   const canEdit =
     project != null &&
     project.status === 'ACTIVE' &&
@@ -181,7 +207,7 @@ export function ProjectWorkspaceShell({
         projectName: editName.trim(),
         description: editDescription.trim() || undefined,
       });
-      toast.success('Project 已更新');
+      toast.success('项目已更新');
       setEditOpen(false);
       await mutate();
     } catch (e) {
@@ -204,7 +230,7 @@ export function ProjectWorkspaceShell({
       if (lifecycleAction === 'archive') await archiveProject(projectId);
       if (lifecycleAction === 'close') {
         await closeProject(projectId);
-        toast.success('Project 已关闭');
+        toast.success('项目已关闭');
         setLifecycleAction(null);
         navigate('/projects');
         return;
@@ -227,190 +253,209 @@ export function ProjectWorkspaceShell({
     { title: string; description: string; confirm: string }
   > = {
     activate: {
-      title: '恢复 Project',
-      description: '恢复后允许按授权与 Policy 继续创建资源和调用 API。',
+      title: '恢复项目',
+      description: '恢复后可按授权继续创建资源与调用 API。',
       confirm: '恢复',
     },
     suspend: {
-      title: '暂停 Project',
-      description: `将暂停「${project?.projectName ?? ''}」：禁止新建资源与新的 Project API 调用，之后可恢复。`,
+      title: '暂停项目',
+      description: `将暂停「${project?.projectName ?? ''}」：禁止新建资源与新的 API 调用，之后可恢复。`,
       confirm: '暂停',
     },
     archive: {
-      title: '归档 Project',
-      description: '归档后不可再新建资源、成员、邀请和凭证，工作区只读。',
+      title: '归档项目',
+      description: '归档后不可再新建资源、成员与凭证。',
       confirm: '归档',
     },
     close: {
-      title: '关闭 Project',
-      description:
-        'CLOSED 为终态，不可恢复。请输入 Project 名称并勾选确认后继续。',
-      confirm: '关闭 Project',
+      title: '关闭项目',
+      description: 'CLOSED 为终态，不可恢复。请输入项目名称并勾选确认。',
+      confirm: '关闭项目',
     },
   };
 
+  if (isLoading && !project) {
+    return (
+      <Card className="p-6">
+        <Skeleton className="mb-4 h-5 w-48" />
+        <div className="grid gap-4 md:grid-cols-[200px_1fr]">
+          <Skeleton className="h-40 w-full" />
+          <Skeleton className="h-64 w-full" />
+        </div>
+      </Card>
+    );
+  }
+
+  if (error && !project) {
+    return (
+      <ApiErrorAlert
+        code={(error as OpenPlatformApiError).code}
+        message={error.message}
+        onRetry={() => void mutate()}
+      />
+    );
+  }
+
+  if (!project) return null;
+
   return (
     <div className="flex flex-col gap-4">
-      {isLoading && !project ? (
-        <Card className="p-6">
-          <div className="space-y-3">
-            <Skeleton className="h-5 w-40" />
-            <Skeleton className="h-8 w-64" />
-            <Skeleton className="h-9 w-full max-w-md" />
+      {/* Compact project toolbar — Tuya-like thin context */}
+      <Card className="px-4 py-3">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 gap-1 px-2 text-muted-foreground"
+            nativeButton={false}
+            render={<Link to="/projects" />}
+          >
+            <ArrowLeft className="size-3.5" aria-hidden />
+            项目
+          </Button>
+          <Separator orientation="vertical" className="hidden h-4 sm:block" />
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+            <h2 className="truncate text-base font-semibold">{project.projectName}</h2>
+            <ProjectStatusBadge status={project.status} />
+            <RoleBadge role={project.myRole} />
+            <span className="hidden items-center gap-1 font-mono text-xs text-muted-foreground md:inline-flex">
+              {project.projectId}
+              <CopyIdButton value={project.projectId} label="Project ID" />
+            </span>
           </div>
-        </Card>
-      ) : error && !project ? (
-        <ApiErrorAlert
-          code={(error as OpenPlatformApiError).code}
-          message={error.message}
-          onRetry={() => void mutate()}
-        />
-      ) : project ? (
-        <Card className="gap-0 overflow-hidden py-0">
-          <CardHeader className="space-y-4 border-b py-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-fit -ml-2 h-7 gap-1 text-muted-foreground"
-              nativeButton={false}
-              render={<Link to="/projects" />}
-            >
-              <ArrowLeft className="size-3.5" aria-hidden />
-              全部项目
-            </Button>
-
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div className="min-w-0 space-y-1.5">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="truncate text-xl font-semibold tracking-tight">
-                    {project.projectName}
-                  </h2>
-                  <ProjectStatusBadge status={project.status} />
-                  <RoleBadge role={project.myRole} />
-                </div>
-                <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-                  <span className="font-mono">{project.projectId}</span>
-                  <CopyIdButton value={project.projectId} label="Project ID" />
-                  {project.description ? (
-                    <>
-                      <span className="text-border">·</span>
-                      <span className="line-clamp-1 max-w-xl">{project.description}</span>
-                    </>
-                  ) : null}
-                </div>
-              </div>
-
-              {onSettings ? (
-                <div className="flex shrink-0 flex-wrap gap-2">
-                  {canEdit ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="gap-1"
-                      onClick={() => openEdit(project)}
-                    >
-                      <Pencil className="size-3.5" aria-hidden />
-                      编辑
-                    </Button>
-                  ) : null}
-                  {canManageStatus && statusActions.length > 0 ? (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger
-                        render={
-                          <Button type="button" variant="outline" size="sm" className="gap-1">
-                            状态操作
-                            <ChevronDown className="size-3.5" aria-hidden />
-                          </Button>
-                        }
-                      />
-                      <DropdownMenuContent align="end">
-                        {statusActions.includes('activate') ? (
-                          <DropdownMenuItem onClick={() => setLifecycleAction('activate')}>
-                            恢复
-                          </DropdownMenuItem>
-                        ) : null}
-                        {statusActions.includes('suspend') ? (
-                          <DropdownMenuItem onClick={() => setLifecycleAction('suspend')}>
-                            暂停
-                          </DropdownMenuItem>
-                        ) : null}
-                        {statusActions.includes('archive') ? (
-                          <DropdownMenuItem onClick={() => setLifecycleAction('archive')}>
-                            归档
-                          </DropdownMenuItem>
-                        ) : null}
-                        {statusActions.includes('close') ? (
-                          <DropdownMenuItem
-                            className="text-destructive"
-                            onClick={() => {
-                              setCloseNameConfirm('');
-                              setCloseAck(false);
-                              setLifecycleAction('close');
-                            }}
-                          >
-                            关闭
-                          </DropdownMenuItem>
-                        ) : null}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  ) : null}
-                </div>
+          {onSettings ? (
+            <div className="flex flex-wrap gap-2">
+              {canEdit ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-1"
+                  onClick={() => openEdit(project)}
+                >
+                  <Pencil className="size-3.5" aria-hidden />
+                  编辑
+                </Button>
+              ) : null}
+              {canManageStatus && statusActions.length > 0 ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    render={
+                      <Button type="button" variant="outline" size="sm" className="gap-1">
+                        状态
+                        <ChevronDown className="size-3.5" aria-hidden />
+                      </Button>
+                    }
+                  />
+                  <DropdownMenuContent align="end">
+                    {statusActions.includes('activate') ? (
+                      <DropdownMenuItem onClick={() => setLifecycleAction('activate')}>
+                        恢复
+                      </DropdownMenuItem>
+                    ) : null}
+                    {statusActions.includes('suspend') ? (
+                      <DropdownMenuItem onClick={() => setLifecycleAction('suspend')}>
+                        暂停
+                      </DropdownMenuItem>
+                    ) : null}
+                    {statusActions.includes('archive') ? (
+                      <DropdownMenuItem onClick={() => setLifecycleAction('archive')}>
+                        归档
+                      </DropdownMenuItem>
+                    ) : null}
+                    {statusActions.includes('close') ? (
+                      <DropdownMenuItem
+                        className="text-destructive"
+                        onClick={() => {
+                          setCloseNameConfirm('');
+                          setCloseAck(false);
+                          setLifecycleAction('close');
+                        }}
+                      >
+                        关闭
+                      </DropdownMenuItem>
+                    ) : null}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               ) : null}
             </div>
+          ) : null}
+        </div>
+      </Card>
 
-            <Tabs
-              value={primaryTab}
-              onValueChange={(value) => {
-                const tab = PRIMARY_TABS.find((t) => t.id === value);
-                if (tab) navigate(tab.path(project.projectId));
-              }}
-            >
-              <TabsList variant="line" className="w-full justify-start gap-4 bg-transparent p-0">
-                {PRIMARY_TABS.map((tab) => (
-                  <TabsTrigger key={tab.id} value={tab.id} className="gap-1.5 px-1">
-                    {tab.label}
-                    {tab.id === 'devices' ? (
-                      <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
-                        未发布
-                      </Badge>
-                    ) : null}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </Tabs>
+      {/* Left nav + content — fills viewport like Tuya cloud console */}
+      <Card className="overflow-hidden p-0">
+        <div className="grid min-h-[calc(100vh-16rem)] md:grid-cols-[220px_1fr]">
+          <aside className="border-b bg-muted/20 md:border-r md:border-b-0">
+            <ScrollArea className="h-full">
+              <nav className="flex flex-col gap-1 p-3" aria-label="项目功能">
+                <p className="px-2 pb-1 text-xs font-medium text-muted-foreground">
+                  云开发
+                </p>
+                {PRIMARY_NAV.map((item) => {
+                  const Icon = item.icon;
+                  const active = primaryTab === item.id;
+                  return (
+                    <Button
+                      key={item.id}
+                      type="button"
+                      variant={active ? 'secondary' : 'ghost'}
+                      className={cn(
+                        'h-9 justify-start gap-2 px-2 font-normal',
+                        active && 'bg-background shadow-sm',
+                      )}
+                      onClick={() => navigate(item.path(project.projectId))}
+                    >
+                      <Icon className="size-4 shrink-0" aria-hidden />
+                      <span className="flex-1 text-left">{item.label}</span>
+                      {item.badge ? (
+                        <Badge variant="outline" className="h-5 px-1.5 text-[10px]">
+                          {item.badge}
+                        </Badge>
+                      ) : null}
+                    </Button>
+                  );
+                })}
 
-            {onSettings ? (
-              <>
-                <Separator />
-                <Tabs
-                  value={settingsTab}
-                  onValueChange={(value) => {
-                    const tab = SETTINGS_TABS.find((t) => t.id === value);
-                    if (tab) navigate(tab.path(project.projectId));
-                  }}
-                >
-                  <TabsList className="h-auto w-full flex-wrap justify-start">
-                    {SETTINGS_TABS.map((tab) => (
-                      <TabsTrigger key={tab.id} value={tab.id}>
-                        {tab.label}
-                      </TabsTrigger>
-                    ))}
-                  </TabsList>
-                </Tabs>
-              </>
-            ) : null}
-          </CardHeader>
-        </Card>
-      ) : null}
+                {onSettings ? (
+                  <>
+                    <Separator className="my-2" />
+                    <p className="px-2 pb-1 text-xs font-medium text-muted-foreground">
+                      设置
+                    </p>
+                    {SETTINGS_NAV.map((item) => {
+                      const active = settingsTab === item.id;
+                      return (
+                        <Button
+                          key={item.id}
+                          type="button"
+                          variant={active ? 'secondary' : 'ghost'}
+                          size="sm"
+                          className={cn(
+                            'h-8 justify-start px-2 font-normal',
+                            active && 'bg-background shadow-sm',
+                          )}
+                          onClick={() => navigate(item.path(project.projectId))}
+                        >
+                          {item.label}
+                        </Button>
+                      );
+                    })}
+                  </>
+                ) : null}
+              </nav>
+            </ScrollArea>
+          </aside>
 
-      {children}
+          <section className="min-w-0 p-4 md:p-6">{children}</section>
+        </div>
+      </Card>
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>编辑 Project</DialogTitle>
-            <DialogDescription>仅可修改名称与描述，不能改 Project ID。</DialogDescription>
+            <DialogTitle>编辑项目</DialogTitle>
+            <DialogDescription>仅可修改名称与描述</DialogDescription>
           </DialogHeader>
           <div className="grid gap-3">
             <div className="grid gap-1.5">
@@ -468,10 +513,10 @@ export function ProjectWorkspaceShell({
                   {lifecycleCopy[lifecycleAction].description}
                 </AlertDialogDescription>
               </AlertDialogHeader>
-              {lifecycleAction === 'close' && project ? (
+              {lifecycleAction === 'close' ? (
                 <div className="grid gap-3">
                   <div className="grid gap-1.5">
-                    <Label htmlFor="close-name">输入 Project 名称以确认</Label>
+                    <Label htmlFor="close-name">输入项目名称以确认</Label>
                     <Input
                       id="close-name"
                       value={closeNameConfirm}
@@ -486,7 +531,7 @@ export function ProjectWorkspaceShell({
                       onCheckedChange={(v) => setCloseAck(v === true)}
                       disabled={lifecycleBusy}
                     />
-                    <span>我理解 CLOSED 不可恢复</span>
+                    <span>我理解关闭后不可恢复</span>
                   </label>
                 </div>
               ) : null}
@@ -497,7 +542,7 @@ export function ProjectWorkspaceShell({
                   disabled={
                     lifecycleBusy ||
                     (lifecycleAction === 'close' &&
-                      (closeNameConfirm !== project?.projectName || !closeAck))
+                      (closeNameConfirm !== project.projectName || !closeAck))
                   }
                   onClick={(e) => {
                     e.preventDefault();

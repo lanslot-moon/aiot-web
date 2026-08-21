@@ -1,10 +1,9 @@
-import { Check, Eye, EyeOff, KeyRound } from 'lucide-react';
-import { useCallback, useMemo, useState } from 'react';
+import { Check } from 'lucide-react';
+import { useCallback, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
+import { toast } from 'sonner';
 
 import { ApiErrorAlert } from '@/components/open-platform/api-error-alert';
-import { CopyIdButton } from '@/components/open-platform/copy-id-button';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -29,63 +28,20 @@ import {
   useOpenPlatform,
 } from '@/context/open-platform-context';
 import { cn } from '@/lib/utils';
-import type { CreateProjectResult, ProjectKeyPairView } from '@/types/apps/open-platform';
 
-type WizardStep = 1 | 2 | 3;
+type WizardStep = 1 | 2;
 
-const STEP_LABELS = ['Project info', 'Confirm', 'API credentials'] as const;
-
-function maskSecret(value: string): string {
-  if (!value) return '••••••••';
-  return '•'.repeat(Math.min(Math.max(value.length, 8), 32));
-}
-
-function SecretField({
-  label,
-  value,
-  revealed,
-  onToggleReveal,
-}: {
-  label: string;
-  value: string;
-  revealed: boolean;
-  onToggleReveal: () => void;
-}) {
-  return (
-    <div className="space-y-1.5 rounded-lg border bg-muted/30 p-3">
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-sm font-medium">{label}</span>
-        <div className="flex items-center gap-0.5">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-xs"
-            className="text-muted-foreground"
-            onClick={onToggleReveal}
-            aria-label={revealed ? `Hide ${label}` : `Show ${label}`}
-            title={revealed ? `Hide ${label}` : `Show ${label}`}
-          >
-            {revealed ? <EyeOff aria-hidden /> : <Eye aria-hidden />}
-          </Button>
-          <CopyIdButton value={value} label={label} />
-        </div>
-      </div>
-      <p className="font-mono text-sm break-all select-all">
-        {revealed ? value : maskSecret(value)}
-      </p>
-    </div>
-  );
-}
+const STEP_LABELS = ['填写信息', '确认创建'] as const;
 
 function StepIndicator({ step }: { step: WizardStep }) {
   return (
-    <ol className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-0" aria-label="Wizard steps">
+    <ol className="flex items-center gap-2" aria-label="创建步骤">
       {STEP_LABELS.map((label, index) => {
         const n = (index + 1) as WizardStep;
         const active = n === step;
         const done = n < step;
         return (
-          <li key={label} className="flex items-center sm:flex-1">
+          <li key={label} className="flex flex-1 items-center gap-2">
             <div
               className={cn(
                 'flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm',
@@ -105,13 +61,12 @@ function StepIndicator({ step }: { step: WizardStep }) {
               >
                 {done ? <Check className="size-3.5" aria-hidden /> : n}
               </span>
-              <span className={cn(active && 'font-medium')}>{label}</span>
+              <span className={cn('hidden sm:inline', active && 'font-medium')}>
+                {label}
+              </span>
             </div>
             {index < STEP_LABELS.length - 1 ? (
-              <div
-                className="mx-2 hidden h-px flex-1 bg-border sm:block"
-                aria-hidden
-              />
+              <div className="h-px flex-1 bg-border" aria-hidden />
             ) : null}
           </li>
         );
@@ -130,22 +85,10 @@ export function CreateProjectWizard() {
   const [nameTouched, setNameTouched] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<Error | null>(null);
-  const [result, setResult] = useState<CreateProjectResult | null>(null);
-  const [revealClientId, setRevealClientId] = useState(false);
-  const [revealSecret, setRevealSecret] = useState(false);
-  const [showRevealAudit, setShowRevealAudit] = useState(false);
 
   const trimmedName = projectName.trim();
   const trimmedDescription = description.trim();
   const nameInvalid = nameTouched && !trimmedName;
-
-  const keyPair: ProjectKeyPairView | null = result?.keyPair ?? null;
-  const createdProjectId = result?.project.projectId;
-
-  const productsPath = useMemo(
-    () => (createdProjectId ? `/projects/${createdProjectId}/products` : null),
-    [createdProjectId],
-  );
 
   const goConfirm = () => {
     setNameTouched(true);
@@ -164,29 +107,14 @@ export function CreateProjectWizard() {
         ...(trimmedDescription ? { description: trimmedDescription } : {}),
       };
       const created = await createProject(body);
-      // Keep keyPair in React state only — never URL or localStorage.
-      setResult(created);
-      setStep(3);
+      toast.success('项目已创建。API 密钥可在「设置 → API 授权」中查看。');
+      navigate(`/projects/${created.project.projectId}/products`);
     } catch (err) {
-      setSubmitError(err instanceof Error ? err : new Error('Failed to create project'));
-      // Stay on step 2 with inputs preserved.
+      setSubmitError(err instanceof Error ? err : new Error('创建失败'));
     } finally {
       setSubmitting(false);
     }
-  }, [createProject, submitting, trimmedDescription, trimmedName]);
-
-  const handleRevealSecret = () => {
-    setRevealSecret((prev) => {
-      const next = !prev;
-      if (next) setShowRevealAudit(true);
-      return next;
-    });
-  };
-
-  const handleGoProducts = () => {
-    if (!productsPath) return;
-    navigate(productsPath);
-  };
+  }, [createProject, navigate, submitting, trimmedDescription, trimmedName]);
 
   const apiErr =
     submitError instanceof OpenPlatformApiError ? submitError : null;
@@ -194,10 +122,9 @@ export function CreateProjectWizard() {
   return (
     <Card className="gap-0 py-0">
       <CardHeader className="border-b py-4">
-        <CardTitle>Create Project</CardTitle>
+        <CardTitle>创建项目</CardTitle>
         <CardDescription>
-          Set a name and optional description, confirm, then save your API
-          credentials for this Project.
+          只需名称与描述。创建后进入产品管理；密钥请到项目设置中查看，创建流程不展示密钥对。
         </CardDescription>
         <div className="pt-3">
           <StepIndicator step={step} />
@@ -209,58 +136,58 @@ export function CreateProjectWizard() {
           <FieldGroup>
             <Field data-invalid={nameInvalid || undefined}>
               <FieldLabel htmlFor="create-project-name">
-                Project name <span className="text-destructive">*</span>
+                项目名称 <span className="text-destructive">*</span>
               </FieldLabel>
               <Input
                 id="create-project-name"
                 value={projectName}
                 onChange={(e) => setProjectName(e.target.value)}
                 onBlur={() => setNameTouched(true)}
-                placeholder="e.g. Smart Home Hub"
+                placeholder="例如：智能酒店"
                 aria-invalid={nameInvalid || undefined}
                 autoComplete="off"
                 maxLength={128}
               />
               {nameInvalid ? (
-                <FieldError>Project name is required.</FieldError>
+                <FieldError>请填写项目名称</FieldError>
               ) : (
-                <FieldDescription>Shown in the Project list and switcher.</FieldDescription>
+                <FieldDescription>将显示在项目列表与切换器中</FieldDescription>
               )}
             </Field>
 
             <Field>
-              <FieldLabel htmlFor="create-project-description">Description</FieldLabel>
+              <FieldLabel htmlFor="create-project-description">描述</FieldLabel>
               <Textarea
                 id="create-project-description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Optional short description"
+                placeholder="可选"
                 maxLength={512}
                 rows={4}
               />
-              <FieldDescription>Optional. You can edit this later.</FieldDescription>
+              <FieldDescription>可选，之后可在设置中修改</FieldDescription>
             </Field>
           </FieldGroup>
         ) : null}
 
         {step === 2 ? (
           <div className="space-y-4">
-            <div className="rounded-lg border bg-muted/20 p-4 space-y-3 text-sm">
+            <div className="space-y-3 rounded-lg border bg-muted/20 p-4 text-sm">
               <div>
-                <p className="text-muted-foreground">Project name</p>
-                <p className="font-medium break-words">{trimmedName}</p>
+                <p className="text-muted-foreground">项目名称</p>
+                <p className="break-words font-medium">{trimmedName}</p>
               </div>
               <div>
-                <p className="text-muted-foreground">Description</p>
+                <p className="text-muted-foreground">描述</p>
                 <p className="break-words whitespace-pre-wrap">
                   {trimmedDescription || (
-                    <span className="text-muted-foreground italic">None</span>
+                    <span className="text-muted-foreground italic">未填写</span>
                   )}
                 </p>
               </div>
-              <p className="text-muted-foreground text-xs">
-                Creating this Project makes you the OWNER and provisions one API
-                key pair (Client ID / Client Secret).
+              <p className="text-xs text-muted-foreground">
+                创建后你将成为 OWNER，并自动初始化一组 API 密钥（不在本页展示，请稍后在「设置 → API
+                授权」查看）。
               </p>
             </div>
 
@@ -275,53 +202,6 @@ export function CreateProjectWizard() {
             ) : null}
           </div>
         ) : null}
-
-        {step === 3 && keyPair && result ? (
-          <div className="space-y-4">
-            <Alert>
-              <KeyRound aria-hidden />
-              <AlertTitle>Project created</AlertTitle>
-              <AlertDescription>
-                <p>
-                  <span className="font-medium text-foreground">
-                    {result.project.projectName}
-                  </span>{' '}
-                  is ready. Store Client ID and Client Secret in a secure place
-                  before continuing.
-                </p>
-                <p className="mt-1 font-mono text-xs break-all">
-                  Project ID: {result.project.projectId}
-                </p>
-              </AlertDescription>
-            </Alert>
-
-            {showRevealAudit ? (
-              <Alert>
-                <Eye aria-hidden />
-                <AlertTitle>Secret revealed</AlertTitle>
-                <AlertDescription>
-                  Showing Client Secret in the browser is auditable. Hide it when
-                  you are done copying.
-                </AlertDescription>
-              </Alert>
-            ) : null}
-
-            <div className="space-y-2">
-              <SecretField
-                label="Client ID"
-                value={keyPair.clientId}
-                revealed={revealClientId}
-                onToggleReveal={() => setRevealClientId((v) => !v)}
-              />
-              <SecretField
-                label="Client Secret"
-                value={keyPair.clientSecret}
-                revealed={revealSecret}
-                onToggleReveal={handleRevealSecret}
-              />
-            </div>
-          </div>
-        ) : null}
       </CardContent>
 
       <CardFooter className="justify-between gap-2">
@@ -333,15 +213,13 @@ export function CreateProjectWizard() {
               nativeButton={false}
               render={<Link to="/projects" />}
             >
-              Cancel
+              取消
             </Button>
             <Button type="button" onClick={goConfirm} disabled={!trimmedName}>
-              Continue
+              下一步
             </Button>
           </>
-        ) : null}
-
-        {step === 2 ? (
+        ) : (
           <>
             <Button
               type="button"
@@ -353,7 +231,7 @@ export function CreateProjectWizard() {
               }}
               disabled={submitting}
             >
-              Back
+              上一步
             </Button>
             <Button
               type="button"
@@ -365,30 +243,14 @@ export function CreateProjectWizard() {
               {submitting ? (
                 <>
                   <Spinner />
-                  Creating…
+                  创建中…
                 </>
               ) : (
-                'Create Project'
+                '创建项目'
               )}
             </Button>
           </>
-        ) : null}
-
-        {step === 3 && productsPath ? (
-          <>
-            <Button
-              type="button"
-              variant="outline"
-              nativeButton={false}
-              render={<Link to="/projects" />}
-            >
-              Back to list
-            </Button>
-            <Button type="button" onClick={handleGoProducts}>
-              开始管理产品
-            </Button>
-          </>
-        ) : null}
+        )}
       </CardFooter>
     </Card>
   );
