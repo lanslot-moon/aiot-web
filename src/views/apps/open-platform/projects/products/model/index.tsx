@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import useSWR from 'swr';
 import {
   ArrowLeft,
+  Archive,
   Braces,
   Check,
   GitCompare,
@@ -83,7 +84,7 @@ import type {
   ThingModelProperty,
 } from '@/types/apps/open-platform';
 
-type ConfirmAction = 'discard' | 'rollback' | null;
+type ConfirmAction = 'discard' | 'rollback' | 'deprecate-model' | null;
 type CapabilityDialogKind = ThingModelCapabilityKind | null;
 type CapabilityInputMode = 'form' | 'json';
 type CapabilityPropertyType = 'string' | 'integer' | 'number' | 'boolean' | 'object';
@@ -684,6 +685,20 @@ const ProductModelPage = () => {
     );
   };
 
+  const deprecateModel = async () => {
+    if (!productId || !published || publishedVersion?.status !== 'PUBLISHED') return;
+    await runMutation(
+      'deprecate-model',
+      async () => {
+        await openPlatformPost<boolean>(`${modelKey(productId)}/deprecate`, {
+          modelRevision: String(published.modelRevision),
+        });
+        setConfirmAction(null);
+      },
+      '当前物模型已废弃。',
+    );
+  };
+
   const mergeCategoryCapabilities = async () => {
     if (!productId || !targetVersion || !mergeDiff || selectedMergeCodes.length === 0) return;
     await runMutation(
@@ -1034,8 +1049,25 @@ const ProductModelPage = () => {
               <div className="space-y-4">
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-base">当前已发布模型</CardTitle>
-                    <CardDescription>设备运行时使用的不可变 Revision。</CardDescription>
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div>
+                        <CardTitle className="text-base">当前已发布模型</CardTitle>
+                        <CardDescription>设备运行时使用的不可变 Revision。</CardDescription>
+                      </div>
+                      {product.lifecycleStatus === 'DEPRECATED' && published && publishedVersion?.status === 'PUBLISHED' ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="gap-1 text-destructive hover:text-destructive"
+                          onClick={() => setConfirmAction('deprecate-model')}
+                          disabled={busyAction != null}
+                        >
+                          <Archive className="size-3.5" aria-hidden />
+                          废弃模型
+                        </Button>
+                      ) : null}
+                    </div>
                   </CardHeader>
                   <CardContent>
                     {published ? (
@@ -1475,26 +1507,39 @@ const ProductModelPage = () => {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{confirmAction === 'discard' ? '丢弃当前草稿？' : `复制 ${modelRevisionLabel(rollbackRevision ?? 0)}？`}</AlertDialogTitle>
+            <AlertDialogTitle>
+              {confirmAction === 'discard'
+                ? '丢弃当前草稿？'
+                : confirmAction === 'deprecate-model'
+                  ? '废弃当前物模型？'
+                  : `复制 ${modelRevisionLabel(rollbackRevision ?? 0)}？`}
+            </AlertDialogTitle>
             <AlertDialogDescription>
               {confirmAction === 'discard'
                 ? '当前草稿及未发布修改会被删除，已发布的物模型版本不会受到影响。'
-                : '历史版本会覆盖当前草稿内容，之后仍需要重新校验并发布。'}
+                : confirmAction === 'deprecate-model'
+                  ? '废弃后新设备不再获得该模型，历史数据与历史报文仍可查询解析。此操作不可恢复。'
+                  : '历史版本会覆盖当前草稿内容，之后仍需要重新校验并发布。'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={busyAction != null}>取消</AlertDialogCancel>
             <AlertDialogAction
-              variant={confirmAction === 'discard' ? 'destructive' : 'default'}
+              variant={confirmAction === 'discard' || confirmAction === 'deprecate-model' ? 'destructive' : 'default'}
               disabled={busyAction != null}
               onClick={(event) => {
                 event.preventDefault();
                 if (confirmAction === 'discard') void discardDraft();
+                else if (confirmAction === 'deprecate-model') void deprecateModel();
                 else void rollbackDraft();
               }}
             >
               {busyAction ? <Spinner /> : null}
-              {confirmAction === 'discard' ? '丢弃草稿' : '复制为草稿'}
+              {confirmAction === 'discard'
+                ? '丢弃草稿'
+                : confirmAction === 'deprecate-model'
+                  ? '废弃模型'
+                  : '复制为草稿'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

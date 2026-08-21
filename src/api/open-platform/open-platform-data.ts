@@ -1544,6 +1544,40 @@ export const OpenPlatformHandlers = [
     return HttpResponse.json(ok(clone(findPublishedModel(productId)?.definition ?? null)));
   }),
 
+  http.post('/api/v1/products/:productId/model/deprecate', async ({ params, request }) => {
+    try {
+      const productId = String(params.productId);
+      const product = findProduct(productId);
+      if (!product) return fail('404', 'Product not found', 404);
+      if (product.lifecycleStatus !== 'DEPRECATED') {
+        return fail('PRODUCT_NOT_DEPRECATED', '产品尚未废弃，禁止废弃当前模型。', 409);
+      }
+
+      const current = findPublishedModel(productId);
+      if (!current) return fail('MODEL_NOT_PUBLISHED', '当前没有已发布物模型。', 409);
+
+      const body = (await request.json()) as { modelRevision?: number | string };
+      if (
+        body?.modelRevision != null &&
+        String(body.modelRevision) !== String(current.modelRevision)
+      ) {
+        return fail('VERSION_MISMATCH', '当前物模型已发生变化，请刷新后再废弃。', 412);
+      }
+
+      modelVersions.set(
+        productId,
+        (modelVersions.get(productId) ?? []).map((version) =>
+          version.modelRevision === current.modelRevision
+            ? { ...version, status: 'DEPRECATED' as const }
+            : version,
+        ),
+      );
+      return HttpResponse.json(ok(true));
+    } catch {
+      return fail('500', 'Internal server error', 500);
+    }
+  }),
+
   http.post('/api/v1/products/:productId/model/diff', async ({ params, request }) => {
     const productId = String(params.productId);
     const body = (await request.json()) as {
