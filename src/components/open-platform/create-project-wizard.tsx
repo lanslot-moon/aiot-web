@@ -108,7 +108,7 @@ export function CreateProjectWizard() {
       };
       const created = await createProject(body);
       toast.success('项目已创建。API 密钥可在「设置 → API 授权」中查看。');
-      navigate(`/projects/${created.project.projectId}/products`);
+      navigate(`/projects/${created.project.projectId}/overview`);
     } catch (err) {
       setSubmitError(err instanceof Error ? err : new Error('创建失败'));
     } finally {

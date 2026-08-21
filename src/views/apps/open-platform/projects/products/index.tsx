@@ -132,7 +132,7 @@ const ProjectProductsPage = () => {
             </Button>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 gap-2">
             {(
               [
                 ['全部', counts.all, 'bg-primary/5 border-primary/20'],
@@ -142,10 +142,13 @@ const ProjectProductsPage = () => {
             ).map(([label, value, tone]) => (
               <div
                 key={label}
-                className={cn('rounded-lg border px-3 py-3 text-center', tone)}
+                className={cn(
+                  'rounded-md border px-2.5 py-2 text-center',
+                  tone,
+                )}
               >
-                <p className="text-xl font-semibold tabular-nums">{value}</p>
-                <p className="text-xs text-muted-foreground">{label}</p>
+                <p className="text-sm font-semibold tabular-nums leading-none">{value}</p>
+                <p className="mt-1 text-[11px] text-muted-foreground">{label}</p>
               </div>
             ))}
           </div>

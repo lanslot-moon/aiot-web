@@ -95,10 +95,10 @@ const ProjectInvitationPage = () => {
               <Button
                 nativeButton={false}
                 render={
-                  <Link to={`/projects/${result.member.projectId}/products`} />
+                  <Link to={`/projects/${result.member.projectId}/overview`} />
                 }
               >
-                进入产品管理
+                进入项目
               </Button>
             </>
           ) : (
