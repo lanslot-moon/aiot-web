@@ -31,7 +31,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import BreadcrumbComp from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
-import { cn } from '@/lib/utils';
 
 type DemoProduct = {
   productId: string;
@@ -143,23 +142,20 @@ const ProjectProductsPage = () => {
             </Button>
           </div>
 
-          <div className="grid grid-cols-3 gap-2">
+          <div className="flex flex-wrap gap-2">
             {(
               [
-                ['全部', counts.all, 'bg-primary/5 border-primary/20'],
-                ['已发布', counts.published, 'bg-chart-2/12 border-chart-2/20'],
-                ['草稿', counts.draft, 'bg-chart-4/12 border-chart-4/20'],
+                ['全部', counts.all],
+                ['已发布', counts.published],
+                ['草稿', counts.draft],
               ] as const
-            ).map(([label, value, tone]) => (
+            ).map(([label, value]) => (
               <div
                 key={label}
-                className={cn(
-                  'rounded-md border px-2.5 py-2 text-center',
-                  tone,
-                )}
+                className="inline-flex items-center gap-2 rounded-lg border bg-muted/30 px-2.5 py-1.5 text-xs"
               >
-                <p className="text-sm font-semibold tabular-nums leading-none">{value}</p>
-                <p className="mt-1 text-[11px] text-muted-foreground">{label}</p>
+                <span className="text-muted-foreground">{label}</span>
+                <span className="font-semibold tabular-nums">{value}</span>
               </div>
             ))}
           </div>
