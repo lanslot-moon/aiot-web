@@ -840,6 +840,75 @@ const seedProducts: ProductRecord[] = [
   },
   {
     projectId: 'proj_smart_home',
+    productId: 'prod_lamp_draft_01',
+    productName: '客厅智能灯',
+    productModel: 'SL-200',
+    categoryCode: 'smart_lamp',
+    categoryName: '智能灯',
+    description: '用于家庭照明和亮度调节的产品。',
+    manufacturer: 'ABC IoT',
+    categoryCatalogVersion: '2026.1',
+    nodeType: 'DIRECT',
+    transport: 'MQTT',
+    authModes: ['DEVICE_SECRET'],
+    customAuthProviderId: null,
+    dataMode: 'STANDARD_MODEL',
+    bootstrapMode: 'OPEN',
+    protocolProfile: null,
+    topicTemplates: {},
+    lifecycleStatus: 'DRAFT',
+    version: 2,
+    createdAt: Date.UTC(2026, 7, 14, 10, 20, 0),
+    updatedAt: Date.UTC(2026, 7, 20, 9, 15, 0),
+  },
+  {
+    projectId: 'proj_smart_home',
+    productId: 'prod_gateway_draft_02',
+    productName: '仓储边缘网关',
+    productModel: 'GW-300',
+    categoryCode: 'gateway.edge',
+    categoryName: '边缘网关',
+    description: '用于仓储设备接入和边缘计算的网关。',
+    manufacturer: 'ABC IoT',
+    categoryCatalogVersion: '2026.1',
+    nodeType: 'GATEWAY',
+    transport: 'MQTT',
+    authModes: ['PRODUCT_SECRET'],
+    customAuthProviderId: null,
+    dataMode: 'STANDARD_MODEL',
+    bootstrapMode: 'STRICT',
+    protocolProfile: null,
+    topicTemplates: {},
+    lifecycleStatus: 'DRAFT',
+    version: 1,
+    createdAt: Date.UTC(2026, 7, 16, 13, 0, 0),
+    updatedAt: Date.UTC(2026, 7, 20, 11, 40, 0),
+  },
+  {
+    projectId: 'proj_smart_home',
+    productId: 'prod_lock_draft_02',
+    productName: '园区门禁锁',
+    productModel: 'LK-200',
+    categoryCode: 'security.lock',
+    categoryName: '智能门锁',
+    description: '用于园区门禁和访客通行管理的产品。',
+    manufacturer: 'ABC IoT',
+    categoryCatalogVersion: '2026.1',
+    nodeType: 'DIRECT',
+    transport: 'HTTPS',
+    authModes: ['PRODUCT_SECRET'],
+    customAuthProviderId: null,
+    dataMode: 'STANDARD_MODEL',
+    bootstrapMode: 'STRICT',
+    protocolProfile: null,
+    topicTemplates: {},
+    lifecycleStatus: 'DRAFT',
+    version: 1,
+    createdAt: Date.UTC(2026, 7, 18, 15, 30, 0),
+    updatedAt: Date.UTC(2026, 7, 20, 16, 10, 0),
+  },
+  {
+    projectId: 'proj_smart_home',
     productId: 'prod_sensor_01',
     productName: '温湿度传感器',
     productModel: 'STH-10',
@@ -999,8 +1068,12 @@ function seedThingModel(product: ProductRecord, revisionCount: number, draftStat
 }
 
 seedThingModel(seedProducts[0], 2, 'VALIDATED');
+seedThingModel(seedProducts[1], 2, 'DRAFT');
 seedThingModel(seedProducts[2], 1, 'DRAFT');
-seedThingModel(seedProducts[3], 1);
+seedThingModel(seedProducts[3], 1, 'DRAFT');
+seedThingModel(seedProducts[4], 1, 'DRAFT');
+seedThingModel(seedProducts[5], 1, 'DRAFT');
+seedThingModel(seedProducts[6], 1);
 
 /** accessToken → accountId */
 const sessions = new Map<string, string>();
