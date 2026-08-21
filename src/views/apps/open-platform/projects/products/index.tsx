@@ -204,7 +204,7 @@ const ProjectProductsPage = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>产品</TableHead>
-                  <TableHead>产品 ID</TableHead>
+                  <TableHead className="w-[8rem]">产品 ID</TableHead>
                   <TableHead>型号</TableHead>
                   <TableHead>品类</TableHead>
                   <TableHead>生命周期</TableHead>
@@ -265,9 +265,12 @@ const ProjectProductsPage = () => {
                           {product.productName}
                         </Button>
                       </TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        <div className="flex items-center gap-0.5">
-                          <code className="font-mono text-xs text-muted-foreground">
+                      <TableCell className="w-[8rem] whitespace-nowrap">
+                        <div className="flex max-w-[7rem] items-center gap-0.5">
+                          <code
+                            className="min-w-0 flex-1 truncate font-mono text-xs text-muted-foreground"
+                            title={product.productId}
+                          >
                             {product.productId}
                           </code>
                           <CopyIdButton value={product.productId} label="Product ID" />
