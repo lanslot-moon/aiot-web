@@ -950,7 +950,7 @@ const ProductModelPage = () => {
                     <div>
                       <CardTitle className="flex items-center gap-2 text-base">
                         <Braces className="size-4" aria-hidden />
-                        {readOnlyDefinition ? '已发布物模型' : '物模型草稿'}
+                        {readOnlyDefinition ? '已发布物模型' : '当前物模型草稿'}
                         {draft && !publishedOnly ? (
                           <Badge variant={draft.status === 'VALIDATED' ? 'secondary' : 'outline'}>
                             {labelOf(MODEL_DRAFT_STATUS_LABEL, draft.status)}
