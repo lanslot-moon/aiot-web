@@ -204,9 +204,9 @@ const ProjectProductsPage = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>产品</TableHead>
-                  <TableHead className="w-[8rem]">产品 ID</TableHead>
+                  <TableHead className="w-[12rem]">产品 ID</TableHead>
                   <TableHead>型号</TableHead>
-                  <TableHead>品类</TableHead>
+                  <TableHead className="w-[12rem]">品类</TableHead>
                   <TableHead>生命周期</TableHead>
                   <TableHead>创建时间</TableHead>
                   <TableHead>更新时间</TableHead>
@@ -265,8 +265,8 @@ const ProjectProductsPage = () => {
                           {product.productName}
                         </Button>
                       </TableCell>
-                      <TableCell className="w-[8rem] whitespace-nowrap">
-                        <div className="flex max-w-[7rem] items-center gap-0.5">
+                      <TableCell className="w-[12rem] whitespace-nowrap">
+                        <div className="flex max-w-[11rem] items-center gap-0.5">
                           <code
                             className="min-w-0 flex-1 truncate font-mono text-xs text-muted-foreground"
                             title={product.productId}
@@ -277,7 +277,7 @@ const ProjectProductsPage = () => {
                         </div>
                       </TableCell>
                       <TableCell>{product.productModel || '—'}</TableCell>
-                      <TableCell>
+                      <TableCell className="w-[12rem]">
                         <span className="text-sm">
                           {product.categoryName || product.categoryCode || '未分类'}
                         </span>
