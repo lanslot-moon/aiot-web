@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
 import {
   ArrowLeft,
@@ -21,6 +21,10 @@ import { toast } from 'sonner';
 
 import { ApiErrorAlert } from '@/components/open-platform/api-error-alert';
 import { CopyIdButton } from '@/components/open-platform/copy-id-button';
+import {
+  ParserProfileSelect,
+  ParserProfileVersionSelect,
+} from '@/components/open-platform/parser-profile-selector';
 import { ProductLifecycleBadge } from '@/components/open-platform/product-lifecycle-badge';
 import { ProjectWorkspaceShell } from '@/components/open-platform/project-workspace-shell';
 import { Button } from '@/components/ui/button';
@@ -73,7 +77,11 @@ import {
   PRODUCT_NODE_TYPE_LABEL,
   PRODUCT_TRANSPORT_LABEL,
 } from '@/lib/open-platform-labels';
+import { cn } from '@/lib/utils';
 import type {
+  CursorResult,
+  ParserProfileVersionView,
+  ParserProfileView,
   ProductUpdateRequest,
   ProductDetailView,
   ProtocolProfileRefView,
@@ -200,7 +208,7 @@ function productEditForm(product: ProductDetailView): ProductEditForm {
     description: product.description ?? '',
     nodeType: product.nodeType ?? '',
     transport: product.transport ?? '',
-    authModes: product.authModes ?? [],
+    authModes: Array.from(new Set(['DEVICE_SECRET', ...(product.authModes ?? [])])),
     dataMode: product.dataMode ?? 'STANDARD_MODEL',
     bootstrapMode: product.bootstrapMode ?? 'OPEN',
     profileId: product.protocolProfile?.profileId ?? '',
@@ -209,12 +217,14 @@ function productEditForm(product: ProductDetailView): ProductEditForm {
 }
 
 function ProductEditDialog({
+  projectId,
   open,
   product,
   submitting,
   onOpenChange,
   onSubmit,
 }: {
+  projectId: string;
   open: boolean;
   product: ProductDetailView;
   submitting: boolean;
@@ -228,17 +238,55 @@ function ProductEditDialog({
   }, [open, product]);
 
   const customPayload = form.dataMode === 'CUSTOM_PAYLOAD';
+  const {
+    data: parserProfilesData,
+    isLoading: parserProfilesLoading,
+  } = useSWR<CursorResult<ParserProfileView>>(
+    customPayload ? '/api/v1/parser-profiles?pageSize=100' : null,
+    openPlatformGetFetcher,
+    { revalidateOnFocus: false },
+  );
+  const parserProfiles = useMemo(
+    () => (parserProfilesData?.items ?? []).filter((profile) => profile.currentVersion),
+    [parserProfilesData],
+  );
+  const selectedParserProfile = parserProfiles.find(
+    (profile) => profile.profileId === form.profileId,
+  );
+  const {
+    data: parserProfileVersions,
+    isLoading: parserProfileVersionsLoading,
+  } = useSWR<ParserProfileVersionView[]>(
+    selectedParserProfile
+      ? `/api/v1/parser-profiles/${encodeURIComponent(selectedParserProfile.profileId)}/versions`
+      : null,
+    openPlatformGetFetcher,
+    { revalidateOnFocus: false },
+  );
+  const publishedParserProfileVersions = useMemo(
+    () => (parserProfileVersions ?? []).filter((version) => version.versionStatus === 'PUBLISHED'),
+    [parserProfileVersions],
+  );
 
   const updateField = <K extends keyof ProductEditForm>(field: K, value: ProductEditForm[K]) => {
     setForm((current) => ({ ...current, [field]: value }));
   };
 
   const toggleAuthMode = (code: string, checked: boolean) => {
+    if (code === 'DEVICE_SECRET' && !checked) return;
     setForm((current) => ({
       ...current,
       authModes: checked
         ? [...new Set([...current.authModes, code])]
         : current.authModes.filter((item) => item !== code),
+    }));
+  };
+
+  const selectParserProfile = (profileId: string | null) => {
+    setForm((current) => ({
+      ...current,
+      profileId: profileId ?? '',
+      profileVersion: '',
     }));
   };
 
@@ -265,7 +313,7 @@ function ProductEditDialog({
 
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => !submitting && onOpenChange(nextOpen)}>
-      <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto sm:max-w-2xl">
+      <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto !max-w-[min(94vw,768px)]">
         <DialogHeader>
           <DialogTitle>编辑产品</DialogTitle>
           <DialogDescription>
@@ -378,39 +426,63 @@ function ProductEditDialog({
             <div className="grid gap-2">
               <span className="text-sm font-medium">认证方式</span>
               <div className="grid gap-2 sm:grid-cols-3">
-                {AUTH_MODE_OPTIONS.map(([code, label]) => (
-                  <label key={code} className="flex items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm">
+                {AUTH_MODE_OPTIONS.map(([code, label]) => {
+                  const required = code === 'DEVICE_SECRET';
+                  return (
+                  <label key={code} className={cn(
+                    'flex items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm',
+                    required && 'cursor-not-allowed bg-muted/40',
+                  )}>
                     <Checkbox
-                      checked={form.authModes.includes(code)}
+                      checked={required || form.authModes.includes(code)}
+                      disabled={required}
                       onCheckedChange={(checked) => toggleAuthMode(code, checked === true)}
                     />
                     <span>{label}</span>
+                    {required ? <span className="ml-auto text-xs text-muted-foreground">必选</span> : null}
                   </label>
-                ))}
+                )})}
               </div>
             </div>
 
             {customPayload ? (
               <div className="grid gap-4 border-t pt-3 sm:grid-cols-2">
                 <label className="grid gap-1.5 text-sm">
-                  <span className="font-medium">Parser Profile ID</span>
-                  <Input
+                  <span className="font-medium">Parser Profile</span>
+                  <ParserProfileSelect
+                    profiles={parserProfiles}
                     value={form.profileId}
-                    onChange={(event) => updateField('profileId', event.target.value)}
-                    placeholder="填写已发布 Profile 标识"
+                    onValueChange={selectParserProfile}
+                    disabled={parserProfilesLoading || parserProfiles.length === 0}
                   />
                 </label>
                 <label className="grid gap-1.5 text-sm">
                   <span className="font-medium">Profile 版本</span>
-                  <Input
+                  <ParserProfileVersionSelect
+                    versions={publishedParserProfileVersions}
                     value={form.profileVersion}
-                    onChange={(event) => updateField('profileVersion', event.target.value)}
-                    placeholder="例如：v1"
+                    placeholder={form.profileId ? '选择已发布版本' : '先选择 Profile'}
+                    onValueChange={(value) => updateField('profileVersion', value ?? '')}
+                    disabled={
+                      !form.profileId ||
+                      parserProfileVersionsLoading ||
+                      publishedParserProfileVersions.length === 0
+                    }
                   />
                 </label>
                 <p className="text-xs text-muted-foreground sm:col-span-2">
                   自定义报文必须绑定已发布且可用的 Parser Profile，否则产品发布检查不会通过。
                 </p>
+                <Button
+                  type="button"
+                  variant="link"
+                  size="sm"
+                  className="h-auto justify-start px-0 sm:col-span-2"
+                  nativeButton={false}
+                  render={<Link to={`/projects/${projectId}/parser-profiles`} />}
+                >
+                  前往管理解析 Profile
+                </Button>
               </div>
             ) : null}
           </div>
@@ -812,12 +884,30 @@ const ProductDetailPage = () => {
               </Card>
 
               <Card className="lg:col-span-2">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <Router className="size-4" aria-hidden />
-                    连接契约
-                  </CardTitle>
-                  <CardDescription>用于发布前补齐设备接入方式和消息协议。</CardDescription>
+                <CardHeader className="flex flex-row items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <Router className="size-4" aria-hidden />
+                      连接契约
+                    </CardTitle>
+                    <CardDescription>
+                      {product.lifecycleStatus === 'DRAFT'
+                        ? '请点击右侧“配置连接”填写设备接入方式和消息协议。'
+                        : '连接配置需在产品草稿阶段填写，发布后仅支持查看。'}
+                    </CardDescription>
+                  </div>
+                  {product.lifecycleStatus === 'DRAFT' ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0 gap-1"
+                      onClick={() => setEditOpen(true)}
+                    >
+                      <Settings2 className="size-3.5" aria-hidden />
+                      配置连接
+                    </Button>
+                  ) : null}
                 </CardHeader>
                 <CardContent>
                   <div className="grid gap-2 rounded-lg border bg-muted/20 p-2 sm:grid-cols-2 lg:grid-cols-4">
@@ -872,6 +962,7 @@ const ProductDetailPage = () => {
 
       {product ? (
         <ProductEditDialog
+          projectId={projectId}
           open={editOpen}
           product={product}
           submitting={busyAction === 'save'}

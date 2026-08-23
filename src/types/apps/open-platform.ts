@@ -102,6 +102,14 @@ export interface ProductCreateRequest {
   categoryType?: 'STANDARD' | 'CUSTOM';
   categoryCode?: string;
   productModel?: string;
+  nodeType: string;
+  transport: string;
+  authModes: string[];
+  customAuthProviderId?: string | null;
+  dataMode: string;
+  bootstrapMode: string;
+  protocolProfile?: ProtocolProfileRefView | null;
+  topicTemplates?: Record<string, string>;
 }
 
 /** Product metadata and connection contract update for DRAFT products. */
@@ -266,6 +274,95 @@ export interface ProtocolProfileRefView {
   profileVersion: string;
 }
 
+/** Tenant-scoped protocol payload parser profile metadata. */
+export interface ParserProfileView {
+  profileId: string;
+  tenantId: string;
+  profileName: string;
+  protocolCode: string;
+  currentVersion: string | null;
+  version: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export type ParserProfileVersionStatus = 'DRAFT' | 'PUBLISHED' | 'DEPRECATED' | string;
+export type ParserProfileMappingType =
+  | 'BOOLEAN'
+  | 'INTEGER'
+  | 'NUMBER'
+  | 'STRING'
+  | 'BINARY'
+  | 'OBJECT'
+  | 'ARRAY';
+export type ParserProfileDirection = 'UPLINK' | 'DOWNLINK' | 'BIDIRECTIONAL';
+
+export interface ParserProfileConversion {
+  scale?: number | null;
+  offset?: number | null;
+}
+
+export interface ParserProfileMappingRule {
+  code: string;
+  type?: ParserProfileMappingType;
+  sourcePath?: string | null;
+  direction?: ParserProfileDirection | null;
+  conversion?: ParserProfileConversion | null;
+}
+
+export interface ParserProfileMapping {
+  mappings: Record<string, ParserProfileMappingRule>;
+  codec?: Record<string, unknown> | null;
+}
+
+export interface ParserProfileVersionView {
+  profileId: string;
+  profileVersion: string;
+  versionStatus: ParserProfileVersionStatus;
+  mapping: ParserProfileMapping;
+  versionDigest: string;
+  publishedAt: number | null;
+  createdAt?: number | null;
+  updatedAt?: number | null;
+}
+
+export interface ParserProfileDiffItemView {
+  source: string;
+  code: string;
+  kind: 'ADDED' | 'REMOVED' | 'MODIFIED' | string;
+  changedField?: string | null;
+  oldValue?: unknown;
+  newValue?: unknown;
+}
+
+export interface ParserProfileDiffView {
+  added: ParserProfileDiffItemView[];
+  removed: ParserProfileDiffItemView[];
+  modified: ParserProfileDiffItemView[];
+}
+
+export interface ParserProfileValidationView {
+  valid: boolean;
+  details?: Array<{
+    instanceLocation?: string;
+    message: string;
+    keyword?: string;
+  }>;
+}
+
+export interface ParserProfileTestIssueView {
+  code: string;
+  message: string;
+}
+
+export interface ParserProfileTestView {
+  success: boolean;
+  mapped: Record<string, unknown>;
+  issues: ParserProfileTestIssueView[];
+  unparsedFields: string[];
+  failureSampleId?: string | null;
+}
+
 export interface ThingModelProperty {
   code: string;
   title: string;
@@ -310,6 +407,8 @@ export interface ModelVersionView {
   modelRevision: number;
   modelDigest: string;
   status: 'PUBLISHED' | 'DEPRECATED' | string;
+  /** 发布时间（毫秒时间戳），历史版本保留原发布时间。 */
+  publishedAt?: number | null;
 }
 
 export interface ModelCapabilitySummaryView {

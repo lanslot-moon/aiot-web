@@ -2,9 +2,11 @@ import { useEffect, useMemo, useState } from 'react';
 import useSWR from 'swr';
 import {
   ArrowLeft,
+  ArrowRight,
   Archive,
   Braces,
   Check,
+  CheckCircle2,
   GitCompare,
   History,
   Package,
@@ -84,8 +86,18 @@ import type {
   ThingModelProperty,
 } from '@/types/apps/open-platform';
 
-type ConfirmAction = 'discard' | 'rollback' | 'deprecate-model' | null;
+type ConfirmAction =
+  | 'publish'
+  | 'discard'
+  | 'remove-capability'
+  | 'rollback'
+  | 'deprecate-model'
+  | null;
 type CapabilityDialogKind = ThingModelCapabilityKind | null;
+type PendingCapabilityRemoval = {
+  kind: ThingModelCapabilityKind;
+  code: string;
+} | null;
 type CapabilityInputMode = 'form' | 'json';
 type CapabilityPropertyType = 'string' | 'integer' | 'number' | 'boolean' | 'object';
 type CapabilityAccess = 'READ_ONLY' | 'WRITE_ONLY' | 'READ_WRITE';
@@ -383,6 +395,17 @@ function modelRevisionLabel(revision: number) {
   return `Revision ${revision}`;
 }
 
+function formatModelPublishedAt(value?: number | null) {
+  return value == null ? '未记录' : new Date(value).toLocaleString('zh-CN');
+}
+
+function modelCapabilityTypeLabel(type: string) {
+  if (type === 'PROPERTY') return '属性';
+  if (type === 'ACTION') return '动作';
+  if (type === 'EVENT') return '事件';
+  return type;
+}
+
 function DiffItems({
   label,
   items,
@@ -392,32 +415,55 @@ function DiffItems({
   items: ModelDiffView['added'];
   tone: 'positive' | 'negative' | 'neutral';
 }) {
-  const toneClass = {
-    positive: 'border-emerald-200 bg-emerald-50/60 dark:border-emerald-900 dark:bg-emerald-950/30',
-    negative: 'border-destructive/30 bg-destructive/5',
-    neutral: 'border-border bg-muted/20',
+  const iconClass = {
+    positive: 'text-emerald-600 dark:text-emerald-400',
+    negative: 'text-destructive',
+    neutral: 'text-muted-foreground',
   }[tone];
+  const Icon = tone === 'positive' ? Plus : tone === 'negative' ? Trash2 : RefreshCw;
+  const description =
+    tone === 'positive'
+      ? '目标版本新增的能力'
+      : tone === 'negative'
+        ? '目标版本移除的能力'
+        : '两个版本定义发生变化的能力';
 
   return (
-    <div className={`rounded-lg border p-3 ${toneClass}`}>
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-medium">{label}</p>
-        <span className="font-mono text-xs text-muted-foreground">{items.length}</span>
+    <section className="h-full overflow-hidden rounded-lg border">
+      <div className="flex items-center justify-between gap-3 border-b bg-muted/20 px-3 py-2.5">
+        <div className="flex min-w-0 items-center gap-2">
+          <Icon className={`size-3.5 shrink-0 ${iconClass}`} aria-hidden />
+          <div className="min-w-0">
+            <p className="text-sm font-medium">{label}</p>
+            <p className="text-[11px] text-muted-foreground">{description}</p>
+          </div>
+        </div>
+        <Badge variant="outline" className="shrink-0">{items.length}</Badge>
       </div>
       {items.length > 0 ? (
-        <div className="mt-2 space-y-1.5">
+        <div className="divide-y">
           {items.map((item) => (
-            <div key={`${item.type}-${item.code}`} className="flex flex-wrap items-center gap-2 text-xs">
-              <span>{item.title}</span>
-              <code className="font-mono text-[11px] text-muted-foreground">{item.code}</code>
-              {item.required ? <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">必选</Badge> : null}
+            <div key={`${item.type}-${item.code}`} className="flex items-start gap-3 px-3 py-2.5">
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <span className="text-sm font-medium">{item.title}</span>
+                  <code className="font-mono text-[11px] text-muted-foreground">{item.code}</code>
+                </div>
+                <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                  <Badge variant="outline" className="h-5 rounded-md px-1.5 text-[10px]">
+                    {modelCapabilityTypeLabel(item.type)}
+                  </Badge>
+                  {item.required ? <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">必选</Badge> : null}
+                  {tone === 'neutral' ? <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">已修改</Badge> : null}
+                </div>
+              </div>
             </div>
           ))}
         </div>
       ) : (
-        <p className="mt-2 text-xs text-muted-foreground">没有差异</p>
+        <p className="px-3 py-3 text-xs text-muted-foreground">暂无变化</p>
       )}
-    </div>
+    </section>
   );
 }
 
@@ -502,6 +548,14 @@ const ProductModelPage = () => {
     productId ? versionsKey(productId) : null,
     openPlatformGetFetcher,
   );
+  const publishedVersions = useMemo(
+    () => (versions ?? []).filter((version) => ['PUBLISHED', 'DEPRECATED'].includes(version.status)),
+    [versions],
+  );
+  const orderedVersions = useMemo(
+    () => [...publishedVersions].sort((left, right) => left.modelRevision - right.modelRevision),
+    [publishedVersions],
+  );
   const { data: validation, mutate: mutateValidation } = useSWR<SchemaValidationView | null>(
     productId ? validationKey(productId) : null,
     openPlatformGetFetcher,
@@ -519,6 +573,8 @@ const ProductModelPage = () => {
   const [selectedMergeCodes, setSelectedMergeCodes] = useState<string[]>([]);
   const [viewingRevision, setViewingRevision] = useState<number | null>(null);
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
+  const [pendingCapabilityRemoval, setPendingCapabilityRemoval] =
+    useState<PendingCapabilityRemoval>(null);
   const [rollbackRevision, setRollbackRevision] = useState<number | null>(null);
   const [diffOpen, setDiffOpen] = useState(false);
   const [diffFrom, setDiffFrom] = useState('');
@@ -539,17 +595,17 @@ const ProductModelPage = () => {
   const currentDefinition = localDefinition ?? draft?.definition ?? null;
   const displayDefinition = publishedOnly
     ? published ?? null
-    : currentDefinition ?? published ?? null;
-  const readOnlyDefinition = publishedOnly || (!currentDefinition && Boolean(published));
+    : currentDefinition;
+  const readOnlyDefinition = publishedOnly;
   const isCustomCategory =
     product?.categoryType === 'CUSTOM' || product?.categoryCode === 'CUSTOM';
   const targetVersion = product?.categoryCatalogVersion ?? '';
   const publishedVersion = useMemo(
     () => {
-      const publishedVersions = (versions ?? []).filter((version) => version.status === 'PUBLISHED');
-      return publishedVersions[publishedVersions.length - 1] ?? versions?.[versions.length - 1];
+      const currentPublishedVersions = orderedVersions.filter((version) => version.status === 'PUBLISHED');
+      return currentPublishedVersions[currentPublishedVersions.length - 1] ?? orderedVersions[orderedVersions.length - 1];
     },
-    [versions],
+    [orderedVersions],
   );
   const mergeDiffKey =
     mergeOpen && product && targetVersion
@@ -565,8 +621,25 @@ const ProductModelPage = () => {
     versionDetailKey,
     openPlatformGetFetcher,
   );
+  const diffFromRevision = Number(diffFrom);
+  const diffToRevision = Number(diffTo);
+  const diffSelectionValid =
+    Number.isInteger(diffFromRevision) &&
+    Number.isInteger(diffToRevision) &&
+    diffFromRevision > 0 &&
+    diffFromRevision < diffToRevision;
+  const diffSelectionError =
+    diffOpen && diffFrom && diffTo && !diffSelectionValid
+      ? '基线版本必须小于目标版本。'
+      : null;
+  const diffFromVersion = orderedVersions.find(
+    (version) => version.modelRevision === diffFromRevision,
+  );
+  const diffToVersion = orderedVersions.find(
+    (version) => version.modelRevision === diffToRevision,
+  );
   const diffKey =
-    diffOpen && diffFrom && diffTo
+    diffOpen && diffSelectionValid
       ? `${modelKey(productId)}/diff?fromRevision=${diffFrom}&toRevision=${diffTo}`
       : null;
   const { data: diffResult, error: diffError } = useSWR<ModelDiffView>(
@@ -672,6 +745,7 @@ const ProductModelPage = () => {
         });
         setDirty(false);
         setLocalDefinition(null);
+        setConfirmAction(null);
       },
       '物模型已发布为新 Revision。',
     );
@@ -742,7 +816,7 @@ const ProductModelPage = () => {
     );
   };
 
-  const removeCapability = (kind: ThingModelCapabilityKind, code: string) => {
+  const applyCapabilityRemoval = (kind: ThingModelCapabilityKind, code: string) => {
     if (!draft || !currentDefinition) return;
     setLocalDefinition((current) => {
       if (!current) return current;
@@ -757,6 +831,19 @@ const ProductModelPage = () => {
     setDirty(true);
     setActionError(null);
     toast.info(`已移除“${code}”，保存草稿后才会生效。`);
+  };
+
+  const requestCapabilityRemoval = (kind: ThingModelCapabilityKind, code: string) => {
+    if (!draft || !currentDefinition) return;
+    setPendingCapabilityRemoval({ kind, code });
+    setConfirmAction('remove-capability');
+  };
+
+  const confirmCapabilityRemoval = () => {
+    if (!pendingCapabilityRemoval) return;
+    applyCapabilityRemoval(pendingCapabilityRemoval.kind, pendingCapabilityRemoval.code);
+    setPendingCapabilityRemoval(null);
+    setConfirmAction(null);
   };
 
   const openCapabilityDialog = (kind: ThingModelCapabilityKind) => {
@@ -854,9 +941,9 @@ const ProductModelPage = () => {
   };
 
   const openDiffDialog = () => {
-    if (!versions || versions.length < 2) return;
-    setDiffFrom(String(versions[0].modelRevision));
-    setDiffTo(String(versions[versions.length - 1]?.modelRevision));
+    if (orderedVersions.length < 2) return;
+    setDiffFrom(String(orderedVersions[0].modelRevision));
+    setDiffTo(String(orderedVersions[orderedVersions.length - 1].modelRevision));
     setDiffOpen(true);
   };
 
@@ -998,7 +1085,7 @@ const ProductModelPage = () => {
                             {busyAction === 'validate' ? <Spinner /> : <Check className="size-3.5" aria-hidden />}
                             校验草稿
                           </Button>
-                          <Button type="button" size="sm" className="gap-1" onClick={() => void publishDraft()} disabled={!draft || dirty || draft.status !== 'VALIDATED' || busyAction != null}>
+                          <Button type="button" size="sm" className="gap-1" onClick={() => setConfirmAction('publish')} disabled={!draft || dirty || draft.status !== 'VALIDATED' || busyAction != null}>
                             {busyAction === 'publish' ? <Spinner /> : <Upload className="size-3.5" aria-hidden />}
                             发布模型
                           </Button>
@@ -1036,7 +1123,7 @@ const ProductModelPage = () => {
                     <>
                       <ThingModelCapabilityTabs
                         definition={displayDefinition}
-                        onRemove={draft && !readOnlyDefinition ? removeCapability : undefined}
+                        onRemove={draft && !readOnlyDefinition ? requestCapabilityRemoval : undefined}
                         onAdd={draft && !readOnlyDefinition ? openCapabilityDialog : undefined}
                       />
                       <ValidationResult result={readOnlyDefinition ? null : validation} />
@@ -1084,11 +1171,14 @@ const ProductModelPage = () => {
               </Card>
 
               <div className="space-y-4">
-                <Card>
-                  <CardHeader>
+                <Card className={published ? 'border-emerald-500/40' : undefined}>
+                  <CardHeader className={published ? 'bg-emerald-500/[0.03]' : undefined}>
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div>
-                        <CardTitle className="text-base">当前已发布模型</CardTitle>
+                        <CardTitle className="flex items-center gap-2 text-base">
+                          <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400" aria-hidden />
+                          当前已发布模型
+                        </CardTitle>
                         <CardDescription>设备运行时使用的不可变 Revision。</CardDescription>
                       </div>
                       {product.lifecycleStatus === 'DEPRECATED' && published && publishedVersion?.status === 'PUBLISHED' ? (
@@ -1108,10 +1198,21 @@ const ProductModelPage = () => {
                   </CardHeader>
                   <CardContent>
                     {published ? (
-                      <div className="space-y-3 rounded-lg border bg-muted/20 px-3 py-3 text-sm">
+                      <div className="space-y-3 rounded-lg border border-emerald-500/40 bg-emerald-500/[0.05] px-3 py-3 text-sm shadow-sm dark:bg-emerald-500/[0.1]">
                         <div className="flex flex-wrap items-center justify-between gap-2">
-                          <span className="font-medium">{modelRevisionLabel(published.modelRevision)}</span>
-                          <Badge variant="secondary">{labelOf(MODEL_REVISION_STATUS_LABEL, publishedVersion?.status)}</Badge>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{modelRevisionLabel(published.modelRevision)}</span>
+                            <Badge
+                              variant="outline"
+                              className="border-emerald-500/40 bg-emerald-500/[0.08] text-emerald-700 dark:text-emerald-300"
+                            >
+                              <CheckCircle2 className="size-3" aria-hidden />
+                              {labelOf(MODEL_REVISION_STATUS_LABEL, publishedVersion?.status)}
+                            </Badge>
+                          </div>
+                          <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-300">
+                            设备运行时当前使用
+                          </span>
                         </div>
                         <ThingModelCapabilitySummary definition={published} />
                         <code className="block break-all text-[11px] text-muted-foreground">{published.modelDigest}</code>
@@ -1132,22 +1233,26 @@ const ProductModelPage = () => {
                           <History className="size-4" aria-hidden />
                           版本历史
                         </CardTitle>
-                        <CardDescription>查看、比较或复制历史版本。</CardDescription>
+                          <CardDescription>查看、比较或复制已发布版本。</CardDescription>
                       </div>
-                      <Button type="button" variant="ghost" size="icon-sm" aria-label="比较物模型版本" title="比较物模型版本" onClick={openDiffDialog} disabled={!versions || versions.length < 2}>
+                      <Button type="button" variant="outline" size="sm" className="gap-1" aria-label="比较物模型版本" title="比较物模型版本" onClick={openDiffDialog} disabled={orderedVersions.length < 2}>
                         <GitCompare className="size-4" aria-hidden />
+                        差异比较
                       </Button>
                     </div>
                   </CardHeader>
                   <CardContent>
-                    {versions && versions.length > 0 ? (
+                    {orderedVersions.length > 0 ? (
                       <div className="space-y-2">
-                        {versions.slice().reverse().map((version) => (
+                        {orderedVersions.slice().reverse().map((version) => (
                           <div key={version.modelRevision} className="rounded-lg border px-3 py-2.5">
                             <div className="flex flex-wrap items-center justify-between gap-2">
                               <div>
                                 <p className="text-sm font-medium">{modelRevisionLabel(version.modelRevision)}</p>
                                 <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">{version.modelDigest}</p>
+                                <p className="mt-1 text-[11px] text-muted-foreground">
+                                  发布时间：{formatModelPublishedAt(version.publishedAt)}
+                                </p>
                               </div>
                               <Badge variant={version.status === 'PUBLISHED' ? 'secondary' : 'outline'}>
                                 {labelOf(MODEL_REVISION_STATUS_LABEL, version.status)}
@@ -1493,40 +1598,84 @@ const ProductModelPage = () => {
       </Dialog>
 
       <Dialog open={diffOpen} onOpenChange={setDiffOpen}>
-        <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto sm:max-w-2xl">
+        <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto !max-w-[min(94vw,896px)]">
           <DialogHeader>
-            <DialogTitle>比较物模型版本</DialogTitle>
-            <DialogDescription>比较两个不可变 Revision 的能力增删和定义变化。</DialogDescription>
+            <DialogTitle className="flex items-center gap-2">
+              <GitCompare className="size-4" aria-hidden />
+              比较物模型版本
+            </DialogTitle>
+            <DialogDescription>以基线版本为参照，查看目标版本新增、移除和定义变更的能力。</DialogDescription>
           </DialogHeader>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="grid gap-1.5">
-              <span className="text-sm font-medium">基线版本</span>
-              <Select value={diffFrom} onValueChange={(value) => setDiffFrom(value ?? '')}>
-                <SelectTrigger className="w-full"><SelectValue placeholder="选择基线版本" /></SelectTrigger>
-                <SelectContent>
-                  {(versions ?? []).map((version) => <SelectItem key={`from-${version.modelRevision}`} value={String(version.modelRevision)}>{modelRevisionLabel(version.modelRevision)}</SelectItem>)}
-                </SelectContent>
-              </Select>
+          <div className="space-y-3">
+            <div className="grid gap-3 md:grid-cols-[minmax(15rem,0.9fr)_minmax(0,1.25fr)]">
+              <div className="rounded-lg border bg-muted/20 p-3">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="grid gap-1.5">
+                    <span className="text-sm font-medium">基线版本</span>
+                    <Select value={diffFrom} onValueChange={(value) => setDiffFrom(value ?? '')}>
+                      <SelectTrigger className="w-full"><SelectValue placeholder="选择基线版本" /></SelectTrigger>
+                      <SelectContent>
+                        {orderedVersions.map((version) => <SelectItem key={`from-${version.modelRevision}`} value={String(version.modelRevision)}>{modelRevisionLabel(version.modelRevision)}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-1.5">
+                    <span className="text-sm font-medium">目标版本</span>
+                    <Select value={diffTo} onValueChange={(value) => setDiffTo(value ?? '')}>
+                      <SelectTrigger className="w-full"><SelectValue placeholder="选择目标版本" /></SelectTrigger>
+                      <SelectContent>
+                        {orderedVersions.map((version) => <SelectItem key={`to-${version.modelRevision}`} value={String(version.modelRevision)}>{modelRevisionLabel(version.modelRevision)}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+
+              {diffFromVersion && diffToVersion ? (
+                <div className="rounded-lg border bg-muted/20 px-3 py-2.5">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[11px] text-muted-foreground">基线版本</p>
+                      <p className="mt-0.5 font-medium">{modelRevisionLabel(diffFromVersion.modelRevision)}</p>
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">
+                        发布时间：{formatModelPublishedAt(diffFromVersion.publishedAt)}
+                      </p>
+                    </div>
+                    <ArrowRight className="mx-auto size-4 shrink-0 rotate-90 text-muted-foreground sm:mx-0 sm:rotate-0" aria-hidden />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[11px] text-muted-foreground">目标版本</p>
+                      <p className="mt-0.5 font-medium">{modelRevisionLabel(diffToVersion.modelRevision)}</p>
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">
+                        发布时间：{formatModelPublishedAt(diffToVersion.publishedAt)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
             </div>
-            <div className="grid gap-1.5">
-              <span className="text-sm font-medium">目标版本</span>
-              <Select value={diffTo} onValueChange={(value) => setDiffTo(value ?? '')}>
-                <SelectTrigger className="w-full"><SelectValue placeholder="选择目标版本" /></SelectTrigger>
-                <SelectContent>
-                  {(versions ?? []).map((version) => <SelectItem key={`to-${version.modelRevision}`} value={String(version.modelRevision)}>{modelRevisionLabel(version.modelRevision)}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
+
+            {diffError ? <ApiErrorAlert message={(diffError as Error).message} /> : diffSelectionError ? (
+              <p className="rounded-lg border border-dashed px-3 py-4 text-center text-xs text-muted-foreground">
+                {diffSelectionError}
+              </p>
+            ) : diffResult ? (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2 px-1">
+                  <p className="text-sm font-medium">差异结果</p>
+                  <p className="text-xs text-muted-foreground">
+                    共 {diffResult.added.length + diffResult.removed.length + diffResult.modified.length} 项变化
+                  </p>
+                </div>
+                <div className="grid gap-2 md:grid-cols-3">
+                  <DiffItems label="新增能力" items={diffResult.added} tone="positive" />
+                  <DiffItems label="移除能力" items={diffResult.removed} tone="negative" />
+                  <DiffItems label="定义变更" items={diffResult.modified} tone="neutral" />
+                </div>
+              </div>
+            ) : (
+              <Skeleton className="h-36 w-full" />
+            )}
           </div>
-          {diffError ? <ApiErrorAlert message={(diffError as Error).message} /> : diffResult ? (
-            <div className="grid gap-3 sm:grid-cols-3">
-              <DiffItems label="新增能力" items={diffResult.added} tone="positive" />
-              <DiffItems label="移除能力" items={diffResult.removed} tone="negative" />
-              <DiffItems label="定义变更" items={diffResult.modified} tone="neutral" />
-            </div>
-          ) : (
-            <Skeleton className="h-36 w-full" />
-          )}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setDiffOpen(false)}>关闭</Button>
           </DialogFooter>
@@ -1538,6 +1687,7 @@ const ProductModelPage = () => {
         onOpenChange={(open) => {
           if (!open && busyAction == null) {
             setConfirmAction(null);
+            setPendingCapabilityRemoval(null);
             setRollbackRevision(null);
           }
         }}
@@ -1545,38 +1695,58 @@ const ProductModelPage = () => {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {confirmAction === 'discard'
-                ? '丢弃当前草稿？'
-                : confirmAction === 'deprecate-model'
-                  ? '废弃当前物模型？'
-                  : `复制 ${modelRevisionLabel(rollbackRevision ?? 0)}？`}
+              {confirmAction === 'publish'
+                ? '确认发布物模型？'
+                : confirmAction === 'remove-capability'
+                  ? `确认删除“${pendingCapabilityRemoval?.code ?? ''}”能力？`
+                  : confirmAction === 'discard'
+                    ? '丢弃当前草稿？'
+                    : confirmAction === 'deprecate-model'
+                      ? '废弃当前物模型？'
+                      : `复制 ${modelRevisionLabel(rollbackRevision ?? 0)}？`}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {confirmAction === 'discard'
-                ? '当前草稿及未发布修改会被删除，已发布的物模型版本不会受到影响。'
-                : confirmAction === 'deprecate-model'
-                  ? '废弃后新设备不再获得该模型，历史数据与历史报文仍可查询解析。此操作不可恢复。'
-                  : '历史版本会覆盖当前草稿内容，之后仍需要重新校验并发布。'}
+              {confirmAction === 'publish'
+                ? '发布后会生成新的 Revision，当前草稿将被清除，设备运行时会使用这次发布的模型。'
+                : confirmAction === 'remove-capability'
+                  ? '该能力会从当前草稿中删除，保存草稿后才会生效；已发布的物模型版本不会受到影响。'
+                  : confirmAction === 'discard'
+                    ? '当前草稿及未发布修改会被删除，已发布的物模型版本不会受到影响。'
+                    : confirmAction === 'deprecate-model'
+                      ? '废弃后新设备不再获得该模型，历史数据与历史报文仍可查询解析。此操作不可恢复。'
+                      : '历史版本会覆盖当前草稿内容，之后仍需要重新校验并发布。'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={busyAction != null}>取消</AlertDialogCancel>
             <AlertDialogAction
-              variant={confirmAction === 'discard' || confirmAction === 'deprecate-model' ? 'destructive' : 'default'}
+              variant={
+                confirmAction === 'discard' ||
+                confirmAction === 'remove-capability' ||
+                confirmAction === 'deprecate-model'
+                  ? 'destructive'
+                  : 'default'
+              }
               disabled={busyAction != null}
               onClick={(event) => {
                 event.preventDefault();
-                if (confirmAction === 'discard') void discardDraft();
+                if (confirmAction === 'publish') void publishDraft();
+                else if (confirmAction === 'discard') void discardDraft();
+                else if (confirmAction === 'remove-capability') confirmCapabilityRemoval();
                 else if (confirmAction === 'deprecate-model') void deprecateModel();
                 else void rollbackDraft();
               }}
             >
               {busyAction ? <Spinner /> : null}
-              {confirmAction === 'discard'
-                ? '丢弃草稿'
-                : confirmAction === 'deprecate-model'
-                  ? '废弃模型'
-                  : '复制为草稿'}
+              {confirmAction === 'publish'
+                ? '确认发布'
+                : confirmAction === 'remove-capability'
+                  ? '确认删除'
+                  : confirmAction === 'discard'
+                    ? '丢弃草稿'
+                    : confirmAction === 'deprecate-model'
+                      ? '废弃模型'
+                      : '复制为草稿'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

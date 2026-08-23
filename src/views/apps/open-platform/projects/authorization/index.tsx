@@ -83,6 +83,7 @@ const ProjectAuthorizationPage = () => {
   const [policyEnabled, setPolicyEnabled] = useState(false);
   const [allowlist, setAllowlist] = useState<string[]>([]);
   const [emptyWarnOpen, setEmptyWarnOpen] = useState(false);
+  const [pendingAllowlistRemoval, setPendingAllowlistRemoval] = useState<string | null>(null);
 
   const syncPolicyFromData = (authz: AuthorizationMetadataView) => {
     setPolicyEnabled(authz.networkPolicyEnabled);
@@ -324,7 +325,7 @@ const ProjectAuthorizationPage = () => {
                         type="button"
                         size="sm"
                         variant="ghost"
-                        onClick={() => setAllowlist((prev) => prev.filter((x) => x !== ip))}
+                        onClick={() => setPendingAllowlistRemoval(ip)}
                       >
                         删除
                       </Button>
@@ -388,6 +389,37 @@ const ProjectAuthorizationPage = () => {
                 }}
               >
                 确认保存
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <AlertDialog
+          open={pendingAllowlistRemoval != null}
+          onOpenChange={(open) => {
+            if (!open && !busy) setPendingAllowlistRemoval(null);
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>确认删除 IP 规则？</AlertDialogTitle>
+              <AlertDialogDescription>
+                删除后需要点击“保存网络策略”才会写入 Project 配置。
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={busy}>取消</AlertDialogCancel>
+              <AlertDialogAction
+                variant="destructive"
+                disabled={busy || pendingAllowlistRemoval == null}
+                onClick={(event) => {
+                  event.preventDefault();
+                  if (pendingAllowlistRemoval == null) return;
+                  setAllowlist((prev) => prev.filter((item) => item !== pendingAllowlistRemoval));
+                  setPendingAllowlistRemoval(null);
+                }}
+              >
+                确认删除
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

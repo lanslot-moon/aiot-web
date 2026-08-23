@@ -20,6 +20,14 @@ import {
   type ProductCreateRequest,
   type ProductUpdateRequest,
   type ProductListItem,
+  type ParserProfileDirection,
+  type ParserProfileDiffItemView,
+  type ParserProfileDiffView,
+  type ParserProfileMapping,
+  type ParserProfileTestView,
+  type ParserProfileValidationView,
+  type ParserProfileVersionView,
+  type ParserProfileView,
   type ProjectKeyPairView,
   type ProjectMemberView,
   type ProjectSummaryView,
@@ -36,6 +44,8 @@ import {
 type AccountRecord = AccountView & { password: string };
 type ProductRecord = ProductDetailView;
 type ModelVersionRecord = ModelVersionView & { definition: ThingModelDefinition };
+type ParserProfileRecord = ParserProfileView & { deletedAt: number | null };
+type ParserProfileVersionRecord = ParserProfileVersionView;
 
 const now = Date.UTC(2026, 7, 1, 8, 0, 0);
 
@@ -56,6 +66,10 @@ function newId(prefix: string): string {
 
 function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
+}
+
+function normalizeAuthModes(authModes: string[]): string[] {
+  return [...new Set(['DEVICE_SECRET', ...authModes])];
 }
 
 function issueTokens(accountId: string): TokenResponse {
@@ -955,13 +969,132 @@ const seedProducts: ProductRecord[] = [
   },
 ];
 
+const seedParserProfiles: ParserProfileRecord[] = [
+  {
+    profileId: 'parser_profile_json_mqtt',
+    tenantId: 'tenant_demo',
+    profileName: 'MQTT 设备上报解析',
+    protocolCode: 'MQTT_JSON',
+    currentVersion: '1.1',
+    version: 3,
+    createdAt: Date.UTC(2026, 7, 6, 9, 0, 0),
+    updatedAt: Date.UTC(2026, 7, 20, 14, 20, 0),
+    deletedAt: null,
+  },
+  {
+    profileId: 'parser_profile_binary_gateway',
+    tenantId: 'tenant_demo',
+    profileName: '边缘网关二进制协议',
+    protocolCode: 'GATEWAY_BINARY',
+    currentVersion: null,
+    version: 2,
+    createdAt: Date.UTC(2026, 7, 13, 11, 0, 0),
+    updatedAt: Date.UTC(2026, 7, 21, 10, 45, 0),
+    deletedAt: null,
+  },
+];
+
+const seedParserProfileVersions: ParserProfileVersionRecord[] = [
+  {
+    profileId: 'parser_profile_json_mqtt',
+    profileVersion: '1.0',
+    versionStatus: 'DEPRECATED',
+    mapping: {
+      mappings: {
+        temperature: {
+          code: 'temperature',
+          type: 'NUMBER',
+          sourcePath: 'params.temp',
+          direction: 'UPLINK',
+          conversion: { scale: 0.1, offset: 0 },
+        },
+        humidity: {
+          code: 'humidity',
+          type: 'NUMBER',
+          sourcePath: 'params.humidity',
+          direction: 'UPLINK',
+        },
+      },
+      codec: { textEncoding: 'UTF-8' },
+    },
+    versionDigest: 'sha256:parser-json-mqtt-1-0',
+    publishedAt: Date.UTC(2026, 7, 16, 10, 0, 0),
+    createdAt: Date.UTC(2026, 7, 15, 9, 0, 0),
+    updatedAt: Date.UTC(2026, 7, 16, 10, 0, 0),
+  },
+  {
+    profileId: 'parser_profile_json_mqtt',
+    profileVersion: '1.1',
+    versionStatus: 'PUBLISHED',
+    mapping: {
+      mappings: {
+        temperature: {
+          code: 'temperature',
+          type: 'NUMBER',
+          sourcePath: 'params.temp',
+          direction: 'UPLINK',
+          conversion: { scale: 0.1, offset: 0 },
+        },
+        humidity: {
+          code: 'humidity',
+          type: 'NUMBER',
+          sourcePath: 'params.humidity',
+          direction: 'UPLINK',
+        },
+        battery: {
+          code: 'batteryLevel',
+          type: 'INTEGER',
+          sourcePath: 'params.battery',
+          direction: 'UPLINK',
+        },
+      },
+      codec: { textEncoding: 'UTF-8', envelope: 'data' },
+    },
+    versionDigest: 'sha256:parser-json-mqtt-1-1',
+    publishedAt: Date.UTC(2026, 7, 20, 14, 20, 0),
+    createdAt: Date.UTC(2026, 7, 18, 9, 0, 0),
+    updatedAt: Date.UTC(2026, 7, 20, 14, 20, 0),
+  },
+  {
+    profileId: 'parser_profile_binary_gateway',
+    profileVersion: '2.0',
+    versionStatus: 'DRAFT',
+    mapping: {
+      mappings: {
+        '0x01': {
+          code: 'online',
+          type: 'BOOLEAN',
+          sourcePath: 'payload.online',
+          direction: 'UPLINK',
+        },
+        '0x02': {
+          code: 'connectedDevices',
+          type: 'INTEGER',
+          sourcePath: 'payload.count',
+          direction: 'UPLINK',
+        },
+      },
+      codec: { byteOrder: 'BIG_ENDIAN', frameHeader: '0xAA55' },
+    },
+    versionDigest: '',
+    publishedAt: null,
+    createdAt: Date.UTC(2026, 7, 21, 10, 0, 0),
+    updatedAt: Date.UTC(2026, 7, 21, 10, 45, 0),
+  },
+];
+
 let accounts: AccountRecord[] = [seedAccount];
 let projects: ProjectView[] = [...seedProjects];
 let members: ProjectMemberView[] = [...seedMembers];
 let invitations: InvitationView[] = [...seedInvitations];
 let authorizations: AuthorizationMetadataView[] = [...seedAuthz];
 let keyPairs: ProjectKeyPairView[] = [...seedKeyPairs];
-let products: ProductRecord[] = [...seedProducts];
+let products: ProductRecord[] = seedProducts.map((product) => ({
+  ...product,
+  authModes: normalizeAuthModes(product.authModes),
+}));
+let parserProfiles: ParserProfileRecord[] = [...seedParserProfiles];
+let parserProfileVersions: ParserProfileVersionRecord[] = [...seedParserProfileVersions];
 const categories: CategoryView[] = [...seedCategories];
 const modelDrafts = new Map<string, ModelDraftView>();
 const modelVersions = new Map<string, ModelVersionRecord[]>();
@@ -1047,6 +1180,8 @@ function seedThingModel(product: ProductRecord, revisionCount: number, draftStat
       modelRevision: revision,
       modelDigest: definition.modelDigest,
       status: 'PUBLISHED',
+      publishedAt:
+        product.updatedAt - (revisionCount - revision) * 86_400_000,
       definition,
     });
   }
@@ -1129,6 +1264,118 @@ function findProduct(productId: string): ProductRecord | undefined {
   return products.find((product) => product.productId === productId);
 }
 
+function findParserProfile(profileId: string): ParserProfileRecord | undefined {
+  return parserProfiles.find((profile) => profile.profileId === profileId && !profile.deletedAt);
+}
+
+function findParserProfileVersion(
+  profileId: string,
+  profileVersion: string,
+): ParserProfileVersionRecord | undefined {
+  return parserProfileVersions.find(
+    (version) => version.profileId === profileId && version.profileVersion === profileVersion,
+  );
+}
+
+function validateParserProfileMapping(mapping: unknown) {
+  const details: ParserProfileValidationView['details'] = [];
+  if (!mapping || typeof mapping !== 'object' || Array.isArray(mapping)) {
+    details.push({ instanceLocation: '$', keyword: 'type', message: 'mapping 必须是对象。' });
+    return { valid: false, details } satisfies ParserProfileValidationView;
+  }
+  const candidate = mapping as { mappings?: unknown; codec?: unknown };
+  if (!candidate.mappings || typeof candidate.mappings !== 'object' || Array.isArray(candidate.mappings)) {
+    details.push({ instanceLocation: '$.mappings', keyword: 'required', message: '必须提供 mappings 对象。' });
+    return { valid: false, details } satisfies ParserProfileValidationView;
+  }
+  const entries = Object.entries(candidate.mappings as Record<string, unknown>);
+  if (entries.length === 0) {
+    details.push({ instanceLocation: '$.mappings', keyword: 'minProperties', message: '至少配置一条映射规则。' });
+  }
+  entries.forEach(([source, rule]) => {
+    if (!rule || typeof rule !== 'object' || Array.isArray(rule)) {
+      details.push({ instanceLocation: `$.mappings.${source}`, keyword: 'type', message: '映射规则必须是对象。' });
+      return;
+    }
+    const candidateRule = rule as { code?: unknown };
+    if (typeof candidateRule.code !== 'string' || !candidateRule.code.trim()) {
+      details.push({ instanceLocation: `$.mappings.${source}.code`, keyword: 'required', message: '映射规则必须填写平台能力 code。' });
+    }
+  });
+  return { valid: details.length === 0, details } satisfies ParserProfileValidationView;
+}
+
+function parserProfileDiff(
+  from: ParserProfileMapping,
+  to: ParserProfileMapping,
+): ParserProfileDiffView {
+  const added: ParserProfileDiffItemView[] = [];
+  const removed: ParserProfileDiffItemView[] = [];
+  const modified: ParserProfileDiffItemView[] = [];
+  const fromEntries = from.mappings ?? {};
+  const toEntries = to.mappings ?? {};
+  Object.entries(toEntries).forEach(([source, rule]) => {
+    if (!Object.prototype.hasOwnProperty.call(fromEntries, source)) {
+      added.push({ source, code: rule.code, kind: 'ADDED', newValue: rule });
+      return;
+    }
+    const previous = fromEntries[source];
+    if (JSON.stringify(previous) === JSON.stringify(rule)) return;
+    const fields = ['code', 'type', 'sourcePath', 'direction', 'conversion'] as const;
+    const changedField = fields.find((field) => JSON.stringify(previous[field]) !== JSON.stringify(rule[field]));
+    modified.push({
+      source,
+      code: rule.code,
+      kind: 'MODIFIED',
+      changedField: changedField ?? 'mapping',
+      oldValue: previous,
+      newValue: rule,
+    });
+  });
+  Object.entries(fromEntries).forEach(([source, rule]) => {
+    if (!Object.prototype.hasOwnProperty.call(toEntries, source)) {
+      removed.push({ source, code: rule.code, kind: 'REMOVED', oldValue: rule });
+    }
+  });
+  if (JSON.stringify(from.codec ?? null) !== JSON.stringify(to.codec ?? null)) {
+    modified.push({
+      source: 'codec',
+      code: 'codec',
+      kind: 'MODIFIED',
+      changedField: 'codec',
+      oldValue: from.codec ?? null,
+      newValue: to.codec ?? null,
+    });
+  }
+  return { added, removed, modified };
+}
+
+function readParserPayload(payload: Record<string, unknown>, path: string | null | undefined) {
+  if (!path) return undefined;
+  return path.split('.').reduce<unknown>((value, segment) => {
+    if (!value || typeof value !== 'object') return undefined;
+    return (value as Record<string, unknown>)[segment];
+  }, payload);
+}
+
+function castParserValue(value: unknown, type?: string): unknown {
+  if (value == null || !type) return value;
+  if (type === 'BOOLEAN') {
+    if (typeof value === 'string') return ['true', '1', 'yes', 'on'].includes(value.toLowerCase());
+    return Boolean(value);
+  }
+  if (type === 'INTEGER') {
+    const number = Number(value);
+    return Number.isFinite(number) ? Math.trunc(number) : value;
+  }
+  if (type === 'NUMBER') {
+    const number = Number(value);
+    return Number.isFinite(number) ? number : value;
+  }
+  if (type === 'STRING') return String(value);
+  return value;
+}
+
 function findPublishedModel(productId: string): ModelVersionRecord | undefined {
   const versions = modelVersions.get(productId) ?? [];
   const published = versions.filter((version) => version.status === 'PUBLISHED');
@@ -1188,6 +1435,20 @@ function productPublishPrecheckFailure(product: ProductRecord) {
     };
   }
 
+  if (dataMode === 'CUSTOM_PAYLOAD' && profile?.profileId && profile.profileVersion) {
+    const parserProfile = findParserProfile(profile.profileId);
+    const parserVersion = parserProfile
+      ? findParserProfileVersion(parserProfile.profileId, profile.profileVersion)
+      : undefined;
+    if (!parserProfile || !parserVersion || parserVersion.versionStatus !== 'PUBLISHED') {
+      return {
+        code: 'PROFILE_VERSION_UNAVAILABLE',
+        message: '绑定的 Parser Profile 版本不存在或尚未发布',
+        status: 409,
+      };
+    }
+  }
+
   return null;
 }
 
@@ -1245,6 +1506,282 @@ export const OpenPlatformHandlers = [
       ok({ mocked: true }),
       { headers: { 'Cache-Control': 'no-store' } },
     );
+  }),
+
+  http.get('/api/v1/parser-profiles', ({ request }) => {
+    const url = new URL(request.url);
+    const pageSize = Math.min(Math.max(Number(url.searchParams.get('pageSize') ?? 20), 1), 100);
+    const cursor = url.searchParams.get('cursor');
+    const active = parserProfiles
+      .filter((profile) => !profile.deletedAt)
+      .sort((left, right) => right.updatedAt - left.updatedAt);
+    const start = cursor ? Math.max(active.findIndex((profile) => profile.profileId === cursor) + 1, 0) : 0;
+    const items = active.slice(start, start + pageSize).map((profile) => clone(profile));
+    const last = active[start + items.length - 1];
+    return HttpResponse.json(ok({
+      items,
+      nextCursor: start + items.length < active.length ? last.profileId : null,
+      hasMore: start + items.length < active.length,
+    } satisfies CursorResult<ParserProfileView>));
+  }),
+
+  http.post('/api/v1/parser-profiles', async ({ request }) => {
+    try {
+      const body = (await request.json()) as { profileName?: string; protocolCode?: string };
+      const profileName = body.profileName?.trim();
+      const protocolCode = body.protocolCode?.trim();
+      if (!profileName || !protocolCode) return fail('PARAM_INVALID', 'Profile 名称和协议编码不能为空。', 400);
+      if (parserProfiles.some((profile) => !profile.deletedAt && profile.profileName.toLowerCase() === profileName.toLowerCase())) {
+        return fail('PROFILE_NAME_DUPLICATE', 'Profile 名称已存在。', 409);
+      }
+      const timestamp = Date.now();
+      const profile: ParserProfileRecord = {
+        profileId: newId('parser'),
+        tenantId: 'tenant_demo',
+        profileName,
+        protocolCode,
+        currentVersion: null,
+        version: 1,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+        deletedAt: null,
+      };
+      parserProfiles.push(profile);
+      return HttpResponse.json(ok(clone(profile)), { status: 201 });
+    } catch {
+      return fail('PARAM_INVALID', '请求内容不是有效 JSON。', 400);
+    }
+  }),
+
+  http.get('/api/v1/parser-profiles/:profileId', ({ params }) => {
+    const profile = findParserProfile(String(params.profileId));
+    if (!profile) return fail('PROFILE_NOT_FOUND', 'Parser Profile 不存在。', 404);
+    return HttpResponse.json(ok(clone(profile)));
+  }),
+
+  http.put('/api/v1/parser-profiles/:profileId', async ({ params, request }) => {
+    try {
+      const profile = findParserProfile(String(params.profileId));
+      if (!profile) return fail('PROFILE_NOT_FOUND', 'Parser Profile 不存在。', 404);
+      const body = (await request.json()) as { version?: number | string; profileName?: string; protocolCode?: string };
+      if (String(body.version ?? '') !== String(profile.version)) return fail('VERSION_MISMATCH', 'Profile 已发生变化，请刷新后重试。', 412);
+      const nextName = body.profileName?.trim();
+      if (nextName && parserProfiles.some((item) => item.profileId !== profile.profileId && !item.deletedAt && item.profileName.toLowerCase() === nextName.toLowerCase())) {
+        return fail('PROFILE_NAME_DUPLICATE', 'Profile 名称已存在。', 409);
+      }
+      if (nextName) profile.profileName = nextName;
+      if (body.protocolCode?.trim()) profile.protocolCode = body.protocolCode.trim();
+      profile.version += 1;
+      profile.updatedAt = Date.now();
+      return HttpResponse.json(ok(clone(profile)));
+    } catch {
+      return fail('PARAM_INVALID', '请求内容不是有效 JSON。', 400);
+    }
+  }),
+
+  http.delete('/api/v1/parser-profiles/:profileId', async ({ params, request }) => {
+    try {
+      const profile = findParserProfile(String(params.profileId));
+      if (!profile) return fail('PROFILE_NOT_FOUND', 'Parser Profile 不存在。', 404);
+      const body = (await request.json()) as { version?: number | string };
+      if (String(body.version ?? '') !== String(profile.version)) return fail('VERSION_MISMATCH', 'Profile 已发生变化，请刷新后重试。', 412);
+      if (products.some((product) => product.protocolProfile?.profileId === profile.profileId)) {
+        return fail('PROFILE_IN_USE', '该 Profile 已被产品引用，不能删除。', 409);
+      }
+      profile.deletedAt = Date.now();
+      profile.updatedAt = Date.now();
+      return HttpResponse.json(ok(true));
+    } catch {
+      return fail('PARAM_INVALID', '请求内容不是有效 JSON。', 400);
+    }
+  }),
+
+  http.get('/api/v1/parser-profiles/:profileId/versions', ({ params }) => {
+    const profile = findParserProfile(String(params.profileId));
+    if (!profile) return fail('PROFILE_NOT_FOUND', 'Parser Profile 不存在。', 404);
+    return HttpResponse.json(ok(parserProfileVersions
+      .filter((version) => version.profileId === profile.profileId)
+      .sort((left, right) => right.profileVersion.localeCompare(left.profileVersion, undefined, { numeric: true }))
+      .map((version) => clone(version))));
+  }),
+
+  http.post('/api/v1/parser-profiles/:profileId/versions', async ({ params, request }) => {
+    try {
+      const profile = findParserProfile(String(params.profileId));
+      if (!profile) return fail('PROFILE_NOT_FOUND', 'Parser Profile 不存在。', 404);
+      const body = (await request.json()) as { profileVersion?: string; mapping?: ParserProfileMapping };
+      const profileVersion = body.profileVersion?.trim();
+      if (!profileVersion) return fail('PARAM_INVALID', '版本号不能为空。', 400);
+      if (findParserProfileVersion(profile.profileId, profileVersion)) return fail('PROFILE_VERSION_DUPLICATE', 'Profile 版本已存在。', 409);
+      const timestamp = Date.now();
+      const version: ParserProfileVersionRecord = {
+        profileId: profile.profileId,
+        profileVersion,
+        versionStatus: 'DRAFT',
+        mapping: clone(body.mapping ?? { mappings: {}, codec: null }),
+        versionDigest: '',
+        publishedAt: null,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      };
+      parserProfileVersions.push(version);
+      profile.version += 1;
+      profile.updatedAt = timestamp;
+      return HttpResponse.json(ok(clone(version)), { status: 201 });
+    } catch {
+      return fail('PARAM_INVALID', '请求内容不是有效 JSON。', 400);
+    }
+  }),
+
+  http.get('/api/v1/parser-profiles/:profileId/versions/:profileVersion', ({ params }) => {
+    const profile = findParserProfile(String(params.profileId));
+    if (!profile) return fail('PROFILE_NOT_FOUND', 'Parser Profile 不存在。', 404);
+    const version = findParserProfileVersion(profile.profileId, String(params.profileVersion));
+    if (!version) return fail('PROFILE_VERSION_NOT_FOUND', 'Profile 版本不存在。', 404);
+    return HttpResponse.json(ok(clone(version)));
+  }),
+
+  http.put('/api/v1/parser-profiles/:profileId/versions/:profileVersion', async ({ params, request }) => {
+    try {
+      const profile = findParserProfile(String(params.profileId));
+      if (!profile) return fail('PROFILE_NOT_FOUND', 'Parser Profile 不存在。', 404);
+      const version = findParserProfileVersion(profile.profileId, String(params.profileVersion));
+      if (!version) return fail('PROFILE_VERSION_NOT_FOUND', 'Profile 版本不存在。', 404);
+      if (version.versionStatus !== 'DRAFT') return fail('VERSION_IMMUTABLE', '已发布或已废弃版本不可编辑。', 409);
+      const body = (await request.json()) as { mapping?: ParserProfileMapping };
+      if (!body.mapping) return fail('PARAM_INVALID', '请提供 mapping。', 400);
+      version.mapping = clone(body.mapping);
+      version.updatedAt = Date.now();
+      profile.version += 1;
+      profile.updatedAt = version.updatedAt;
+      return HttpResponse.json(ok(clone(version)));
+    } catch {
+      return fail('PARAM_INVALID', '请求内容不是有效 JSON。', 400);
+    }
+  }),
+
+  http.post('/api/v1/parser-profiles/:profileId/versions/:profileVersion/validate', ({ params }) => {
+    const profile = findParserProfile(String(params.profileId));
+    if (!profile) return fail('PROFILE_NOT_FOUND', 'Parser Profile 不存在。', 404);
+    const version = findParserProfileVersion(profile.profileId, String(params.profileVersion));
+    if (!version) return fail('PROFILE_VERSION_NOT_FOUND', 'Profile 版本不存在。', 404);
+    return HttpResponse.json(ok(validateParserProfileMapping(version.mapping)));
+  }),
+
+  http.post('/api/v1/parser-profiles/:profileId/versions/:profileVersion/publish', ({ params }) => {
+    const profile = findParserProfile(String(params.profileId));
+    if (!profile) return fail('PROFILE_NOT_FOUND', 'Parser Profile 不存在。', 404);
+    const version = findParserProfileVersion(profile.profileId, String(params.profileVersion));
+    if (!version) return fail('PROFILE_VERSION_NOT_FOUND', 'Profile 版本不存在。', 404);
+    if (version.versionStatus !== 'DRAFT') return fail('INVALID_LIFECYCLE_TRANSITION', '只有草稿版本可以发布。', 409);
+    const validation = validateParserProfileMapping(version.mapping);
+    if (!validation.valid) return fail('PROFILE_VERSION_INVALID', 'Profile 映射未通过校验。', 409);
+    const timestamp = Date.now();
+    parserProfileVersions = parserProfileVersions.map((item) =>
+      item.profileId === profile.profileId && item.versionStatus === 'PUBLISHED'
+        ? { ...item, versionStatus: 'DEPRECATED' }
+        : item,
+    );
+    version.versionStatus = 'PUBLISHED';
+    version.versionDigest = `sha256:${profile.profileId}-${version.profileVersion}-${timestamp}`;
+    version.publishedAt = timestamp;
+    version.updatedAt = timestamp;
+    profile.currentVersion = version.profileVersion;
+    profile.version += 1;
+    profile.updatedAt = timestamp;
+    return HttpResponse.json(ok(true));
+  }),
+
+  http.post('/api/v1/parser-profiles/:profileId/versions/:profileVersion/deprecate', ({ params }) => {
+    const profile = findParserProfile(String(params.profileId));
+    if (!profile) return fail('PROFILE_NOT_FOUND', 'Parser Profile 不存在。', 404);
+    const version = findParserProfileVersion(profile.profileId, String(params.profileVersion));
+    if (!version) return fail('PROFILE_VERSION_NOT_FOUND', 'Profile 版本不存在。', 404);
+    if (version.versionStatus !== 'PUBLISHED') return fail('INVALID_LIFECYCLE_TRANSITION', '只有已发布版本可以废弃。', 409);
+    version.versionStatus = 'DEPRECATED';
+    if (profile.currentVersion === version.profileVersion) profile.currentVersion = null;
+    profile.version += 1;
+    profile.updatedAt = Date.now();
+    return HttpResponse.json(ok(true));
+  }),
+
+  http.post('/api/v1/parser-profiles/:profileId/versions/:profileVersion/rollback', ({ params, request }) => {
+    const profile = findParserProfile(String(params.profileId));
+    if (!profile) return fail('PROFILE_NOT_FOUND', 'Parser Profile 不存在。', 404);
+    const source = findParserProfileVersion(profile.profileId, String(params.profileVersion));
+    if (!source) return fail('PROFILE_VERSION_NOT_FOUND', 'Profile 版本不存在。', 404);
+    const targetVersion = new URL(request.url).searchParams.get('targetVersion')?.trim();
+    if (!targetVersion) return fail('PARAM_INVALID', '请填写目标草稿版本。', 400);
+    if (findParserProfileVersion(profile.profileId, targetVersion)) return fail('PROFILE_VERSION_DUPLICATE', '目标版本已存在。', 409);
+    const timestamp = Date.now();
+    const draft: ParserProfileVersionRecord = {
+      profileId: profile.profileId,
+      profileVersion: targetVersion,
+      versionStatus: 'DRAFT',
+      mapping: clone(source.mapping),
+      versionDigest: '',
+      publishedAt: null,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    };
+    parserProfileVersions.push(draft);
+    profile.version += 1;
+    profile.updatedAt = timestamp;
+    return HttpResponse.json(ok(clone(draft)), { status: 201 });
+  }),
+
+  http.post('/api/v1/parser-profiles/:profileId/versions/diff', async ({ params, request }) => {
+    try {
+      const profile = findParserProfile(String(params.profileId));
+      if (!profile) return fail('PROFILE_NOT_FOUND', 'Parser Profile 不存在。', 404);
+      const body = (await request.json()) as { fromVersion?: string; toVersion?: string };
+      const from = body.fromVersion ? findParserProfileVersion(profile.profileId, body.fromVersion) : undefined;
+      const to = body.toVersion ? findParserProfileVersion(profile.profileId, body.toVersion) : undefined;
+      if (!from || !to || from.profileVersion === to.profileVersion) return fail('PROFILE_DIFF_INVALID', '请选择两个不同的 Profile 版本。', 400);
+      return HttpResponse.json(ok(parserProfileDiff(from.mapping, to.mapping)));
+    } catch {
+      return fail('PARAM_INVALID', '请求内容不是有效 JSON。', 400);
+    }
+  }),
+
+  http.post('/api/v1/parser-profiles/:profileId/versions/:profileVersion/test', async ({ params, request }) => {
+    try {
+      const profile = findParserProfile(String(params.profileId));
+      if (!profile) return fail('PROFILE_NOT_FOUND', 'Parser Profile 不存在。', 404);
+      const version = findParserProfileVersion(profile.profileId, String(params.profileVersion));
+      if (!version) return fail('PROFILE_VERSION_NOT_FOUND', 'Profile 版本不存在。', 404);
+      const body = (await request.json()) as { direction?: ParserProfileDirection; payload?: Record<string, unknown>; saveFailureSample?: boolean };
+      const payload = body.payload;
+      if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return fail('PARAM_INVALID', 'payload 必须是 JSON 对象。', 400);
+      const mapped: Record<string, unknown> = {};
+      const issues: ParserProfileTestView['issues'] = [];
+      const used = new Set<string>();
+      const usedRoots = new Set<string>();
+      Object.entries(version.mapping.mappings ?? {}).forEach(([source, rule]) => {
+        const direction = rule.direction ?? 'BIDIRECTIONAL';
+        if (body.direction && body.direction !== 'BIDIRECTIONAL' && direction !== 'BIDIRECTIONAL' && direction !== body.direction) return;
+        const raw = readParserPayload(payload, rule.sourcePath) ?? payload[source];
+        if (raw === undefined) return;
+        used.add(source);
+        usedRoots.add((rule.sourcePath ?? source).split('.')[0]);
+        let value = castParserValue(raw, rule.type);
+        if (typeof value === 'number' && rule.conversion) {
+          value = value * (rule.conversion.scale ?? 1) + (rule.conversion.offset ?? 0);
+        }
+        mapped[rule.code] = value;
+      });
+      Object.keys(payload).filter((key) => !used.has(key) && !usedRoots.has(key)).forEach((key) => issues.push({ code: 'UNMAPPED_FIELD', message: `字段 ${key} 没有匹配的映射规则。` }));
+      const result: ParserProfileTestView = {
+        success: issues.length === 0,
+        mapped,
+        issues,
+        unparsedFields: issues.map((issue) => issue.message.replace(/^字段 /, '').replace(/ 没有.*$/, '')),
+        failureSampleId: issues.length > 0 && body.saveFailureSample ? newId('sample') : null,
+      };
+      return HttpResponse.json(ok(result));
+    } catch {
+      return fail('PARAM_INVALID', '请求内容不是有效 JSON。', 400);
+    }
   }),
 
   http.get('/api/v1/categories', () => {
@@ -1337,7 +1874,9 @@ export const OpenPlatformHandlers = [
       if (hasConnectionPatch) {
         product.nodeType = body.nodeType ?? null;
         product.transport = body.transport ?? null;
-        product.authModes = Array.isArray(body.authModes) ? [...body.authModes] : [];
+        product.authModes = normalizeAuthModes(
+          Array.isArray(body.authModes) ? [...body.authModes] : product.authModes,
+        );
         product.customAuthProviderId = body.customAuthProviderId ?? null;
         product.dataMode = body.dataMode ?? null;
         product.bootstrapMode = body.bootstrapMode ?? null;
@@ -1455,6 +1994,7 @@ export const OpenPlatformHandlers = [
         return fail('VERSION_MISMATCH', '产品已发生变化，请刷新后再删除。', 412);
       }
       products = products.filter((item) => item.productId !== productId);
+      // 发布成功后不保留可编辑草稿；历史内容通过 Revision 查看或复制为草稿。
       modelDrafts.delete(productId);
       modelVersions.delete(productId);
       modelValidations.delete(productId);
@@ -1577,16 +2117,11 @@ export const OpenPlatformHandlers = [
           modelRevision: revision,
           modelDigest: definition.modelDigest,
           status: 'PUBLISHED',
+          publishedAt: Date.now(),
           definition,
         },
       ] as ModelVersionRecord[]);
-      draft.definition = {
-        ...clone(draft.definition),
-        modelRevision: 0,
-        modelDigest: '',
-        status: 'DRAFT',
-      };
-      draft.status = 'DRAFT';
+      modelDrafts.delete(productId);
       modelValidations.delete(productId);
       return HttpResponse.json(ok(true));
     } catch {
@@ -1597,8 +2132,11 @@ export const OpenPlatformHandlers = [
   http.get('/api/v1/products/:productId/model/versions', ({ params }) => {
     const productId = String(params.productId);
     if (!findProduct(productId)) return fail('404', 'Product not found', 404);
+    const history = (modelVersions.get(productId) ?? []).filter((version) =>
+      ['PUBLISHED', 'DEPRECATED'].includes(version.status),
+    );
     return HttpResponse.json(
-      ok((modelVersions.get(productId) ?? []).map(({ definition: _definition, ...summary }) => summary)),
+      ok(history.map(({ definition: _definition, ...summary }) => summary)),
     );
   }),
 
@@ -1606,7 +2144,9 @@ export const OpenPlatformHandlers = [
     const productId = String(params.productId);
     const revision = Number(params.modelRevision);
     const version = (modelVersions.get(productId) ?? []).find(
-      (item) => item.modelRevision === revision,
+      (item) =>
+        item.modelRevision === revision &&
+        ['PUBLISHED', 'DEPRECATED'].includes(item.status),
     );
     if (!version) return fail('MODEL_REVISION_NOT_FOUND', '物模型版本不存在。', 404);
     return HttpResponse.json(ok(clone(version.definition)));
@@ -2204,6 +2744,16 @@ export const OpenPlatformHandlers = [
       const categoryType = body?.categoryType === 'CUSTOM' ? 'CUSTOM' : 'STANDARD';
       const categoryCode = categoryType === 'CUSTOM' ? 'CUSTOM' : body?.categoryCode?.trim() ?? '';
       const category = categoryType === 'STANDARD' ? findCategory(categoryCode) : null;
+      const nodeType = body?.nodeType?.trim() ?? '';
+      const transport = body?.transport?.trim() ?? '';
+      const authModes = normalizeAuthModes(
+        Array.isArray(body?.authModes)
+          ? body.authModes.map((mode) => String(mode).trim()).filter(Boolean)
+          : [],
+      );
+      const dataMode = body?.dataMode?.trim() ?? '';
+      const bootstrapMode = body?.bootstrapMode?.trim() ?? '';
+      const protocolProfile = body?.protocolProfile ?? null;
 
       if (!productName) {
         return fail('400', 'productName is required');
@@ -2227,6 +2777,25 @@ export const OpenPlatformHandlers = [
         }
       }
 
+      if (!nodeType || !transport || authModes.length === 0 || !dataMode || !bootstrapMode) {
+        return fail('CONNECTION_CONFIG_REQUIRED', '请完整填写节点类型、传输协议、认证方式、数据模式和接入模式。', 400);
+      }
+      if (
+        dataMode === 'CUSTOM_PAYLOAD' &&
+        (!protocolProfile?.profileId || !protocolProfile.profileVersion)
+      ) {
+        return fail('PROFILE_UNAVAILABLE', '自定义报文模式必须绑定已发布 Parser Profile 版本。', 409);
+      }
+      if (dataMode === 'CUSTOM_PAYLOAD' && protocolProfile?.profileId && protocolProfile.profileVersion) {
+        const parserProfile = findParserProfile(protocolProfile.profileId);
+        const parserVersion = parserProfile
+          ? findParserProfileVersion(parserProfile.profileId, protocolProfile.profileVersion)
+          : undefined;
+        if (!parserProfile || !parserVersion || parserVersion.versionStatus !== 'PUBLISHED') {
+          return fail('PROFILE_VERSION_UNAVAILABLE', '绑定的 Parser Profile 版本不存在或尚未发布。', 409);
+        }
+      }
+
       const ts = Date.now();
       const product: ProductRecord = {
         projectId,
@@ -2243,14 +2812,14 @@ export const OpenPlatformHandlers = [
             ? null
             : categoryVersions[categoryCode]?.find((item) => item.versionStatus === 'PUBLISHED')
                 ?.categoryVersion ?? null,
-        nodeType: null,
-        transport: null,
-        authModes: [],
-        customAuthProviderId: null,
-        dataMode: null,
-        bootstrapMode: null,
-        protocolProfile: null,
-        topicTemplates: {},
+        nodeType,
+        transport,
+        authModes,
+        customAuthProviderId: body?.customAuthProviderId ?? null,
+        dataMode,
+        bootstrapMode,
+        protocolProfile,
+        topicTemplates: body?.topicTemplates ?? {},
         lifecycleStatus: 'DRAFT',
         version: 1,
         createdAt: ts,
@@ -2555,4 +3124,6 @@ export const openPlatformSeed = {
   keyPairs: () => keyPairs,
   categories: () => categories,
   products: () => products,
+  parserProfiles: () => parserProfiles,
+  parserProfileVersions: () => parserProfileVersions,
 };

@@ -237,9 +237,6 @@ export function CategoryTree({
         </div>
       </div>
 
-      {selectableLeafOnly ? (
-        <p className="text-xs text-muted-foreground">只有叶子品类可以用于创建产品。</p>
-      ) : null}
     </div>
   );
 }

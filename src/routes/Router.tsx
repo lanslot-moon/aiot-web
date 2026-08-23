@@ -70,6 +70,12 @@ const ProjectThingModelProducts = Loadable(
 const ProjectInvitation = Loadable(
   lazy(() => import('../views/apps/open-platform/invitations')),
 );
+const ParserProfiles = Loadable(
+  lazy(() => import('../views/apps/open-platform/parser-profiles')),
+);
+const ParserProfileDetail = Loadable(
+  lazy(() => import('../views/apps/open-platform/parser-profiles/detail')),
+);
 
 // pages
 const TablesPage = Loadable(lazy(() => import('../views/pages/tables')));
@@ -113,6 +119,11 @@ const Router = [
 
       { path: '/projects', element: <ProjectsList /> },
       { path: '/projects/new', element: <ProjectCreate /> },
+      { path: '/projects/:projectId/parser-profiles', element: <ParserProfiles /> },
+      {
+        path: '/projects/:projectId/parser-profiles/:profileId',
+        element: <ParserProfileDetail />,
+      },
       { path: '/projects/:projectId/products/new', element: <ProjectProductCreate /> },
       {
         path: '/projects/:projectId/products/:productId/model',

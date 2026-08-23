@@ -354,7 +354,7 @@ function PropertyList({
           <AccordionItem key={property.code} value={property.code} className="px-3">
             <div className="flex items-center gap-1">
               <div className="min-w-0 flex-1">
-                <AccordionTrigger className="w-full rounded-md px-2 py-2.5 font-normal hover:bg-muted/50 hover:no-underline">
+                <AccordionTrigger className="w-full items-center rounded-md px-2 py-2.5 font-normal hover:bg-muted/50 hover:no-underline">
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                       <span className="truncate text-xs font-medium">{property.title}</span>
@@ -415,7 +415,7 @@ function ActionList({
         <AccordionItem key={action.code} value={action.code} className="px-3">
           <div className="flex items-center gap-1">
             <div className="min-w-0 flex-1">
-              <AccordionTrigger className="w-full rounded-md px-2 py-2.5 font-normal hover:bg-muted/50 hover:no-underline">
+              <AccordionTrigger className="w-full items-center rounded-md px-2 py-2.5 font-normal hover:bg-muted/50 hover:no-underline">
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                     <span className="truncate text-xs font-medium">{action.title}</span>
@@ -463,7 +463,7 @@ function EventList({
         <AccordionItem key={event.code} value={event.code} className="px-3">
           <div className="flex items-center gap-1">
             <div className="min-w-0 flex-1">
-              <AccordionTrigger className="w-full rounded-md px-2 py-2.5 font-normal hover:bg-muted/50 hover:no-underline">
+              <AccordionTrigger className="w-full items-center rounded-md px-2 py-2.5 font-normal hover:bg-muted/50 hover:no-underline">
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                     <span className="truncate text-xs font-medium">{event.title}</span>

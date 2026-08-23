@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
 import {
   ArrowLeft,
+  Braces,
   ChevronDown,
   Cpu,
   ListTree,
@@ -61,7 +62,13 @@ import {
 import { cn } from '@/lib/utils';
 import type { ProjectView } from '@/types/apps/open-platform';
 
-type PrimaryTab = 'overview' | 'products' | 'categories' | 'devices' | 'settings';
+type PrimaryTab =
+  | 'overview'
+  | 'products'
+  | 'categories'
+  | 'parserProfiles'
+  | 'devices'
+  | 'settings';
 
 type SettingsTab =
   | 'settings'
@@ -94,6 +101,12 @@ const PRIMARY_NAV: {
     label: '产品',
     icon: Package,
     path: (id) => `/projects/${id}/products`,
+  },
+  {
+    id: 'parserProfiles',
+    label: '协议解析',
+    icon: Braces,
+    path: (id) => `/projects/${id}/parser-profiles`,
   },
   {
     id: 'devices',
@@ -132,6 +145,7 @@ const SETTINGS_NAV: {
 
 function primaryFromPath(pathname: string): PrimaryTab {
   if (pathname.includes('/categories')) return 'categories';
+  if (pathname.includes('/parser-profiles')) return 'parserProfiles';
   if (pathname.includes('/products') || pathname.includes('/thing-model')) {
     return 'products';
   }
@@ -473,7 +487,7 @@ export function ProjectWorkspaceShell({
       </Collapsible>
 
       {/* Project navigation + content */}
-      <Card className="overflow-hidden p-0">
+      <Card className="!gap-0 !py-0 overflow-hidden p-0">
         <div className="border-b bg-muted/20">
           <div className="overflow-x-auto">
             <nav
