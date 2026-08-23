@@ -5,6 +5,7 @@ import {
   Braces,
   Archive,
   Eye,
+  FileKey2,
   Pause,
   Package,
   Pencil,
@@ -529,6 +530,10 @@ const ProductDetailPage = () => {
   const [confirmAction, setConfirmAction] = useState<ProductLifecycleAction | null>(null);
   const isCustomCategory =
     product?.categoryType === 'CUSTOM' || product?.categoryCode === 'CUSTOM';
+  const parserProfileHref =
+    product?.dataMode === 'CUSTOM_PAYLOAD' && product.protocolProfile?.profileId
+      ? `/projects/${projectId}/parser-profiles/${encodeURIComponent(product.protocolProfile.profileId)}`
+      : null;
 
   const productListKey = projectId
     ? `/api/v1/projects/${encodeURIComponent(projectId)}/products?pageSize=100`
@@ -798,6 +803,17 @@ const ProductDetailPage = () => {
                 <Braces className="size-3.5" aria-hidden />
                 物模型
               </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 gap-1.5"
+                nativeButton={false}
+                render={<Link to={`/projects/${projectId}/products/${product.productId}/credentials`} />}
+              >
+                <FileKey2 className="size-3.5" aria-hidden />
+                凭证与量产
+              </Button>
             </nav>
 
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1.05fr)_minmax(18rem,0.95fr)]">
@@ -910,7 +926,7 @@ const ProductDetailPage = () => {
                   ) : null}
                 </CardHeader>
                 <CardContent>
-                  <div className="grid gap-2 rounded-lg border bg-muted/20 p-2 sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="grid gap-2 rounded-lg border bg-muted/20 p-2 sm:grid-cols-2 lg:grid-cols-5">
                     <div className="rounded-md border bg-background px-3 py-2.5">
                       <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                         <Router className="size-3.5" aria-hidden />
@@ -931,6 +947,34 @@ const ProductDetailPage = () => {
                         {labelOf(PRODUCT_TRANSPORT_LABEL, product.transport, '未配置')}
                       </p>
                     </div>
+                    {parserProfileHref ? (
+                      <Link
+                        to={parserProfileHref}
+                        aria-label="查看协议解析 Profile"
+                        className="group rounded-md border bg-background px-3 py-2.5 transition-colors hover:border-primary/40 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                          <Braces className="size-3.5" aria-hidden />
+                          数据协议
+                        </div>
+                        <p className="mt-2 text-[11px] text-muted-foreground">数据协议模式</p>
+                        <p className="mt-0.5 flex items-center justify-between gap-2 text-sm font-medium">
+                          <span>{labelOf(PRODUCT_DATA_MODE_LABEL, product.dataMode, '未配置')}</span>
+                          <span className="text-[11px] font-normal text-primary">查看解析</span>
+                        </p>
+                      </Link>
+                    ) : (
+                      <div className="rounded-md border bg-background px-3 py-2.5">
+                        <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                          <Braces className="size-3.5" aria-hidden />
+                          数据协议
+                        </div>
+                        <p className="mt-2 text-[11px] text-muted-foreground">数据协议模式</p>
+                        <p className="mt-0.5 text-sm font-medium">
+                          {labelOf(PRODUCT_DATA_MODE_LABEL, product.dataMode, '未配置')}
+                        </p>
+                      </div>
+                    )}
                     <div className="rounded-md border bg-background px-3 py-2.5">
                       <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                         <ShieldCheck className="size-3.5" aria-hidden />

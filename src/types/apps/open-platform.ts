@@ -274,6 +274,177 @@ export interface ProtocolProfileRefView {
   profileVersion: string;
 }
 
+/** Non-sensitive credential summary returned by the credential service. */
+export type CredentialKind = 'PRODUCT_SECRET' | 'DEVICE_SECRET';
+export type CredentialStatus = 'ACTIVE' | 'EXPIRED' | 'RETIRING' | 'REVOKED';
+export type CredentialAccessState = 'ENABLED' | 'FROZEN';
+
+export interface CredentialSummaryView {
+  credentialId: string;
+  credentialFamilyId: string;
+  versionNo: number;
+  productId: string;
+  hardwareUuid: string | null;
+  deviceId: string | null;
+  kind: CredentialKind;
+  credentialStatus: CredentialStatus;
+  accessState: CredentialAccessState;
+  fingerprint: string;
+  validFrom: number;
+  expiresAt: number | null;
+  graceUntil: number | null;
+  createTime: number;
+  updateTime: number;
+  securityVersion: number;
+}
+
+export type ManufacturingBatchStatus =
+  | 'ISSUING'
+  | 'AVAILABLE'
+  | 'PARTIALLY_AVAILABLE'
+  | 'EXPIRED';
+
+export interface CredentialManufacturingBatchView {
+  grantId: string;
+  batchId: string;
+  productId: string;
+  status: ManufacturingBatchStatus;
+  targetQuantity: number;
+  availableCount: number;
+  boundCount: number;
+  revokedCount: number;
+  expiredCount: number;
+  voidCount: number;
+  expiresAt: number | null;
+  allocatedQuantity: number;
+  createTime: number;
+  updateTime: number;
+}
+
+export type ManufacturingItemStatus = 'AVAILABLE' | 'BOUND' | 'EXPIRED' | 'REVOKED' | 'VOID';
+
+export interface CredentialManufacturingItemView {
+  itemId: string;
+  batchId: string;
+  productId: string;
+  hardwareUuid: string;
+  credentialFamilyId: string;
+  credentialId: string;
+  credentialVersion: number;
+  boundDeviceId: string | null;
+  status: ManufacturingItemStatus;
+  expiresAt: number | null;
+  distributionId: string | null;
+  allocatedAt: number | null;
+  boundAt: number | null;
+  version: number;
+  createTime: number;
+  updateTime: number;
+}
+
+export type CredentialDistributionStatus = 'CREATING' | 'FROZEN' | 'CANCELLED' | 'EXPIRED';
+
+export interface CredentialDistributionView {
+  distributionId: string;
+  productId: string;
+  batchId: string;
+  requestReference: string;
+  requestedQuantity: number;
+  allocatedQuantity: number;
+  allocationHash: string;
+  status: CredentialDistributionStatus;
+  frozenAt: number | null;
+  expiresAt: number | null;
+  version: number;
+  createTime: number;
+  updateTime: number;
+}
+
+export type CredentialExportFormat = 'JSON' | 'EXCEL';
+export type CredentialExportStatus =
+  | 'PENDING'
+  | 'RUNNING'
+  | 'SUCCEEDED'
+  | 'PARTIALLY_SUCCEEDED'
+  | 'FAILED'
+  | 'CANCELLED'
+  | 'EXPIRED';
+
+export interface CredentialExportTaskView {
+  exportId: string;
+  batchId: string;
+  distributionId: string;
+  productId: string;
+  format: CredentialExportFormat;
+  status: CredentialExportStatus;
+  expectedCount: number;
+  successCount: number;
+  failureCode: string | null;
+  version: number;
+  createTime: number;
+  updateTime: number;
+}
+
+export interface CredentialSecretDeliveryView {
+  credential: CredentialSummaryView;
+  secret: string;
+  deliveryId: string;
+  deliveryExpiresAt: number;
+  remainingDeliveries: number;
+}
+
+export type PreRegistrationStatus = 'PENDING' | 'BOUND' | 'EXPIRED' | 'REMOVED';
+
+export interface CredentialPreRegistrationView {
+  preRegistrationId: string;
+  productId: string;
+  hardwareUuid: string;
+  status: PreRegistrationStatus;
+  registrationGeneration: number;
+  note: string | null;
+  expiresAt: number;
+  consumedAt: number | null;
+  boundDeviceId: string | null;
+  importBatchId: string;
+  version: number;
+  createTime: number;
+  updateTime: number;
+}
+
+export type CredentialRotationStatus =
+  | 'REQUESTED'
+  | 'NEW_CREDENTIAL_ISSUED'
+  | 'WAITING_DEVICE_CLAIM'
+  | 'WAITING_DEVICE_SWITCH'
+  | 'GRACE_PERIOD'
+  | 'COMPLETED'
+  | 'CANCELLED'
+  | 'FAILED';
+
+export interface CredentialRotationTaskView {
+  taskId: string;
+  productId: string;
+  hardwareUuid: string | null;
+  deviceId: string | null;
+  credentialFamilyId: string;
+  currentCredentialId: string;
+  currentCredentialVersion: number;
+  replacementCredentialId: string | null;
+  replacementCredentialVersion: number | null;
+  status: CredentialRotationStatus;
+  gracePeriodSeconds: number;
+  graceUntil: number | null;
+  switchDeadline: number;
+  newExpiresAt: number | null;
+  enforcementMode: 'NORMAL' | 'SECURITY_ENFORCED';
+  forceRevokeAt: number | null;
+  failureReason: string | null;
+  reasonCode: string;
+  version: number;
+  createTime: number;
+  updateTime: number;
+}
+
 /** Tenant-scoped protocol payload parser profile metadata. */
 export interface ParserProfileView {
   profileId: string;

@@ -45,6 +45,9 @@ const ProjectProductDetail = Loadable(
 const ProjectProductModel = Loadable(
   lazy(() => import('../views/apps/open-platform/projects/products/model')),
 );
+const ProjectProductCredentials = Loadable(
+  lazy(() => import('../views/apps/open-platform/projects/products/credentials')),
+);
 const ProjectProductCategories = Loadable(
   lazy(() => import('../views/apps/open-platform/projects/products/categories')),
 );
@@ -128,6 +131,10 @@ const Router = [
       {
         path: '/projects/:projectId/products/:productId/model',
         element: <ProjectProductModel />,
+      },
+      {
+        path: '/projects/:projectId/products/:productId/credentials',
+        element: <ProjectProductCredentials />,
       },
       {
         path: '/projects/:projectId/products/:productId',

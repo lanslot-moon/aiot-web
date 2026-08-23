@@ -7,6 +7,14 @@ import {
   type CategoryVersionView,
   type CategoryView,
   type CategoryMergeView,
+  type CredentialDistributionView,
+  type CredentialExportTaskView,
+  type CredentialManufacturingBatchView,
+  type CredentialManufacturingItemView,
+  type CredentialPreRegistrationView,
+  type CredentialRotationTaskView,
+  type CredentialSecretDeliveryView,
+  type CredentialSummaryView,
   type CreateProjectRequest,
   type CreateProjectResult,
   type CursorResult,
@@ -969,6 +977,298 @@ const seedProducts: ProductRecord[] = [
   },
 ];
 
+/** Additional products keep the project list useful for pagination, filtering and responsive layout checks. */
+const additionalSeedProducts: ProductRecord[] = [
+  {
+    projectId: 'proj_smart_home',
+    productId: 'prod_lamp_02',
+    productName: '餐厅智能灯带控制器',
+    productModel: 'LS-320',
+    categoryCode: 'smart_light_strip',
+    categoryName: '灯带控制器',
+    categoryType: 'STANDARD',
+    description: '支持分区调光、场景联动和断电记忆的灯带控制器。',
+    manufacturer: 'ABC IoT',
+    categoryCatalogVersion: '2026.1',
+    nodeType: 'DIRECT',
+    transport: 'MQTT',
+    authModes: ['DEVICE_SECRET'],
+    customAuthProviderId: null,
+    dataMode: 'STANDARD_MODEL',
+    bootstrapMode: 'OPEN',
+    protocolProfile: null,
+    topicTemplates: {},
+    lifecycleStatus: 'DRAFT',
+    version: 1,
+    createdAt: Date.UTC(2026, 7, 19, 8, 30, 0),
+    updatedAt: Date.UTC(2026, 7, 21, 10, 5, 0),
+  },
+  {
+    projectId: 'proj_smart_home',
+    productId: 'prod_plug_01',
+    productName: '智能插座 Pro',
+    productModel: 'SP-100',
+    categoryCode: 'smart_plug',
+    categoryName: '智能插座',
+    categoryType: 'STANDARD',
+    description: '面向家庭用电监测和远程控制的智能插座。',
+    manufacturer: 'ABC IoT',
+    categoryCatalogVersion: '2026.1',
+    nodeType: 'DIRECT',
+    transport: 'MQTT',
+    authModes: ['DEVICE_SECRET', 'PRODUCT_SECRET'],
+    customAuthProviderId: null,
+    dataMode: 'STANDARD_MODEL',
+    bootstrapMode: 'OPEN',
+    protocolProfile: null,
+    topicTemplates: {},
+    lifecycleStatus: 'PUBLISHED',
+    version: 3,
+    createdAt: Date.UTC(2026, 7, 4, 9, 15, 0),
+    updatedAt: Date.UTC(2026, 7, 18, 16, 40, 0),
+  },
+  {
+    projectId: 'proj_smart_home',
+    productId: 'prod_air_quality_01',
+    productName: '室内空气质量监测器',
+    productModel: 'AQ-300',
+    categoryCode: 'air_quality_sensor',
+    categoryName: '空气质量传感器',
+    categoryType: 'STANDARD',
+    description: '采集 PM2.5、二氧化碳和挥发性有机物等环境数据。',
+    manufacturer: 'ABC IoT',
+    categoryCatalogVersion: '2026.1',
+    nodeType: 'DIRECT',
+    transport: 'HTTPS',
+    authModes: ['DEVICE_SECRET'],
+    customAuthProviderId: null,
+    dataMode: 'STANDARD_MODEL',
+    bootstrapMode: 'STRICT',
+    protocolProfile: null,
+    topicTemplates: {},
+    lifecycleStatus: 'PUBLISHED',
+    version: 2,
+    createdAt: Date.UTC(2026, 7, 7, 11, 0, 0),
+    updatedAt: Date.UTC(2026, 7, 17, 13, 20, 0),
+  },
+  {
+    projectId: 'proj_smart_home',
+    productId: 'prod_hvac_02',
+    productName: '中央空调控制器',
+    productModel: 'AC-600',
+    categoryCode: 'air_conditioner',
+    categoryName: '空调',
+    categoryType: 'STANDARD',
+    description: '用于楼宇和家庭中央空调的远程控制产品。',
+    manufacturer: 'ABC IoT',
+    categoryCatalogVersion: '2026.1',
+    nodeType: 'GATEWAY',
+    transport: 'MQTT',
+    authModes: ['DEVICE_SECRET', 'PRODUCT_SECRET'],
+    customAuthProviderId: null,
+    dataMode: 'STANDARD_MODEL',
+    bootstrapMode: 'STRICT',
+    protocolProfile: null,
+    topicTemplates: {},
+    lifecycleStatus: 'DRAFT',
+    version: 2,
+    createdAt: Date.UTC(2026, 7, 15, 14, 10, 0),
+    updatedAt: Date.UTC(2026, 7, 22, 9, 45, 0),
+  },
+  {
+    projectId: 'proj_smart_home',
+    productId: 'prod_lock_03',
+    productName: '公寓电子门锁',
+    productModel: 'LK-A30',
+    categoryCode: 'security.lock',
+    categoryName: '智能门锁',
+    categoryType: 'STANDARD',
+    description: '面向公寓和共享空间的电子门锁。',
+    manufacturer: 'ABC IoT',
+    categoryCatalogVersion: '2026.1',
+    nodeType: 'DIRECT',
+    transport: 'HTTPS',
+    authModes: ['DEVICE_SECRET', 'PRODUCT_SECRET'],
+    customAuthProviderId: null,
+    dataMode: 'STANDARD_MODEL',
+    bootstrapMode: 'STRICT',
+    protocolProfile: null,
+    topicTemplates: {},
+    lifecycleStatus: 'PUBLISHED',
+    version: 4,
+    createdAt: Date.UTC(2026, 6, 28, 10, 0, 0),
+    updatedAt: Date.UTC(2026, 7, 20, 17, 35, 0),
+  },
+  {
+    projectId: 'proj_smart_home',
+    productId: 'prod_camera_01',
+    productName: '云台摄像机',
+    productModel: 'CAM-PTZ-1',
+    categoryCode: 'ptz_camera',
+    categoryName: '云台摄像机',
+    categoryType: 'STANDARD',
+    description: '支持云台控制、抓拍和视频流状态上报。',
+    manufacturer: 'ABC IoT',
+    categoryCatalogVersion: '2026.1',
+    nodeType: 'DIRECT',
+    transport: 'HTTPS',
+    authModes: ['DEVICE_SECRET'],
+    customAuthProviderId: null,
+    dataMode: 'STANDARD_MODEL',
+    bootstrapMode: 'OPEN',
+    protocolProfile: null,
+    topicTemplates: {},
+    lifecycleStatus: 'DRAFT',
+    version: 1,
+    createdAt: Date.UTC(2026, 7, 21, 9, 20, 0),
+    updatedAt: Date.UTC(2026, 7, 22, 12, 10, 0),
+  },
+  {
+    projectId: 'proj_smart_home',
+    productId: 'prod_meter_01',
+    productName: '园区智能电表',
+    productModel: 'EM-800',
+    categoryCode: 'smart_meter',
+    categoryName: '智能电表',
+    categoryType: 'STANDARD',
+    description: '通过 MQTT JSON 上报园区电能计量数据。',
+    manufacturer: 'ABC IoT',
+    categoryCatalogVersion: '2026.1',
+    nodeType: 'DIRECT',
+    transport: 'MQTT',
+    authModes: ['DEVICE_SECRET', 'PRODUCT_SECRET'],
+    customAuthProviderId: null,
+    dataMode: 'CUSTOM_PAYLOAD',
+    bootstrapMode: 'STRICT',
+    protocolProfile: { profileId: 'parser_profile_json_mqtt', profileVersion: '1.1' },
+    topicTemplates: { report: '/product/${productKey}/device/${deviceName}/report' },
+    lifecycleStatus: 'PUBLISHED',
+    version: 5,
+    createdAt: Date.UTC(2026, 6, 24, 8, 0, 0),
+    updatedAt: Date.UTC(2026, 7, 22, 15, 0, 0),
+  },
+  {
+    projectId: 'proj_smart_home',
+    productId: 'prod_plc_01',
+    productName: '产线 PLC 采集器',
+    productModel: 'PLC-X20',
+    categoryCode: 'plc',
+    categoryName: '可编程控制器',
+    categoryType: 'STANDARD',
+    description: '将产线 PLC 的寄存器数据转换为统一物模型能力。',
+    manufacturer: 'ABC IoT',
+    categoryCatalogVersion: '2026.1',
+    nodeType: 'GATEWAY',
+    transport: 'MQTT',
+    authModes: ['DEVICE_SECRET', 'PRODUCT_SECRET'],
+    customAuthProviderId: null,
+    dataMode: 'CUSTOM_PAYLOAD',
+    bootstrapMode: 'STRICT',
+    protocolProfile: { profileId: 'parser_profile_modbus_meter', profileVersion: '2.0' },
+    topicTemplates: {},
+    lifecycleStatus: 'DRAFT',
+    version: 2,
+    createdAt: Date.UTC(2026, 7, 20, 13, 50, 0),
+    updatedAt: Date.UTC(2026, 7, 22, 16, 25, 0),
+  },
+  {
+    projectId: 'proj_smart_home',
+    productId: 'prod_bms_01',
+    productName: '储能电池管理单元',
+    productModel: 'BMS-500',
+    categoryCode: 'bms',
+    categoryName: '电池管理系统',
+    categoryType: 'STANDARD',
+    description: '采集储能电池组电压、电流、温度和告警状态。',
+    manufacturer: 'ABC IoT',
+    categoryCatalogVersion: '2026.1',
+    nodeType: 'GATEWAY',
+    transport: 'MQTT',
+    authModes: ['DEVICE_SECRET'],
+    customAuthProviderId: null,
+    dataMode: 'CUSTOM_PAYLOAD',
+    bootstrapMode: 'OPEN',
+    protocolProfile: { profileId: 'parser_profile_modbus_meter', profileVersion: '2.0' },
+    topicTemplates: {},
+    lifecycleStatus: 'DRAFT',
+    version: 1,
+    createdAt: Date.UTC(2026, 7, 22, 8, 45, 0),
+    updatedAt: Date.UTC(2026, 7, 22, 8, 45, 0),
+  },
+  {
+    projectId: 'proj_smart_home',
+    productId: 'prod_lorawan_01',
+    productName: 'LoRaWAN 环境网关',
+    productModel: 'LG-100',
+    categoryCode: 'lorawan_gateway',
+    categoryName: 'LoRaWAN 网关',
+    categoryType: 'STANDARD',
+    description: '接入低功耗传感器并转发到云端的 LoRaWAN 网关。',
+    manufacturer: 'ABC IoT',
+    categoryCatalogVersion: '2026.1',
+    nodeType: 'GATEWAY',
+    transport: 'MQTT',
+    authModes: ['DEVICE_SECRET', 'PRODUCT_SECRET'],
+    customAuthProviderId: null,
+    dataMode: 'CUSTOM_PAYLOAD',
+    bootstrapMode: 'STRICT',
+    protocolProfile: { profileId: 'parser_profile_lorawan', profileVersion: '3.2' },
+    topicTemplates: {},
+    lifecycleStatus: 'PUBLISHED',
+    version: 3,
+    createdAt: Date.UTC(2026, 6, 30, 12, 0, 0),
+    updatedAt: Date.UTC(2026, 7, 21, 18, 15, 0),
+  },
+  {
+    projectId: 'proj_smart_home',
+    productId: 'prod_custom_lab_01',
+    productName: '实验室自定义设备',
+    productModel: 'LAB-DEV-01',
+    categoryCode: 'CUSTOM',
+    categoryName: '自定义品类',
+    categoryType: 'CUSTOM',
+    description: '没有标准品类能力、完全由项目自行定义物模型的实验设备。',
+    manufacturer: 'ABC IoT',
+    categoryCatalogVersion: null,
+    nodeType: 'DIRECT',
+    transport: 'MQTT',
+    authModes: ['DEVICE_SECRET'],
+    customAuthProviderId: null,
+    dataMode: 'STANDARD_MODEL',
+    bootstrapMode: 'OPEN',
+    protocolProfile: null,
+    topicTemplates: {},
+    lifecycleStatus: 'DRAFT',
+    version: 1,
+    createdAt: Date.UTC(2026, 7, 22, 16, 30, 0),
+    updatedAt: Date.UTC(2026, 7, 22, 16, 30, 0),
+  },
+  {
+    projectId: 'proj_smart_home',
+    productId: 'prod_energy_gateway_old',
+    productName: '旧款能源网关',
+    productModel: 'EG-10',
+    categoryCode: 'energy_gateway',
+    categoryName: '能源网关',
+    categoryType: 'STANDARD',
+    description: '历史能源采集网关，已停止新设备接入。',
+    manufacturer: 'ABC IoT',
+    categoryCatalogVersion: '2026.1',
+    nodeType: 'GATEWAY',
+    transport: 'MQTT',
+    authModes: ['DEVICE_SECRET'],
+    customAuthProviderId: null,
+    dataMode: 'STANDARD_MODEL',
+    bootstrapMode: 'STRICT',
+    protocolProfile: null,
+    topicTemplates: {},
+    lifecycleStatus: 'DISABLED',
+    version: 2,
+    createdAt: Date.UTC(2026, 5, 18, 8, 0, 0),
+    updatedAt: Date.UTC(2026, 6, 30, 10, 0, 0),
+  },
+];
+
 const seedParserProfiles: ParserProfileRecord[] = [
   {
     profileId: 'parser_profile_json_mqtt',
@@ -990,6 +1290,98 @@ const seedParserProfiles: ParserProfileRecord[] = [
     version: 2,
     createdAt: Date.UTC(2026, 7, 13, 11, 0, 0),
     updatedAt: Date.UTC(2026, 7, 21, 10, 45, 0),
+    deletedAt: null,
+  },
+];
+
+/** A broader tenant profile catalog makes search, status badges and version history observable. */
+const additionalSeedParserProfiles: ParserProfileRecord[] = [
+  {
+    profileId: 'parser_profile_modbus_meter',
+    tenantId: 'tenant_demo',
+    profileName: '园区电表 Modbus 解析',
+    protocolCode: 'MODBUS_RTU',
+    currentVersion: '2.0',
+    version: 4,
+    createdAt: Date.UTC(2026, 6, 28, 8, 30, 0),
+    updatedAt: Date.UTC(2026, 7, 22, 16, 0, 0),
+    deletedAt: null,
+  },
+  {
+    profileId: 'parser_profile_http_sensor',
+    tenantId: 'tenant_demo',
+    profileName: 'HTTP 环境数据解析',
+    protocolCode: 'HTTP_JSON',
+    currentVersion: '1.0',
+    version: 2,
+    createdAt: Date.UTC(2026, 7, 2, 10, 20, 0),
+    updatedAt: Date.UTC(2026, 7, 12, 9, 15, 0),
+    deletedAt: null,
+  },
+  {
+    profileId: 'parser_profile_lorawan',
+    tenantId: 'tenant_demo',
+    profileName: 'LoRaWAN 网关上报',
+    protocolCode: 'LORAWAN_TLV',
+    currentVersion: '3.2',
+    version: 5,
+    createdAt: Date.UTC(2026, 6, 20, 14, 0, 0),
+    updatedAt: Date.UTC(2026, 7, 21, 18, 10, 0),
+    deletedAt: null,
+  },
+  {
+    profileId: 'parser_profile_gb28181',
+    tenantId: 'tenant_demo',
+    profileName: '视频设备 GB28181 信令',
+    protocolCode: 'GB28181',
+    currentVersion: null,
+    version: 1,
+    createdAt: Date.UTC(2026, 7, 21, 11, 25, 0),
+    updatedAt: Date.UTC(2026, 7, 21, 11, 25, 0),
+    deletedAt: null,
+  },
+  {
+    profileId: 'parser_profile_coap',
+    tenantId: 'tenant_demo',
+    profileName: 'CoAP 传感器上报',
+    protocolCode: 'COAP_JSON',
+    currentVersion: '1.0',
+    version: 3,
+    createdAt: Date.UTC(2026, 7, 9, 13, 40, 0),
+    updatedAt: Date.UTC(2026, 7, 19, 15, 30, 0),
+    deletedAt: null,
+  },
+  {
+    profileId: 'parser_profile_custom_binary',
+    tenantId: 'tenant_demo',
+    profileName: '自定义二进制传感器',
+    protocolCode: 'CUSTOM_BINARY',
+    currentVersion: null,
+    version: 2,
+    createdAt: Date.UTC(2026, 7, 18, 16, 5, 0),
+    updatedAt: Date.UTC(2026, 7, 20, 12, 10, 0),
+    deletedAt: null,
+  },
+  {
+    profileId: 'parser_profile_alink',
+    tenantId: 'tenant_demo',
+    profileName: '云端设备 Alink JSON',
+    protocolCode: 'ALINK_JSON',
+    currentVersion: '2.0',
+    version: 3,
+    createdAt: Date.UTC(2026, 6, 12, 9, 0, 0),
+    updatedAt: Date.UTC(2026, 7, 16, 17, 45, 0),
+    deletedAt: null,
+  },
+  {
+    profileId: 'parser_profile_sparkplug',
+    tenantId: 'tenant_demo',
+    profileName: '工业产线 Sparkplug B',
+    protocolCode: 'SPARKPLUG_B',
+    currentVersion: '1.0',
+    version: 2,
+    createdAt: Date.UTC(2026, 7, 11, 10, 10, 0),
+    updatedAt: Date.UTC(2026, 7, 15, 11, 20, 0),
     deletedAt: null,
   },
 ];
@@ -1083,18 +1475,497 @@ const seedParserProfileVersions: ParserProfileVersionRecord[] = [
   },
 ];
 
+const additionalSeedParserProfileVersions: ParserProfileVersionRecord[] = [
+  {
+    profileId: 'parser_profile_modbus_meter',
+    profileVersion: '1.0',
+    versionStatus: 'DEPRECATED',
+    mapping: {
+      mappings: {
+        'reg.0': { code: 'totalEnergy', type: 'NUMBER', sourcePath: 'registers.0', direction: 'UPLINK' },
+        'reg.1': { code: 'voltage', type: 'NUMBER', sourcePath: 'registers.1', direction: 'UPLINK' },
+      },
+      codec: { byteOrder: 'BIG_ENDIAN', unit: 'RAW_REGISTER' },
+    },
+    versionDigest: 'sha256:parser-modbus-meter-1-0',
+    publishedAt: Date.UTC(2026, 7, 3, 10, 0, 0),
+    createdAt: Date.UTC(2026, 7, 1, 9, 0, 0),
+    updatedAt: Date.UTC(2026, 7, 3, 10, 0, 0),
+  },
+  {
+    profileId: 'parser_profile_modbus_meter',
+    profileVersion: '2.0',
+    versionStatus: 'PUBLISHED',
+    mapping: {
+      mappings: {
+        'reg.0': { code: 'totalEnergy', type: 'NUMBER', sourcePath: 'registers.0', direction: 'UPLINK', conversion: { scale: 0.1, offset: 0 } },
+        'reg.1': { code: 'voltage', type: 'NUMBER', sourcePath: 'registers.1', direction: 'UPLINK', conversion: { scale: 0.1, offset: 0 } },
+        'reg.2': { code: 'current', type: 'NUMBER', sourcePath: 'registers.2', direction: 'UPLINK', conversion: { scale: 0.01, offset: 0 } },
+      },
+      codec: { byteOrder: 'BIG_ENDIAN', unit: 'RAW_REGISTER', functionCode: 3 },
+    },
+    versionDigest: 'sha256:parser-modbus-meter-2-0',
+    publishedAt: Date.UTC(2026, 7, 18, 16, 0, 0),
+    createdAt: Date.UTC(2026, 7, 12, 9, 0, 0),
+    updatedAt: Date.UTC(2026, 7, 18, 16, 0, 0),
+  },
+  {
+    profileId: 'parser_profile_modbus_meter',
+    profileVersion: '2.1',
+    versionStatus: 'DRAFT',
+    mapping: {
+      mappings: {
+        'reg.0': { code: 'totalEnergy', type: 'NUMBER', sourcePath: 'registers.0', direction: 'UPLINK', conversion: { scale: 0.1, offset: 0 } },
+        'reg.1': { code: 'voltage', type: 'NUMBER', sourcePath: 'registers.1', direction: 'UPLINK', conversion: { scale: 0.1, offset: 0 } },
+        'reg.2': { code: 'current', type: 'NUMBER', sourcePath: 'registers.2', direction: 'UPLINK', conversion: { scale: 0.01, offset: 0 } },
+        'reg.3': { code: 'powerFactor', type: 'NUMBER', sourcePath: 'registers.3', direction: 'UPLINK', conversion: { scale: 0.001, offset: 0 } },
+      },
+      codec: { byteOrder: 'BIG_ENDIAN', unit: 'RAW_REGISTER', functionCode: 3 },
+    },
+    versionDigest: '',
+    publishedAt: null,
+    createdAt: Date.UTC(2026, 7, 22, 15, 45, 0),
+    updatedAt: Date.UTC(2026, 7, 22, 16, 0, 0),
+  },
+  {
+    profileId: 'parser_profile_http_sensor',
+    profileVersion: '1.0',
+    versionStatus: 'PUBLISHED',
+    mapping: {
+      mappings: {
+        temperature: { code: 'temperature', type: 'NUMBER', sourcePath: 'data.temperature', direction: 'UPLINK' },
+        humidity: { code: 'humidity', type: 'NUMBER', sourcePath: 'data.humidity', direction: 'UPLINK' },
+        battery: { code: 'batteryLevel', type: 'INTEGER', sourcePath: 'data.battery', direction: 'UPLINK' },
+      },
+      codec: { contentType: 'application/json', envelope: 'data' },
+    },
+    versionDigest: 'sha256:parser-http-sensor-1-0',
+    publishedAt: Date.UTC(2026, 7, 12, 9, 15, 0),
+    createdAt: Date.UTC(2026, 7, 10, 11, 0, 0),
+    updatedAt: Date.UTC(2026, 7, 12, 9, 15, 0),
+  },
+  {
+    profileId: 'parser_profile_lorawan',
+    profileVersion: '3.1',
+    versionStatus: 'DEPRECATED',
+    mapping: {
+      mappings: {
+        temp: { code: 'temperature', type: 'NUMBER', sourcePath: 'decoded.temp', direction: 'UPLINK', conversion: { scale: 0.1, offset: -40 } },
+        battery: { code: 'batteryLevel', type: 'INTEGER', sourcePath: 'decoded.battery', direction: 'UPLINK' },
+      },
+      codec: { payloadFormat: 'CAYENNE_LPP', port: 2 },
+    },
+    versionDigest: 'sha256:parser-lorawan-3-1',
+    publishedAt: Date.UTC(2026, 7, 7, 10, 0, 0),
+    createdAt: Date.UTC(2026, 7, 4, 8, 0, 0),
+    updatedAt: Date.UTC(2026, 7, 7, 10, 0, 0),
+  },
+  {
+    profileId: 'parser_profile_lorawan',
+    profileVersion: '3.2',
+    versionStatus: 'PUBLISHED',
+    mapping: {
+      mappings: {
+        temp: { code: 'temperature', type: 'NUMBER', sourcePath: 'decoded.temperature', direction: 'UPLINK', conversion: { scale: 0.1, offset: -40 } },
+        humidity: { code: 'humidity', type: 'NUMBER', sourcePath: 'decoded.humidity', direction: 'UPLINK', conversion: { scale: 0.5, offset: 0 } },
+        battery: { code: 'batteryLevel', type: 'INTEGER', sourcePath: 'decoded.battery', direction: 'UPLINK' },
+        link: { code: 'signalStrength', type: 'INTEGER', sourcePath: 'metadata.rssi', direction: 'UPLINK' },
+      },
+      codec: { payloadFormat: 'CAYENNE_LPP', port: 2, confirmed: false },
+    },
+    versionDigest: 'sha256:parser-lorawan-3-2',
+    publishedAt: Date.UTC(2026, 7, 21, 18, 10, 0),
+    createdAt: Date.UTC(2026, 7, 15, 9, 0, 0),
+    updatedAt: Date.UTC(2026, 7, 21, 18, 10, 0),
+  },
+  {
+    profileId: 'parser_profile_lorawan',
+    profileVersion: '3.3',
+    versionStatus: 'DRAFT',
+    mapping: {
+      mappings: {
+        temp: { code: 'temperature', type: 'NUMBER', sourcePath: 'decoded.temperature', direction: 'UPLINK', conversion: { scale: 0.1, offset: -40 } },
+        humidity: { code: 'humidity', type: 'NUMBER', sourcePath: 'decoded.humidity', direction: 'UPLINK', conversion: { scale: 0.5, offset: 0 } },
+        battery: { code: 'batteryLevel', type: 'INTEGER', sourcePath: 'decoded.battery', direction: 'UPLINK' },
+        link: { code: 'signalStrength', type: 'INTEGER', sourcePath: 'metadata.rssi', direction: 'UPLINK' },
+        downlink: { code: 'downlinkAccepted', type: 'BOOLEAN', sourcePath: 'metadata.downlinkAccepted', direction: 'DOWNLINK' },
+      },
+      codec: { payloadFormat: 'CAYENNE_LPP', port: 2, confirmed: true },
+    },
+    versionDigest: '',
+    publishedAt: null,
+    createdAt: Date.UTC(2026, 7, 22, 11, 20, 0),
+    updatedAt: Date.UTC(2026, 7, 22, 11, 20, 0),
+  },
+  {
+    profileId: 'parser_profile_gb28181',
+    profileVersion: '0.1',
+    versionStatus: 'DRAFT',
+    mapping: {
+      mappings: {
+        deviceId: { code: 'deviceId', type: 'STRING', sourcePath: 'header.deviceId', direction: 'BIDIRECTIONAL' },
+        event: { code: 'streamStatus', type: 'STRING', sourcePath: 'payload.event', direction: 'UPLINK' },
+      },
+      codec: { transport: 'SIP', media: 'PS' },
+    },
+    versionDigest: '',
+    publishedAt: null,
+    createdAt: Date.UTC(2026, 7, 21, 11, 25, 0),
+    updatedAt: Date.UTC(2026, 7, 21, 11, 25, 0),
+  },
+  {
+    profileId: 'parser_profile_coap',
+    profileVersion: '1.0',
+    versionStatus: 'PUBLISHED',
+    mapping: {
+      mappings: {
+        temp: { code: 'temperature', type: 'NUMBER', sourcePath: 'payload.temp', direction: 'UPLINK', conversion: { scale: 0.1, offset: 0 } },
+        humidity: { code: 'humidity', type: 'NUMBER', sourcePath: 'payload.humidity', direction: 'UPLINK' },
+      },
+      codec: { contentFormat: 'application/json', confirmable: true },
+    },
+    versionDigest: 'sha256:parser-coap-1-0',
+    publishedAt: Date.UTC(2026, 7, 15, 11, 20, 0),
+    createdAt: Date.UTC(2026, 7, 12, 10, 0, 0),
+    updatedAt: Date.UTC(2026, 7, 15, 11, 20, 0),
+  },
+  {
+    profileId: 'parser_profile_coap',
+    profileVersion: '1.1',
+    versionStatus: 'DRAFT',
+    mapping: {
+      mappings: {
+        temp: { code: 'temperature', type: 'NUMBER', sourcePath: 'payload.temp', direction: 'UPLINK', conversion: { scale: 0.1, offset: 0 } },
+        humidity: { code: 'humidity', type: 'NUMBER', sourcePath: 'payload.humidity', direction: 'UPLINK' },
+        battery: { code: 'batteryLevel', type: 'INTEGER', sourcePath: 'payload.battery', direction: 'UPLINK' },
+      },
+      codec: { contentFormat: 'application/json', confirmable: true },
+    },
+    versionDigest: '',
+    publishedAt: null,
+    createdAt: Date.UTC(2026, 7, 19, 15, 30, 0),
+    updatedAt: Date.UTC(2026, 7, 19, 15, 30, 0),
+  },
+  {
+    profileId: 'parser_profile_custom_binary',
+    profileVersion: '0.1',
+    versionStatus: 'DRAFT',
+    mapping: {
+      mappings: {
+        '0x10': { code: 'measurement', type: 'NUMBER', sourcePath: 'frame.value', direction: 'UPLINK', conversion: { scale: 0.01, offset: 0 } },
+        '0x11': { code: 'batteryLevel', type: 'INTEGER', sourcePath: 'frame.battery', direction: 'UPLINK' },
+      },
+      codec: { byteOrder: 'LITTLE_ENDIAN', frameHeader: '0x7E', checksum: 'CRC16' },
+    },
+    versionDigest: '',
+    publishedAt: null,
+    createdAt: Date.UTC(2026, 7, 20, 12, 10, 0),
+    updatedAt: Date.UTC(2026, 7, 20, 12, 10, 0),
+  },
+  {
+    profileId: 'parser_profile_alink',
+    profileVersion: '1.0',
+    versionStatus: 'DEPRECATED',
+    mapping: {
+      mappings: {
+        power: { code: 'power', type: 'BOOLEAN', sourcePath: 'params.power', direction: 'UPLINK' },
+        brightness: { code: 'brightness', type: 'INTEGER', sourcePath: 'params.brightness', direction: 'UPLINK' },
+      },
+      codec: { envelope: 'params', protocol: 'ALINK' },
+    },
+    versionDigest: 'sha256:parser-alink-1-0',
+    publishedAt: Date.UTC(2026, 6, 20, 9, 0, 0),
+    createdAt: Date.UTC(2026, 6, 18, 9, 0, 0),
+    updatedAt: Date.UTC(2026, 6, 20, 9, 0, 0),
+  },
+  {
+    profileId: 'parser_profile_alink',
+    profileVersion: '2.0',
+    versionStatus: 'PUBLISHED',
+    mapping: {
+      mappings: {
+        power: { code: 'power', type: 'BOOLEAN', sourcePath: 'params.power', direction: 'UPLINK' },
+        brightness: { code: 'brightness', type: 'INTEGER', sourcePath: 'params.brightness', direction: 'UPLINK' },
+        colorTemperature: { code: 'colorTemperature', type: 'INTEGER', sourcePath: 'params.colorTemperature', direction: 'UPLINK' },
+      },
+      codec: { envelope: 'params', protocol: 'ALINK', messageId: 'id' },
+    },
+    versionDigest: 'sha256:parser-alink-2-0',
+    publishedAt: Date.UTC(2026, 7, 16, 17, 45, 0),
+    createdAt: Date.UTC(2026, 7, 10, 9, 0, 0),
+    updatedAt: Date.UTC(2026, 7, 16, 17, 45, 0),
+  },
+  {
+    profileId: 'parser_profile_sparkplug',
+    profileVersion: '1.0',
+    versionStatus: 'PUBLISHED',
+    mapping: {
+      mappings: {
+        online: { code: 'online', type: 'BOOLEAN', sourcePath: 'metrics.online', direction: 'UPLINK' },
+        operatingMode: { code: 'operatingMode', type: 'STRING', sourcePath: 'metrics.mode', direction: 'UPLINK' },
+        alarm: { code: 'alarm', type: 'BOOLEAN', sourcePath: 'metrics.alarm', direction: 'UPLINK' },
+      },
+      codec: { namespace: 'spBv1.0', payloadFormat: 'NBIRTH/NDATA' },
+    },
+    versionDigest: 'sha256:parser-sparkplug-1-0',
+    publishedAt: Date.UTC(2026, 7, 15, 11, 20, 0),
+    createdAt: Date.UTC(2026, 7, 13, 9, 30, 0),
+    updatedAt: Date.UTC(2026, 7, 15, 11, 20, 0),
+  },
+];
+
+type CredentialRecord = CredentialSummaryView & { secret: string };
+
+const seedCredentials: CredentialRecord[] = [
+  {
+    credentialId: 'cred_gateway_product_01',
+    credentialFamilyId: 'family_gateway_product',
+    versionNo: 1,
+    productId: 'prod_gateway_01',
+    hardwareUuid: null,
+    deviceId: null,
+    kind: 'PRODUCT_SECRET',
+    credentialStatus: 'ACTIVE',
+    accessState: 'ENABLED',
+    fingerprint: 'sha256:9d2a…7c41',
+    validFrom: Date.UTC(2026, 7, 12, 11, 0, 0),
+    expiresAt: null,
+    graceUntil: null,
+    createTime: Date.UTC(2026, 7, 12, 11, 0, 0),
+    updateTime: Date.UTC(2026, 7, 12, 11, 0, 0),
+    securityVersion: 1,
+    secret: 'ps_demo_gateway_7f8a3d1c',
+  },
+  {
+    credentialId: 'cred_gateway_device_001',
+    credentialFamilyId: 'family_gateway_device_001',
+    versionNo: 1,
+    productId: 'prod_gateway_01',
+    hardwareUuid: 'GW-HW-202608-0001',
+    deviceId: 'gateway-0001',
+    kind: 'DEVICE_SECRET',
+    credentialStatus: 'ACTIVE',
+    accessState: 'ENABLED',
+    fingerprint: 'sha256:2b77…19c0',
+    validFrom: Date.UTC(2026, 7, 19, 9, 30, 0),
+    expiresAt: null,
+    graceUntil: null,
+    createTime: Date.UTC(2026, 7, 19, 9, 30, 0),
+    updateTime: Date.UTC(2026, 7, 19, 9, 30, 0),
+    securityVersion: 1,
+    secret: 'ds_demo_gateway_0001',
+  },
+  {
+    credentialId: 'cred_gateway_device_002',
+    credentialFamilyId: 'family_gateway_device_002',
+    versionNo: 1,
+    productId: 'prod_gateway_01',
+    hardwareUuid: 'GW-HW-202608-0002',
+    deviceId: 'gateway-0002',
+    kind: 'DEVICE_SECRET',
+    credentialStatus: 'RETIRING',
+    accessState: 'ENABLED',
+    fingerprint: 'sha256:7e12…0a2f',
+    validFrom: Date.UTC(2026, 7, 18, 14, 0, 0),
+    expiresAt: null,
+    graceUntil: Date.UTC(2026, 7, 24, 14, 0, 0),
+    createTime: Date.UTC(2026, 7, 18, 14, 0, 0),
+    updateTime: Date.UTC(2026, 7, 22, 10, 0, 0),
+    securityVersion: 2,
+    secret: 'ds_demo_gateway_0002',
+  },
+];
+
+const seedManufacturingBatches: CredentialManufacturingBatchView[] = [
+  {
+    grantId: 'grant_gateway_aug_first',
+    batchId: 'batch_gateway_20260819_01',
+    productId: 'prod_gateway_01',
+    status: 'PARTIALLY_AVAILABLE',
+    targetQuantity: 500,
+    availableCount: 238,
+    boundCount: 245,
+    revokedCount: 10,
+    expiredCount: 7,
+    voidCount: 0,
+    expiresAt: null,
+    allocatedQuantity: 245,
+    createTime: Date.UTC(2026, 7, 19, 9, 0, 0),
+    updateTime: Date.UTC(2026, 7, 22, 15, 20, 0),
+  },
+  {
+    grantId: 'grant_gateway_aug_test',
+    batchId: 'batch_gateway_20260822_test',
+    productId: 'prod_gateway_01',
+    status: 'AVAILABLE',
+    targetQuantity: 50,
+    availableCount: 50,
+    boundCount: 0,
+    revokedCount: 0,
+    expiredCount: 0,
+    voidCount: 0,
+    expiresAt: Date.UTC(2026, 8, 22, 23, 59, 59),
+    allocatedQuantity: 0,
+    createTime: Date.UTC(2026, 7, 22, 16, 0, 0),
+    updateTime: Date.UTC(2026, 7, 22, 16, 0, 0),
+  },
+];
+
+const seedManufacturingItems: CredentialManufacturingItemView[] = [
+  {
+    itemId: 'item_gateway_0001',
+    batchId: 'batch_gateway_20260819_01',
+    productId: 'prod_gateway_01',
+    hardwareUuid: 'GW-HW-202608-0001',
+    credentialFamilyId: 'family_gateway_device_001',
+    credentialId: 'cred_gateway_device_001',
+    credentialVersion: 1,
+    boundDeviceId: 'gateway-0001',
+    status: 'BOUND',
+    expiresAt: null,
+    distributionId: 'distribution_gateway_aug_01',
+    allocatedAt: Date.UTC(2026, 7, 19, 10, 0, 0),
+    boundAt: Date.UTC(2026, 7, 20, 9, 0, 0),
+    version: 1,
+    createTime: Date.UTC(2026, 7, 19, 9, 0, 0),
+    updateTime: Date.UTC(2026, 7, 20, 9, 0, 0),
+  },
+  {
+    itemId: 'item_gateway_0002',
+    batchId: 'batch_gateway_20260819_01',
+    productId: 'prod_gateway_01',
+    hardwareUuid: 'GW-HW-202608-0002',
+    credentialFamilyId: 'family_gateway_device_002',
+    credentialId: 'cred_gateway_device_002',
+    credentialVersion: 1,
+    boundDeviceId: 'gateway-0002',
+    status: 'BOUND',
+    expiresAt: null,
+    distributionId: 'distribution_gateway_aug_01',
+    allocatedAt: Date.UTC(2026, 7, 19, 10, 0, 0),
+    boundAt: Date.UTC(2026, 7, 20, 11, 0, 0),
+    version: 1,
+    createTime: Date.UTC(2026, 7, 19, 9, 0, 0),
+    updateTime: Date.UTC(2026, 7, 20, 11, 0, 0),
+  },
+];
+
+const seedCredentialDistributions: CredentialDistributionView[] = [
+  {
+    distributionId: 'distribution_gateway_aug_01',
+    productId: 'prod_gateway_01',
+    batchId: 'batch_gateway_20260819_01',
+    requestReference: 'smart-home-aug-gateway-01',
+    requestedQuantity: 245,
+    allocatedQuantity: 245,
+    allocationHash: 'sha256:allocation-gateway-245',
+    status: 'FROZEN',
+    frozenAt: Date.UTC(2026, 7, 19, 10, 0, 0),
+    expiresAt: null,
+    version: 1,
+    createTime: Date.UTC(2026, 7, 19, 10, 0, 0),
+    updateTime: Date.UTC(2026, 7, 19, 10, 0, 0),
+  },
+];
+
+const seedCredentialExports: CredentialExportTaskView[] = [
+  {
+    exportId: 'export_gateway_aug_01',
+    batchId: 'batch_gateway_20260819_01',
+    distributionId: 'distribution_gateway_aug_01',
+    productId: 'prod_gateway_01',
+    format: 'EXCEL',
+    status: 'SUCCEEDED',
+    expectedCount: 245,
+    successCount: 245,
+    failureCode: null,
+    version: 1,
+    createTime: Date.UTC(2026, 7, 19, 10, 15, 0),
+    updateTime: Date.UTC(2026, 7, 19, 10, 16, 0),
+  },
+];
+
+const seedPreRegistrations: CredentialPreRegistrationView[] = [
+  {
+    preRegistrationId: 'pre_gateway_hw_0003',
+    productId: 'prod_gateway_01',
+    hardwareUuid: 'GW-HW-202608-0003',
+    status: 'PENDING',
+    registrationGeneration: 1,
+    note: '华东试产批次',
+    expiresAt: Date.UTC(2026, 8, 1, 23, 59, 59),
+    consumedAt: null,
+    boundDeviceId: null,
+    importBatchId: 'pre-import-20260822-01',
+    version: 1,
+    createTime: Date.UTC(2026, 7, 22, 17, 0, 0),
+    updateTime: Date.UTC(2026, 7, 22, 17, 0, 0),
+  },
+  {
+    preRegistrationId: 'pre_gateway_hw_0001',
+    productId: 'prod_gateway_01',
+    hardwareUuid: 'GW-HW-202608-0001',
+    status: 'BOUND',
+    registrationGeneration: 1,
+    note: '产线首台验证',
+    expiresAt: Date.UTC(2026, 8, 1, 23, 59, 59),
+    consumedAt: Date.UTC(2026, 7, 20, 9, 0, 0),
+    boundDeviceId: 'gateway-0001',
+    importBatchId: 'pre-import-20260819-01',
+    version: 1,
+    createTime: Date.UTC(2026, 7, 19, 9, 30, 0),
+    updateTime: Date.UTC(2026, 7, 20, 9, 0, 0),
+  },
+];
+
+const seedCredentialRotations: CredentialRotationTaskView[] = [
+  {
+    taskId: 'rotation_gateway_0002',
+    productId: 'prod_gateway_01',
+    hardwareUuid: 'GW-HW-202608-0002',
+    deviceId: 'gateway-0002',
+    credentialFamilyId: 'family_gateway_device_002',
+    currentCredentialId: 'cred_gateway_device_002',
+    currentCredentialVersion: 1,
+    replacementCredentialId: 'cred_gateway_device_002_v2',
+    replacementCredentialVersion: 2,
+    status: 'GRACE_PERIOD',
+    gracePeriodSeconds: 86_400,
+    graceUntil: Date.UTC(2026, 7, 24, 14, 0, 0),
+    switchDeadline: Date.UTC(2026, 7, 25, 14, 0, 0),
+    newExpiresAt: null,
+    enforcementMode: 'NORMAL',
+    forceRevokeAt: null,
+    failureReason: null,
+    reasonCode: 'PERIODIC_ROTATION',
+    version: 2,
+    createTime: Date.UTC(2026, 7, 22, 10, 0, 0),
+    updateTime: Date.UTC(2026, 7, 22, 10, 0, 0),
+  },
+];
+
 let accounts: AccountRecord[] = [seedAccount];
 let projects: ProjectView[] = [...seedProjects];
 let members: ProjectMemberView[] = [...seedMembers];
 let invitations: InvitationView[] = [...seedInvitations];
 let authorizations: AuthorizationMetadataView[] = [...seedAuthz];
 let keyPairs: ProjectKeyPairView[] = [...seedKeyPairs];
-let products: ProductRecord[] = seedProducts.map((product) => ({
+let products: ProductRecord[] = [...seedProducts, ...additionalSeedProducts].map((product) => ({
   ...product,
   authModes: normalizeAuthModes(product.authModes),
 }));
-let parserProfiles: ParserProfileRecord[] = [...seedParserProfiles];
-let parserProfileVersions: ParserProfileVersionRecord[] = [...seedParserProfileVersions];
+let parserProfiles: ParserProfileRecord[] = [...seedParserProfiles, ...additionalSeedParserProfiles];
+let parserProfileVersions: ParserProfileVersionRecord[] = [
+  ...seedParserProfileVersions,
+  ...additionalSeedParserProfileVersions,
+];
+let credentials: CredentialRecord[] = [...seedCredentials];
+let manufacturingBatches: CredentialManufacturingBatchView[] = [...seedManufacturingBatches];
+let manufacturingItems: CredentialManufacturingItemView[] = [...seedManufacturingItems];
+let credentialDistributions: CredentialDistributionView[] = [...seedCredentialDistributions];
+let credentialExports: CredentialExportTaskView[] = [...seedCredentialExports];
+let preRegistrations: CredentialPreRegistrationView[] = [...seedPreRegistrations];
+let credentialRotations: CredentialRotationTaskView[] = [...seedCredentialRotations];
 const categories: CategoryView[] = [...seedCategories];
 const modelDrafts = new Map<string, ModelDraftView>();
 const modelVersions = new Map<string, ModelVersionRecord[]>();
@@ -1210,6 +2081,24 @@ seedThingModel(seedProducts[4], 1, 'DRAFT');
 seedThingModel(seedProducts[5], 1, 'DRAFT');
 seedThingModel(seedProducts[6], 1);
 
+additionalSeedProducts
+  .filter((product) => product.categoryType !== 'CUSTOM')
+  .forEach((product) => {
+    const isDraft = product.lifecycleStatus === 'DRAFT';
+    seedThingModel(product, isDraft ? 1 : 2, isDraft ? 'DRAFT' : undefined);
+  });
+
+const customSeedProduct = additionalSeedProducts.find(
+  (product) => product.categoryType === 'CUSTOM',
+);
+if (customSeedProduct) {
+  modelDrafts.set(customSeedProduct.productId, {
+    definition: emptyThingModel(customSeedProduct.productId),
+    status: 'DRAFT',
+    version: 1,
+  });
+}
+
 /** accessToken → accountId */
 const sessions = new Map<string, string>();
 /** refreshToken → accountId */
@@ -1275,6 +2164,36 @@ function findParserProfileVersion(
   return parserProfileVersions.find(
     (version) => version.profileId === profileId && version.profileVersion === profileVersion,
   );
+}
+
+function toCredentialSummary(credential: CredentialRecord): CredentialSummaryView {
+  const { secret: _secret, ...summary } = credential;
+  return clone(summary);
+}
+
+function credentialProduct(productId: string): ProductRecord | undefined {
+  return products.find((product) => product.productId === productId);
+}
+
+function credentialProductCanProvision(productId: string) {
+  const product = credentialProduct(productId);
+  return product != null && ['PUBLISHED', 'DISABLED'].includes(product.lifecycleStatus);
+}
+
+function credentialCursorPage<T extends object>(
+  records: T[],
+  cursor: string | null,
+  pageSize: number,
+  keyOf: (record: T) => string,
+): CursorResult<T> {
+  const start = cursor ? Math.max(records.findIndex((record) => keyOf(record) === cursor) + 1, 0) : 0;
+  const items = records.slice(start, start + pageSize).map((record) => clone(record));
+  const last = records[start + items.length - 1];
+  return {
+    items,
+    nextCursor: start + items.length < records.length && last ? keyOf(last) : null,
+    hasMore: start + items.length < records.length,
+  };
 }
 
 function validateParserProfileMapping(mapping: unknown) {
@@ -1506,6 +2425,478 @@ export const OpenPlatformHandlers = [
       ok({ mocked: true }),
       { headers: { 'Cache-Control': 'no-store' } },
     );
+  }),
+
+  http.get('/api/v1/credentials', ({ request }) => {
+    const url = new URL(request.url);
+    const productId = url.searchParams.get('productId');
+    const kind = url.searchParams.get('kind');
+    const credentialStatus = url.searchParams.get('credentialStatus');
+    const accessState = url.searchParams.get('accessState');
+    const pageSize = Math.min(Math.max(Number(url.searchParams.get('pageSize') ?? url.searchParams.get('limit') ?? 20), 1), 100);
+    const cursor = url.searchParams.get('cursor');
+    const filtered = credentials
+      .filter((credential) => !productId || credential.productId === productId)
+      .filter((credential) => !kind || credential.kind === kind)
+      .filter((credential) => !credentialStatus || credential.credentialStatus === credentialStatus)
+      .filter((credential) => !accessState || credential.accessState === accessState)
+      .sort((left, right) => right.createTime - left.createTime)
+      .map(toCredentialSummary);
+    return HttpResponse.json(ok(credentialCursorPage(filtered, cursor, pageSize, (item) => item.credentialId)));
+  }),
+
+  http.post('/api/v1/credentials', async ({ request }) => {
+    try {
+      const body = (await request.json()) as {
+        productId?: string;
+        kind?: 'PRODUCT_SECRET' | 'DEVICE_SECRET';
+        hardwareUuid?: string;
+        deviceId?: string;
+        expiresAt?: number | null;
+      };
+      const productId = body.productId?.trim();
+      if (!productId || !credentialProduct(productId)) return fail('PRODUCT_NOT_FOUND', '产品不存在。', 404);
+      if (!credentialProductCanProvision(productId)) return fail('PRODUCT_NOT_PUBLISHED', '产品发布后才能签发凭证。', 409);
+      if (!body.kind || !['PRODUCT_SECRET', 'DEVICE_SECRET'].includes(body.kind)) return fail('PARAM_INVALID', '凭证类型不合法。', 400);
+      if (body.kind === 'PRODUCT_SECRET' && (body.hardwareUuid || body.deviceId)) return fail('PARAM_INVALID', '产品密钥不能绑定设备身份。', 400);
+      if (body.kind === 'DEVICE_SECRET' && !body.deviceId && !body.hardwareUuid) return fail('PARAM_INVALID', '设备密钥需要绑定设备或硬件身份。', 400);
+      const activeDuplicate = credentials.find(
+        (credential) =>
+          credential.productId === productId &&
+          credential.kind === body.kind &&
+          credential.credentialStatus === 'ACTIVE' &&
+          (body.kind === 'PRODUCT_SECRET'
+            ? true
+            : credential.deviceId === body.deviceId && credential.hardwareUuid === body.hardwareUuid),
+      );
+      if (activeDuplicate) return fail('CREDENTIAL_ALREADY_ACTIVE', '目标凭证已存在，请使用重置操作。', 409);
+      const timestamp = Date.now();
+      const family = body.kind === 'PRODUCT_SECRET'
+        ? `family_${productId}_product`
+        : `family_${productId}_${body.deviceId ?? body.hardwareUuid}`;
+      const versions = credentials.filter((credential) => credential.credentialFamilyId === family);
+      const credential: CredentialRecord = {
+        credentialId: newId('cred'),
+        credentialFamilyId: family,
+        versionNo: (versions[versions.length - 1]?.versionNo ?? 0) + 1,
+        productId,
+        hardwareUuid: body.hardwareUuid ?? null,
+        deviceId: body.deviceId ?? null,
+        kind: body.kind,
+        credentialStatus: 'ACTIVE',
+        accessState: 'ENABLED',
+        fingerprint: `sha256:${Math.random().toString(16).slice(2, 10)}…${Math.random().toString(16).slice(2, 6)}`,
+        validFrom: timestamp,
+        expiresAt: body.expiresAt ?? null,
+        graceUntil: null,
+        createTime: timestamp,
+        updateTime: timestamp,
+        securityVersion: 1,
+        secret: `${body.kind === 'PRODUCT_SECRET' ? 'ps' : 'ds'}_${Math.random().toString(36).slice(2, 14)}`,
+      };
+      credentials.push(credential);
+      const delivery: CredentialSecretDeliveryView = {
+        credential: toCredentialSummary(credential),
+        secret: credential.secret,
+        deliveryId: newId('delivery'),
+        deliveryExpiresAt: timestamp + 10 * 60 * 1000,
+        remainingDeliveries: 1,
+      };
+      return HttpResponse.json(ok(delivery), { status: 201 });
+    } catch {
+      return fail('PARAM_INVALID', '请求内容不是有效 JSON。', 400);
+    }
+  }),
+
+  http.get('/api/v1/credentials/:credentialId', ({ params }) => {
+    const credential = credentials.find((item) => item.credentialId === String(params.credentialId));
+    if (!credential) return fail('CREDENTIAL_NOT_FOUND', '凭证不存在。', 404);
+    return HttpResponse.json(ok(toCredentialSummary(credential)));
+  }),
+
+  http.post('/api/v1/credentials/:credentialId/freeze', async ({ params, request }) => {
+    try {
+      const credential = credentials.find((item) => item.credentialId === String(params.credentialId));
+      if (!credential) return fail('CREDENTIAL_NOT_FOUND', '凭证不存在。', 404);
+      const body = (await request.json()) as { expectedVersion?: number | string };
+      if (String(body.expectedVersion ?? '') !== String(credential.securityVersion)) return fail('VERSION_MISMATCH', '凭证已发生变化，请刷新后重试。', 412);
+      credential.accessState = 'FROZEN';
+      credential.securityVersion += 1;
+      credential.updateTime = Date.now();
+      return HttpResponse.json(ok(toCredentialSummary(credential)));
+    } catch {
+      return fail('PARAM_INVALID', '请求内容不是有效 JSON。', 400);
+    }
+  }),
+
+  http.post('/api/v1/credentials/:credentialId/unfreeze', async ({ params, request }) => {
+    try {
+      const credential = credentials.find((item) => item.credentialId === String(params.credentialId));
+      if (!credential) return fail('CREDENTIAL_NOT_FOUND', '凭证不存在。', 404);
+      const body = (await request.json()) as { expectedVersion?: number | string };
+      if (String(body.expectedVersion ?? '') !== String(credential.securityVersion)) return fail('VERSION_MISMATCH', '凭证已发生变化，请刷新后重试。', 412);
+      credential.accessState = 'ENABLED';
+      credential.securityVersion += 1;
+      credential.updateTime = Date.now();
+      return HttpResponse.json(ok(toCredentialSummary(credential)));
+    } catch {
+      return fail('PARAM_INVALID', '请求内容不是有效 JSON。', 400);
+    }
+  }),
+
+  http.post('/api/v1/credentials/:credentialId/revoke', async ({ params, request }) => {
+    try {
+      const credential = credentials.find((item) => item.credentialId === String(params.credentialId));
+      if (!credential) return fail('CREDENTIAL_NOT_FOUND', '凭证不存在。', 404);
+      const body = (await request.json()) as { expectedVersion?: number | string };
+      if (String(body.expectedVersion ?? '') !== String(credential.securityVersion)) return fail('VERSION_MISMATCH', '凭证已发生变化，请刷新后重试。', 412);
+      credential.credentialStatus = 'REVOKED';
+      credential.accessState = 'FROZEN';
+      credential.securityVersion += 1;
+      credential.updateTime = Date.now();
+      return HttpResponse.json(ok(toCredentialSummary(credential)));
+    } catch {
+      return fail('PARAM_INVALID', '请求内容不是有效 JSON。', 400);
+    }
+  }),
+
+  http.post('/api/v1/credentials/:credentialId/reset', async ({ params, request }) => {
+    try {
+      const current = credentials.find((item) => item.credentialId === String(params.credentialId));
+      if (!current) return fail('CREDENTIAL_NOT_FOUND', '凭证不存在。', 404);
+      if (!credentialProductCanProvision(current.productId)) return fail('PRODUCT_NOT_PUBLISHED', '产品发布后才能重置凭证。', 409);
+      const body = (await request.json()) as { expectedVersion?: number | string; expiresAt?: number | null };
+      if (String(body.expectedVersion ?? '') !== String(current.securityVersion)) return fail('VERSION_MISMATCH', '凭证已发生变化，请刷新后重试。', 412);
+      current.credentialStatus = 'REVOKED';
+      current.accessState = 'FROZEN';
+      current.securityVersion += 1;
+      current.updateTime = Date.now();
+      const timestamp = Date.now();
+      const replacement: CredentialRecord = {
+        ...current,
+        credentialId: newId('cred'),
+        versionNo: current.versionNo + 1,
+        credentialStatus: 'ACTIVE',
+        accessState: 'ENABLED',
+        fingerprint: `sha256:${Math.random().toString(16).slice(2, 10)}…${Math.random().toString(16).slice(2, 6)}`,
+        validFrom: timestamp,
+        expiresAt: body.expiresAt ?? current.expiresAt,
+        graceUntil: null,
+        createTime: timestamp,
+        updateTime: timestamp,
+        securityVersion: 1,
+        secret: `${current.kind === 'PRODUCT_SECRET' ? 'ps' : 'ds'}_${Math.random().toString(36).slice(2, 14)}`,
+      };
+      credentials.push(replacement);
+      const delivery: CredentialSecretDeliveryView = {
+        credential: toCredentialSummary(replacement),
+        secret: replacement.secret,
+        deliveryId: newId('delivery'),
+        deliveryExpiresAt: timestamp + 10 * 60 * 1000,
+        remainingDeliveries: 1,
+      };
+      return HttpResponse.json(ok(delivery));
+    } catch {
+      return fail('PARAM_INVALID', '请求内容不是有效 JSON。', 400);
+    }
+  }),
+
+  http.get('/api/v1/credential-batches', ({ request }) => {
+    const url = new URL(request.url);
+    const productId = url.searchParams.get('productId');
+    const pageSize = Math.min(Math.max(Number(url.searchParams.get('pageSize') ?? 20), 1), 100);
+    const cursor = url.searchParams.get('cursor');
+    const filtered = manufacturingBatches
+      .filter((batch) => !productId || batch.productId === productId)
+      .sort((left, right) => right.createTime - left.createTime);
+    return HttpResponse.json(ok(credentialCursorPage(filtered, cursor, pageSize, (item) => item.batchId)));
+  }),
+
+  http.post('/api/v1/credential-batches', async ({ request }) => {
+    try {
+      const body = (await request.json()) as { productId?: string; quantity?: number; grantReference?: string; expiresAt?: number | null };
+      const productId = body.productId?.trim();
+      const quantity = Number(body.quantity);
+      if (!productId || !credentialProduct(productId)) return fail('PRODUCT_NOT_FOUND', '产品不存在。', 404);
+      if (!credentialProductCanProvision(productId)) return fail('PRODUCT_NOT_PUBLISHED', '产品发布后才能创建量产批次。', 409);
+      if (!Number.isInteger(quantity) || quantity < 1 || quantity > 10000) return fail('PARAM_INVALID', '批次数量需要在 1 到 10000 之间。', 400);
+      if (!body.grantReference?.trim()) return fail('PARAM_INVALID', '请填写量产批次引用。', 400);
+      const timestamp = Date.now();
+      const batch: CredentialManufacturingBatchView = {
+        grantId: newId('grant'),
+        batchId: newId('batch'),
+        productId,
+        status: 'AVAILABLE',
+        targetQuantity: quantity,
+        availableCount: quantity,
+        boundCount: 0,
+        revokedCount: 0,
+        expiredCount: 0,
+        voidCount: 0,
+        expiresAt: body.expiresAt ?? null,
+        allocatedQuantity: 0,
+        createTime: timestamp,
+        updateTime: timestamp,
+      };
+      manufacturingBatches.unshift(batch);
+      return HttpResponse.json(ok(batch), { status: 201 });
+    } catch {
+      return fail('PARAM_INVALID', '请求内容不是有效 JSON。', 400);
+    }
+  }),
+
+  http.get('/api/v1/credential-batches/:batchId', ({ params }) => {
+    const batch = manufacturingBatches.find((item) => item.batchId === String(params.batchId));
+    if (!batch) return fail('BATCH_NOT_FOUND', '量产批次不存在。', 404);
+    return HttpResponse.json(ok(clone(batch)));
+  }),
+
+  http.get('/api/v1/credential-batches/:batchId/items', ({ params, request }) => {
+    const batchId = String(params.batchId);
+    const batch = manufacturingBatches.find((item) => item.batchId === batchId);
+    if (!batch) return fail('BATCH_NOT_FOUND', '量产批次不存在。', 404);
+    const url = new URL(request.url);
+    const pageSize = Math.min(Math.max(Number(url.searchParams.get('pageSize') ?? 20), 1), 100);
+    const cursor = url.searchParams.get('cursor');
+    const records = manufacturingItems.filter((item) => item.batchId === batchId);
+    return HttpResponse.json(ok(credentialCursorPage(records, cursor, pageSize, (item) => item.itemId)));
+  }),
+
+  http.get('/api/v1/credential-distributions/:batchId/distributions', ({ params }) => {
+    const batch = manufacturingBatches.find((item) => item.batchId === String(params.batchId));
+    if (!batch) return fail('BATCH_NOT_FOUND', '量产批次不存在。', 404);
+    return HttpResponse.json(ok(credentialDistributions.filter((item) => item.batchId === batch.batchId).map(clone)));
+  }),
+
+  http.post('/api/v1/credential-distributions', async ({ request }) => {
+    try {
+      const body = (await request.json()) as { batchId?: string; quantity?: number; requestReference?: string };
+      const batch = manufacturingBatches.find((item) => item.batchId === body.batchId);
+      const quantity = Number(body.quantity);
+      if (!batch) return fail('BATCH_NOT_FOUND', '量产批次不存在。', 404);
+      if (!credentialProductCanProvision(batch.productId)) return fail('PRODUCT_NOT_PUBLISHED', '产品发布后才能划拨凭证。', 409);
+      if (!Number.isInteger(quantity) || quantity < 1) return fail('PARAM_INVALID', '划拨数量需要大于 0。', 400);
+      if (quantity > batch.availableCount) return fail('INSUFFICIENT_AVAILABLE_ITEMS', '批次可划拨数量不足。', 409);
+      if (!body.requestReference?.trim()) return fail('PARAM_INVALID', '请填写业务幂等引用。', 400);
+      const existing = credentialDistributions.find((item) => item.requestReference === body.requestReference);
+      if (existing) return HttpResponse.json(ok(clone(existing)));
+      const timestamp = Date.now();
+      const distribution: CredentialDistributionView = {
+        distributionId: newId('distribution'),
+        productId: batch.productId,
+        batchId: batch.batchId,
+        requestReference: body.requestReference.trim(),
+        requestedQuantity: quantity,
+        allocatedQuantity: quantity,
+        allocationHash: `sha256:allocation-${Math.random().toString(36).slice(2, 10)}`,
+        status: 'FROZEN',
+        frozenAt: timestamp,
+        expiresAt: batch.expiresAt,
+        version: 1,
+        createTime: timestamp,
+        updateTime: timestamp,
+      };
+      batch.availableCount -= quantity;
+      batch.allocatedQuantity += quantity;
+      batch.updateTime = timestamp;
+      credentialDistributions.unshift(distribution);
+      return HttpResponse.json(ok(distribution), { status: 201 });
+    } catch {
+      return fail('PARAM_INVALID', '请求内容不是有效 JSON。', 400);
+    }
+  }),
+
+  http.get('/api/v1/credential-distributions/:distributionId', ({ params }) => {
+    const distribution = credentialDistributions.find((item) => item.distributionId === String(params.distributionId));
+    if (!distribution) return fail('DISTRIBUTION_NOT_FOUND', '凭证划拨不存在。', 404);
+    return HttpResponse.json(ok(clone(distribution)));
+  }),
+
+  http.get('/api/v1/credential-exports', ({ request }) => {
+    const url = new URL(request.url);
+    const productId = url.searchParams.get('productId');
+    const pageSize = Math.min(Math.max(Number(url.searchParams.get('pageSize') ?? 20), 1), 100);
+    const cursor = url.searchParams.get('cursor');
+    const filtered = credentialExports
+      .filter((item) => !productId || item.productId === productId)
+      .sort((left, right) => right.createTime - left.createTime);
+    return HttpResponse.json(ok(credentialCursorPage(filtered, cursor, pageSize, (item) => item.exportId)));
+  }),
+
+  http.post('/api/v1/credential-exports', async ({ request }) => {
+    try {
+      const body = (await request.json()) as { distributionId?: string; format?: 'JSON' | 'EXCEL' };
+      const distribution = credentialDistributions.find((item) => item.distributionId === body.distributionId);
+      if (!distribution) return fail('DISTRIBUTION_NOT_FOUND', '凭证划拨不存在。', 404);
+      if (distribution.status !== 'FROZEN') return fail('DISTRIBUTION_NOT_READY', '只有已冻结的划拨集合可以导出。', 409);
+      if (!body.format || !['JSON', 'EXCEL'].includes(body.format)) return fail('PARAM_INVALID', '导出格式不合法。', 400);
+      const timestamp = Date.now();
+      const task: CredentialExportTaskView = {
+        exportId: newId('export'),
+        batchId: distribution.batchId,
+        distributionId: distribution.distributionId,
+        productId: distribution.productId,
+        format: body.format,
+        status: 'SUCCEEDED',
+        expectedCount: distribution.allocatedQuantity,
+        successCount: distribution.allocatedQuantity,
+        failureCode: null,
+        version: 1,
+        createTime: timestamp,
+        updateTime: timestamp,
+      };
+      credentialExports.unshift(task);
+      return HttpResponse.json(ok(task), { status: 201 });
+    } catch {
+      return fail('PARAM_INVALID', '请求内容不是有效 JSON。', 400);
+    }
+  }),
+
+  http.get('/api/v1/credential-exports/:exportId', ({ params }) => {
+    const task = credentialExports.find((item) => item.exportId === String(params.exportId));
+    if (!task) return fail('EXPORT_NOT_FOUND', '导出任务不存在。', 404);
+    return HttpResponse.json(ok(clone(task)));
+  }),
+
+  http.post('/api/v1/credential-exports/:exportId/download-grants', ({ params }) => {
+    const task = credentialExports.find((item) => item.exportId === String(params.exportId));
+    if (!task) return fail('EXPORT_NOT_FOUND', '导出任务不存在。', 404);
+    if (!['SUCCEEDED', 'PARTIALLY_SUCCEEDED'].includes(task.status)) return fail('EXPORT_NOT_READY', '导出任务尚未完成。', 409);
+    return HttpResponse.json(ok({ downloadUrl: `/mock-downloads/${task.exportId}.${task.format.toLowerCase()}`, expiresAt: Date.now() + 10 * 60 * 1000 }));
+  }),
+
+  http.get('/api/v1/credential-exports/:exportId/content', ({ params }) => {
+    const task = credentialExports.find((item) => item.exportId === String(params.exportId));
+    if (!task) return fail('EXPORT_NOT_FOUND', '导出任务不存在。', 404);
+    if (!['SUCCEEDED', 'PARTIALLY_SUCCEEDED'].includes(task.status)) return fail('EXPORT_NOT_READY', '导出任务尚未完成。', 409);
+    return HttpResponse.json(ok({ downloadUrl: `/mock-downloads/${task.exportId}.${task.format.toLowerCase()}`, expiresAt: Date.now() + 10 * 60 * 1000 }));
+  }),
+
+  http.get('/api/v1/products/:productId/pre-registrations', ({ params, request }) => {
+    if (!credentialProduct(String(params.productId))) return fail('PRODUCT_NOT_FOUND', '产品不存在。', 404);
+    const url = new URL(request.url);
+    const pageSize = Math.min(Math.max(Number(url.searchParams.get('pageSize') ?? 20), 1), 100);
+    const cursor = url.searchParams.get('cursor');
+    const records = preRegistrations
+      .filter((item) => item.productId === String(params.productId))
+      .sort((left, right) => right.createTime - left.createTime);
+    return HttpResponse.json(ok(credentialCursorPage(records, cursor, pageSize, (item) => item.preRegistrationId)));
+  }),
+
+  http.post('/api/v1/products/:productId/pre-registrations', async ({ params, request }) => {
+    try {
+      const productId = String(params.productId);
+      if (!credentialProduct(productId)) return fail('PRODUCT_NOT_FOUND', '产品不存在。', 404);
+      if (!credentialProductCanProvision(productId)) return fail('PRODUCT_NOT_PUBLISHED', '产品发布后才能导入预注册资格。', 409);
+      const body = (await request.json()) as { hardwareUuids?: string[]; note?: string; expiresAt?: number };
+      if (!Array.isArray(body.hardwareUuids) || body.hardwareUuids.length === 0 || body.hardwareUuids.length > 500) return fail('PARAM_INVALID', '一次需要导入 1 到 500 个硬件身份。', 400);
+      if (!body.expiresAt || body.expiresAt <= Date.now()) return fail('PARAM_INVALID', '预注册有效期必须晚于当前时间。', 400);
+      const timestamp = Date.now();
+      const importBatchId = newId('pre-import');
+      const inserted: CredentialPreRegistrationView[] = [];
+      body.hardwareUuids.map((value) => value.trim()).filter(Boolean).forEach((hardwareUuid) => {
+        const existing = preRegistrations.find((item) => item.productId === productId && item.hardwareUuid === hardwareUuid && item.status !== 'REMOVED');
+        if (existing) return;
+        const record: CredentialPreRegistrationView = {
+          preRegistrationId: newId('pre'),
+          productId,
+          hardwareUuid,
+          status: 'PENDING',
+          registrationGeneration: 1,
+          note: body.note?.trim() || null,
+          expiresAt: body.expiresAt!,
+          consumedAt: null,
+          boundDeviceId: null,
+          importBatchId,
+          version: 1,
+          createTime: timestamp,
+          updateTime: timestamp,
+        };
+        preRegistrations.unshift(record);
+        inserted.push(record);
+      });
+      return HttpResponse.json(ok({ inserted: inserted.length, duplicate: body.hardwareUuids.length - inserted.length, invalid: 0, invalidItems: [] }), { status: 201 });
+    } catch {
+      return fail('PARAM_INVALID', '请求内容不是有效 JSON。', 400);
+    }
+  }),
+
+  http.delete('/api/v1/pre-registrations/:preRegistrationId', ({ params }) => {
+    const record = preRegistrations.find((item) => item.preRegistrationId === String(params.preRegistrationId));
+    if (!record) return fail('PRE_REGISTRATION_NOT_FOUND', '预注册资格不存在。', 404);
+    if (record.status !== 'PENDING') return fail('PRE_REGISTRATION_NOT_PENDING', '只有待绑定资格可以移除。', 409);
+    record.status = 'REMOVED';
+    record.version += 1;
+    record.updateTime = Date.now();
+    return HttpResponse.json(ok(clone(record)));
+  }),
+
+  http.get('/api/v1/rotation-tasks', ({ request }) => {
+    const url = new URL(request.url);
+    const productId = url.searchParams.get('productId');
+    const pageSize = Math.min(Math.max(Number(url.searchParams.get('pageSize') ?? 20), 1), 100);
+    const cursor = url.searchParams.get('cursor');
+    const filtered = credentialRotations
+      .filter((item) => !productId || item.productId === productId)
+      .sort((left, right) => right.createTime - left.createTime);
+    return HttpResponse.json(ok(credentialCursorPage(filtered, cursor, pageSize, (item) => item.taskId)));
+  }),
+
+  http.post('/api/v1/rotation-tasks', async ({ request }) => {
+    try {
+      const body = (await request.json()) as { credentialId?: string; gracePeriodSeconds?: number; switchDeadline?: number; enforcementMode?: 'NORMAL' | 'SECURITY_ENFORCED'; reasonCode?: string };
+      const credential = credentials.find((item) => item.credentialId === body.credentialId);
+      if (!credential) return fail('CREDENTIAL_NOT_FOUND', '凭证不存在。', 404);
+      if (credential.kind !== 'DEVICE_SECRET') return fail('ROTATION_NOT_SUPPORTED', '只有设备密钥支持轮换。', 409);
+      if (!credentialProductCanProvision(credential.productId)) return fail('PRODUCT_NOT_PUBLISHED', '产品发布后才能创建轮换任务。', 409);
+      if (!body.switchDeadline || body.switchDeadline <= Date.now()) return fail('PARAM_INVALID', '切换截止时间必须晚于当前时间。', 400);
+      const activeTask = credentialRotations.find((item) => item.credentialFamilyId === credential.credentialFamilyId && !['COMPLETED', 'CANCELLED', 'FAILED'].includes(item.status));
+      if (activeTask) return fail('ROTATION_ALREADY_ACTIVE', '该凭证族已有进行中的轮换任务。', 409);
+      const timestamp = Date.now();
+      const task: CredentialRotationTaskView = {
+        taskId: newId('rotation'),
+        productId: credential.productId,
+        hardwareUuid: credential.hardwareUuid,
+        deviceId: credential.deviceId,
+        credentialFamilyId: credential.credentialFamilyId,
+        currentCredentialId: credential.credentialId,
+        currentCredentialVersion: credential.versionNo,
+        replacementCredentialId: null,
+        replacementCredentialVersion: null,
+        status: 'REQUESTED',
+        gracePeriodSeconds: Math.max(Number(body.gracePeriodSeconds ?? 86_400), 0),
+        graceUntil: null,
+        switchDeadline: body.switchDeadline,
+        newExpiresAt: null,
+        enforcementMode: body.enforcementMode ?? 'NORMAL',
+        forceRevokeAt: null,
+        failureReason: null,
+        reasonCode: body.reasonCode?.trim() || 'MANUAL_ROTATION',
+        version: 1,
+        createTime: timestamp,
+        updateTime: timestamp,
+      };
+      credentialRotations.unshift(task);
+      return HttpResponse.json(ok(task), { status: 201 });
+    } catch {
+      return fail('PARAM_INVALID', '请求内容不是有效 JSON。', 400);
+    }
+  }),
+
+  http.post('/api/v1/rotation-tasks/:taskId/cancel', async ({ params, request }) => {
+    try {
+      const task = credentialRotations.find((item) => item.taskId === String(params.taskId));
+      if (!task) return fail('ROTATION_NOT_FOUND', '轮换任务不存在。', 404);
+      const body = (await request.json()) as { expectedVersion?: number | string };
+      if (String(body.expectedVersion ?? '') !== String(task.version)) return fail('VERSION_MISMATCH', '轮换任务已发生变化，请刷新后重试。', 412);
+      if (['COMPLETED', 'CANCELLED', 'FAILED'].includes(task.status)) return HttpResponse.json(ok(clone(task)));
+      task.status = 'CANCELLED';
+      task.version += 1;
+      task.updateTime = Date.now();
+      return HttpResponse.json(ok(clone(task)));
+    } catch {
+      return fail('PARAM_INVALID', '请求内容不是有效 JSON。', 400);
+    }
   }),
 
   http.get('/api/v1/parser-profiles', ({ request }) => {
@@ -3126,4 +4517,11 @@ export const openPlatformSeed = {
   products: () => products,
   parserProfiles: () => parserProfiles,
   parserProfileVersions: () => parserProfileVersions,
+  credentials: () => credentials,
+  manufacturingBatches: () => manufacturingBatches,
+  manufacturingItems: () => manufacturingItems,
+  credentialDistributions: () => credentialDistributions,
+  credentialExports: () => credentialExports,
+  preRegistrations: () => preRegistrations,
+  credentialRotations: () => credentialRotations,
 };
