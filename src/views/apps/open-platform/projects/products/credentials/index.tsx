@@ -1462,7 +1462,7 @@ const ProductCredentialsPage = () => {
           </Card>
 
           <Tabs defaultValue="batches" className="flex-col gap-4">
-            <TabsList variant="line" className="w-full gap-3 justify-start overflow-x-auto rounded-none border-b px-0 md:ml-4 md:w-1/2">
+            <TabsList variant="line" className="w-full gap-3 justify-start overflow-x-auto rounded-none border-b px-0 md:w-1/2">
               <TabsTrigger value="batches" className="min-w-0 flex-1 basis-0 px-3">量产批次</TabsTrigger>
               <TabsTrigger value="distributions" className="min-w-0 flex-1 basis-0 px-3">领取单</TabsTrigger>
               <TabsTrigger value="credentials" className="min-w-0 flex-1 basis-0 px-3">设备凭证</TabsTrigger>
