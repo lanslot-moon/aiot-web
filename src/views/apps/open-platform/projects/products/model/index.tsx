@@ -7,6 +7,7 @@ import {
   Braces,
   Check,
   CheckCircle2,
+  FileKey2,
   GitCompare,
   History,
   Package,
@@ -511,6 +512,17 @@ function ProductModelNav({ projectId, productId }: { projectId: string; productI
       >
         <Braces className="size-3.5" aria-hidden />
         物模型
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="h-8 gap-1.5"
+        nativeButton={false}
+        render={<Link to={`/projects/${projectId}/products/${productId}/credentials`} />}
+      >
+        <FileKey2 className="size-3.5" aria-hidden />
+        凭证与量产
       </Button>
     </nav>
   );

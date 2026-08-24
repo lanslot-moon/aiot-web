@@ -22,6 +22,7 @@ import { toast } from 'sonner';
 
 import { ApiErrorAlert } from '@/components/open-platform/api-error-alert';
 import { CopyIdButton } from '@/components/open-platform/copy-id-button';
+import { ProductBootstrapModeField } from '@/components/open-platform/product-bootstrap-mode-field';
 import {
   ParserProfileSelect,
   ParserProfileVersionSelect,
@@ -209,7 +210,7 @@ function productEditForm(product: ProductDetailView): ProductEditForm {
     description: product.description ?? '',
     nodeType: product.nodeType ?? '',
     transport: product.transport ?? '',
-    authModes: Array.from(new Set(['DEVICE_SECRET', ...(product.authModes ?? [])])),
+    authModes: Array.from(new Set(product.authModes ?? [])),
     dataMode: product.dataMode ?? 'STANDARD_MODEL',
     bootstrapMode: product.bootstrapMode ?? 'OPEN',
     profileId: product.protocolProfile?.profileId ?? '',
@@ -274,7 +275,6 @@ function ProductEditDialog({
   };
 
   const toggleAuthMode = (code: string, checked: boolean) => {
-    if (code === 'DEVICE_SECRET' && !checked) return;
     setForm((current) => ({
       ...current,
       authModes: checked
@@ -357,7 +357,7 @@ function ProductEditDialog({
             <div>
               <p className="text-sm font-medium">连接契约</p>
               <p className="mt-1 text-xs text-muted-foreground">
-                发布前必须补齐节点类型、传输协议和认证方式。
+                发布前必须补齐节点类型、传输协议、认证方式和注册方式。
               </p>
             </div>
 
@@ -407,44 +407,33 @@ function ProductEditDialog({
                   </SelectContent>
                 </Select>
               </label>
-              <label className="grid gap-1.5 text-sm">
-                <span className="font-medium">接入模式</span>
-                <Select value={form.bootstrapMode} onValueChange={(value) => updateField('bootstrapMode', value ?? '')}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="选择接入模式">
-                      {labelOf(PRODUCT_BOOTSTRAP_MODE_LABEL, form.bootstrapMode, '选择接入模式')}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(PRODUCT_BOOTSTRAP_MODE_LABEL).map(([code, label]) => (
-                      <SelectItem key={code} value={code}>{label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </label>
             </div>
 
             <div className="grid gap-2">
               <span className="text-sm font-medium">认证方式</span>
+              <p className="text-xs text-muted-foreground">可只使用产品密钥，也可同时启用设备密钥；至少选择一种。</p>
               <div className="grid gap-2 sm:grid-cols-3">
                 {AUTH_MODE_OPTIONS.map(([code, label]) => {
-                  const required = code === 'DEVICE_SECRET';
                   return (
                   <label key={code} className={cn(
                     'flex items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm',
-                    required && 'cursor-not-allowed bg-muted/40',
                   )}>
                     <Checkbox
-                      checked={required || form.authModes.includes(code)}
-                      disabled={required}
+                      checked={form.authModes.includes(code)}
                       onCheckedChange={(checked) => toggleAuthMode(code, checked === true)}
                     />
                     <span>{label}</span>
-                    {required ? <span className="ml-auto text-xs text-muted-foreground">必选</span> : null}
                   </label>
                 )})}
               </div>
             </div>
+
+            <ProductBootstrapModeField
+              value={form.bootstrapMode}
+              onValueChange={(value) => updateField('bootstrapMode', value)}
+              productSecretEnabled={form.authModes.includes('PRODUCT_SECRET')}
+              deviceSecretEnabled={form.authModes.includes('DEVICE_SECRET')}
+            />
 
             {customPayload ? (
               <div className="grid gap-4 border-t pt-3 sm:grid-cols-2">
@@ -988,9 +977,9 @@ const ProductDetailPage = () => {
                     <div className="rounded-md border bg-background px-3 py-2.5">
                       <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                         <Settings2 className="size-3.5" aria-hidden />
-                        接入策略
+                        注册方式
                       </div>
-                      <p className="mt-2 text-[11px] text-muted-foreground">接入模式</p>
+                      <p className="mt-2 text-[11px] text-muted-foreground">动态注册或预注册</p>
                       <p className="mt-0.5 text-sm font-medium">
                         {labelOf(PRODUCT_BOOTSTRAP_MODE_LABEL, product.bootstrapMode, '未配置')}
                       </p>

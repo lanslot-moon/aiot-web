@@ -7,6 +7,7 @@ import {
   type CategoryVersionView,
   type CategoryView,
   type CategoryMergeView,
+  type CredentialKind,
   type CredentialDistributionView,
   type CredentialExportTaskView,
   type CredentialManufacturingBatchView,
@@ -74,10 +75,6 @@ function newId(prefix: string): string {
 
 function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
-}
-
-function normalizeAuthModes(authModes: string[]): string[] {
-  return [...new Set(['DEVICE_SECRET', ...authModes])];
 }
 
 function issueTokens(accountId: string): TokenResponse {
@@ -849,7 +846,7 @@ const seedProducts: ProductRecord[] = [
     categoryCatalogVersion: '2026.1',
     nodeType: 'GATEWAY',
     transport: 'MQTT',
-    authModes: ['PRODUCT_SECRET'],
+    authModes: ['DEVICE_SECRET', 'PRODUCT_SECRET'],
     customAuthProviderId: null,
     dataMode: 'STANDARD_MODEL',
     bootstrapMode: 'STRICT',
@@ -1774,6 +1771,25 @@ const seedCredentials: CredentialRecord[] = [
     securityVersion: 2,
     secret: 'ds_demo_gateway_0002',
   },
+  {
+    credentialId: 'cred_gateway_device_003',
+    credentialFamilyId: 'family_gateway_device_003',
+    versionNo: 1,
+    productId: 'prod_gateway_01',
+    hardwareUuid: 'GW-HW-202608-0003',
+    deviceId: null,
+    kind: 'DEVICE_SECRET',
+    credentialStatus: 'ACTIVE',
+    accessState: 'ENABLED',
+    fingerprint: 'sha256:4a81…d2e6',
+    validFrom: Date.UTC(2026, 7, 21, 8, 0, 0),
+    expiresAt: null,
+    graceUntil: null,
+    createTime: Date.UTC(2026, 7, 21, 8, 0, 0),
+    updateTime: Date.UTC(2026, 7, 21, 8, 0, 0),
+    securityVersion: 1,
+    secret: 'ds_demo_gateway_0003',
+  },
 ];
 
 const seedManufacturingBatches: CredentialManufacturingBatchView[] = [
@@ -1848,6 +1864,24 @@ const seedManufacturingItems: CredentialManufacturingItemView[] = [
     createTime: Date.UTC(2026, 7, 19, 9, 0, 0),
     updateTime: Date.UTC(2026, 7, 20, 11, 0, 0),
   },
+  {
+    itemId: 'item_gateway_0003',
+    batchId: 'batch_gateway_20260819_01',
+    productId: 'prod_gateway_01',
+    hardwareUuid: 'GW-HW-202608-0003',
+    credentialFamilyId: 'family_gateway_device_003',
+    credentialId: 'cred_gateway_device_003',
+    credentialVersion: 1,
+    boundDeviceId: null,
+    status: 'AVAILABLE',
+    expiresAt: null,
+    distributionId: null,
+    allocatedAt: null,
+    boundAt: null,
+    version: 1,
+    createTime: Date.UTC(2026, 7, 21, 8, 0, 0),
+    updateTime: Date.UTC(2026, 7, 21, 8, 0, 0),
+  },
 ];
 
 const seedCredentialDistributions: CredentialDistributionView[] = [
@@ -1896,6 +1930,7 @@ const seedPreRegistrations: CredentialPreRegistrationView[] = [
     expiresAt: Date.UTC(2026, 8, 1, 23, 59, 59),
     consumedAt: null,
     boundDeviceId: null,
+    issuedCredentialFamilyId: 'family_gateway_device_003',
     importBatchId: 'pre-import-20260822-01',
     version: 1,
     createTime: Date.UTC(2026, 7, 22, 17, 0, 0),
@@ -1911,6 +1946,7 @@ const seedPreRegistrations: CredentialPreRegistrationView[] = [
     expiresAt: Date.UTC(2026, 8, 1, 23, 59, 59),
     consumedAt: Date.UTC(2026, 7, 20, 9, 0, 0),
     boundDeviceId: 'gateway-0001',
+    issuedCredentialFamilyId: 'family_gateway_device_001',
     importBatchId: 'pre-import-20260819-01',
     version: 1,
     createTime: Date.UTC(2026, 7, 19, 9, 30, 0),
@@ -1944,28 +1980,26 @@ const seedCredentialRotations: CredentialRotationTaskView[] = [
   },
 ];
 
-let accounts: AccountRecord[] = [seedAccount];
+const accounts: AccountRecord[] = [seedAccount];
 let projects: ProjectView[] = [...seedProjects];
 let members: ProjectMemberView[] = [...seedMembers];
 let invitations: InvitationView[] = [...seedInvitations];
 let authorizations: AuthorizationMetadataView[] = [...seedAuthz];
 let keyPairs: ProjectKeyPairView[] = [...seedKeyPairs];
-let products: ProductRecord[] = [...seedProducts, ...additionalSeedProducts].map((product) => ({
-  ...product,
-  authModes: normalizeAuthModes(product.authModes),
-}));
-let parserProfiles: ParserProfileRecord[] = [...seedParserProfiles, ...additionalSeedParserProfiles];
+let products: ProductRecord[] = [...seedProducts, ...additionalSeedProducts];
+const parserProfiles: ParserProfileRecord[] = [...seedParserProfiles, ...additionalSeedParserProfiles];
 let parserProfileVersions: ParserProfileVersionRecord[] = [
   ...seedParserProfileVersions,
   ...additionalSeedParserProfileVersions,
 ];
 let credentials: CredentialRecord[] = [...seedCredentials];
-let manufacturingBatches: CredentialManufacturingBatchView[] = [...seedManufacturingBatches];
+const manufacturingBatches: CredentialManufacturingBatchView[] = [...seedManufacturingBatches];
 let manufacturingItems: CredentialManufacturingItemView[] = [...seedManufacturingItems];
-let credentialDistributions: CredentialDistributionView[] = [...seedCredentialDistributions];
-let credentialExports: CredentialExportTaskView[] = [...seedCredentialExports];
-let preRegistrations: CredentialPreRegistrationView[] = [...seedPreRegistrations];
-let credentialRotations: CredentialRotationTaskView[] = [...seedCredentialRotations];
+const credentialDistributions: CredentialDistributionView[] = [...seedCredentialDistributions];
+const credentialExports: CredentialExportTaskView[] = [...seedCredentialExports];
+const preRegistrations: CredentialPreRegistrationView[] = [...seedPreRegistrations];
+const credentialExportSnapshots = new Map<string, string[]>();
+const credentialRotations: CredentialRotationTaskView[] = [...seedCredentialRotations];
 const categories: CategoryView[] = [...seedCategories];
 const modelDrafts = new Map<string, ModelDraftView>();
 const modelVersions = new Map<string, ModelVersionRecord[]>();
@@ -2167,7 +2201,8 @@ function findParserProfileVersion(
 }
 
 function toCredentialSummary(credential: CredentialRecord): CredentialSummaryView {
-  const { secret: _secret, ...summary } = credential;
+  const { secret, ...summary } = credential;
+  void secret;
   return clone(summary);
 }
 
@@ -2175,9 +2210,41 @@ function credentialProduct(productId: string): ProductRecord | undefined {
   return products.find((product) => product.productId === productId);
 }
 
+function credentialKindLabel(kind: CredentialKind) {
+  return kind === 'PRODUCT_SECRET' ? '产品密钥' : '设备密钥';
+}
+
 function credentialProductCanProvision(productId: string) {
   const product = credentialProduct(productId);
   return product != null && ['PUBLISHED', 'DISABLED'].includes(product.lifecycleStatus);
+}
+
+function credentialProductSupportsDeviceSecret(product: ProductRecord | undefined) {
+  return product?.authModes.includes('DEVICE_SECRET') ?? false;
+}
+
+function credentialProductUsesPreRegistration(product: ProductRecord | undefined) {
+  return product?.bootstrapMode === 'STRICT';
+}
+
+function pendingPreRegistrationsForProduct(productId: string) {
+  const timestamp = Date.now();
+  return preRegistrations.filter(
+    (item) => item.productId === productId
+      && item.status === 'PENDING'
+      && item.expiresAt > timestamp
+      && !credentials.some(
+        (credential) => credential.productId === productId
+          && credential.kind === 'DEVICE_SECRET'
+          && credential.hardwareUuid === item.hardwareUuid
+          && ['ACTIVE', 'RETIRING'].includes(credential.credentialStatus),
+      )
+      && !manufacturingItems.some(
+        (manufacturingItem) => manufacturingItem.productId === productId
+          && manufacturingItem.hardwareUuid === item.hardwareUuid
+          && !['VOID', 'EXPIRED', 'REVOKED'].includes(manufacturingItem.status),
+      ),
+  );
 }
 
 function credentialCursorPage<T extends object>(
@@ -2455,9 +2522,11 @@ export const OpenPlatformHandlers = [
         expiresAt?: number | null;
       };
       const productId = body.productId?.trim();
-      if (!productId || !credentialProduct(productId)) return fail('PRODUCT_NOT_FOUND', '产品不存在。', 404);
+      const product = productId ? credentialProduct(productId) : undefined;
+      if (!productId || !product) return fail('PRODUCT_NOT_FOUND', '产品不存在。', 404);
       if (!credentialProductCanProvision(productId)) return fail('PRODUCT_NOT_PUBLISHED', '产品发布后才能签发凭证。', 409);
       if (!body.kind || !['PRODUCT_SECRET', 'DEVICE_SECRET'].includes(body.kind)) return fail('PARAM_INVALID', '凭证类型不合法。', 400);
+      if (!product.authModes.includes(body.kind)) return fail('CREDENTIAL_KIND_NOT_ENABLED', `当前产品未启用${credentialKindLabel(body.kind)}认证。`, 409);
       if (body.kind === 'PRODUCT_SECRET' && (body.hardwareUuid || body.deviceId)) return fail('PARAM_INVALID', '产品密钥不能绑定设备身份。', 400);
       if (body.kind === 'DEVICE_SECRET' && !body.deviceId && !body.hardwareUuid) return fail('PARAM_INVALID', '设备密钥需要绑定设备或硬件身份。', 400);
       const activeDuplicate = credentials.find(
@@ -2565,6 +2634,8 @@ export const OpenPlatformHandlers = [
       const current = credentials.find((item) => item.credentialId === String(params.credentialId));
       if (!current) return fail('CREDENTIAL_NOT_FOUND', '凭证不存在。', 404);
       if (!credentialProductCanProvision(current.productId)) return fail('PRODUCT_NOT_PUBLISHED', '产品发布后才能重置凭证。', 409);
+      const product = credentialProduct(current.productId);
+      if (!product?.authModes.includes(current.kind)) return fail('CREDENTIAL_KIND_NOT_ENABLED', `当前产品未启用${credentialKindLabel(current.kind)}认证，不能重置该凭证。`, 409);
       const body = (await request.json()) as { expectedVersion?: number | string; expiresAt?: number | null };
       if (String(body.expectedVersion ?? '') !== String(current.securityVersion)) return fail('VERSION_MISMATCH', '凭证已发生变化，请刷新后重试。', 412);
       current.credentialStatus = 'REVOKED';
@@ -2617,14 +2688,34 @@ export const OpenPlatformHandlers = [
       const body = (await request.json()) as { productId?: string; quantity?: number; grantReference?: string; expiresAt?: number | null };
       const productId = body.productId?.trim();
       const quantity = Number(body.quantity);
-      if (!productId || !credentialProduct(productId)) return fail('PRODUCT_NOT_FOUND', '产品不存在。', 404);
+      const product = productId ? credentialProduct(productId) : undefined;
+      if (!productId || !product) return fail('PRODUCT_NOT_FOUND', '产品不存在。', 404);
       if (!credentialProductCanProvision(productId)) return fail('PRODUCT_NOT_PUBLISHED', '产品发布后才能创建量产批次。', 409);
+      if (!credentialProductSupportsDeviceSecret(product)) {
+        return fail('DEVICE_SECRET_NOT_ENABLED', '当前产品未启用设备密钥，不支持创建制造批次。', 409);
+      }
       if (!Number.isInteger(quantity) || quantity < 1 || quantity > 10000) return fail('PARAM_INVALID', '批次数量需要在 1 到 10000 之间。', 400);
       if (!body.grantReference?.trim()) return fail('PARAM_INVALID', '请填写量产批次引用。', 400);
+      const pendingPreRegistrations = credentialProductUsesPreRegistration(product)
+        ? pendingPreRegistrationsForProduct(productId)
+        : [];
+      if (credentialProductUsesPreRegistration(product)) {
+        if (pendingPreRegistrations.length === 0) {
+          return fail('PRE_REGISTRATION_REQUIRED', '严格接入产品需要先导入待绑定预注册资格。', 409);
+        }
+        if (quantity !== pendingPreRegistrations.length) {
+          return fail(
+            'PRE_REGISTRATION_QUANTITY_MISMATCH',
+            `严格接入产品的批次数量必须等于当前待绑定预注册数量（${pendingPreRegistrations.length}）。`,
+            409,
+          );
+        }
+      }
       const timestamp = Date.now();
+      const batchId = newId('batch');
       const batch: CredentialManufacturingBatchView = {
         grantId: newId('grant'),
-        batchId: newId('batch'),
+        batchId,
         productId,
         status: 'AVAILABLE',
         targetQuantity: quantity,
@@ -2638,7 +2729,53 @@ export const OpenPlatformHandlers = [
         createTime: timestamp,
         updateTime: timestamp,
       };
+      const generated = Array.from({ length: quantity }, (_, index) => {
+        const suffix = `${timestamp.toString(36)}-${String(index + 1).padStart(5, '0')}`;
+        const credentialId = `cred_${batchId}_${index + 1}`;
+        const credentialFamilyId = `family_${batchId}_${index + 1}`;
+        const hardwareUuid = pendingPreRegistrations[index]?.hardwareUuid ?? `HW-${productId}-${suffix}`.toUpperCase();
+        const credential: CredentialRecord = {
+          credentialId,
+          credentialFamilyId,
+          versionNo: 1,
+          productId,
+          hardwareUuid,
+          deviceId: null,
+          kind: 'DEVICE_SECRET',
+          credentialStatus: 'ACTIVE',
+          accessState: 'ENABLED',
+          fingerprint: `sha256:${newId('fp')}`,
+          validFrom: timestamp,
+          expiresAt: batch.expiresAt,
+          graceUntil: null,
+          createTime: timestamp,
+          updateTime: timestamp,
+          securityVersion: 1,
+          secret: `ds_${newId('secret')}`,
+        };
+        const item: CredentialManufacturingItemView = {
+          itemId: `item_${batchId}_${index + 1}`,
+          batchId,
+          productId,
+          hardwareUuid,
+          credentialFamilyId,
+          credentialId,
+          credentialVersion: 1,
+          boundDeviceId: null,
+          status: 'AVAILABLE',
+          expiresAt: batch.expiresAt,
+          distributionId: null,
+          allocatedAt: null,
+          boundAt: null,
+          version: 1,
+          createTime: timestamp,
+          updateTime: timestamp,
+        };
+        return { credential, item };
+      });
       manufacturingBatches.unshift(batch);
+      credentials = [...generated.map((entry) => entry.credential), ...credentials];
+      manufacturingItems = [...generated.map((entry) => entry.item), ...manufacturingItems];
       return HttpResponse.json(ok(batch), { status: 201 });
     } catch {
       return fail('PARAM_INVALID', '请求内容不是有效 JSON。', 400);
@@ -2656,10 +2793,62 @@ export const OpenPlatformHandlers = [
     const batch = manufacturingBatches.find((item) => item.batchId === batchId);
     if (!batch) return fail('BATCH_NOT_FOUND', '量产批次不存在。', 404);
     const url = new URL(request.url);
-    const pageSize = Math.min(Math.max(Number(url.searchParams.get('pageSize') ?? 20), 1), 100);
+    const limit = Number(url.searchParams.get('limit') ?? 20);
+    if (!Number.isInteger(limit) || limit < 1 || limit > 100) return fail('PARAM_INVALID', 'limit 需要在 1 到 100 之间。', 400);
     const cursor = url.searchParams.get('cursor');
-    const records = manufacturingItems.filter((item) => item.batchId === batchId);
-    return HttpResponse.json(ok(credentialCursorPage(records, cursor, pageSize, (item) => item.itemId)));
+    const status = url.searchParams.get('status');
+    const hardwareUuidPrefix = url.searchParams.get('hardwareUuidPrefix')?.trim();
+    const credentialId = url.searchParams.get('credentialId')?.trim();
+    const sortBy = url.searchParams.get('sortBy') ?? 'createTime';
+    const sortDirection = url.searchParams.get('sortDirection') ?? 'DESC';
+    if (status && !['AVAILABLE', 'BOUND', 'EXPIRED', 'REVOKED', 'VOID'].includes(status)) return fail('PARAM_INVALID', '制造项状态不合法。', 400);
+    if (sortBy !== 'createTime' || !['ASC', 'DESC'].includes(sortDirection)) return fail('PARAM_INVALID', '制造项排序参数不合法。', 400);
+    const records = manufacturingItems
+      .filter((item) => item.batchId === batchId)
+      .filter((item) => !status || item.status === status)
+      .filter((item) => !hardwareUuidPrefix || item.hardwareUuid.startsWith(hardwareUuidPrefix))
+      .filter((item) => !credentialId || item.credentialId === credentialId)
+      .sort((left, right) => sortDirection === 'ASC' ? left.createTime - right.createTime : right.createTime - left.createTime);
+    return HttpResponse.json(ok(credentialCursorPage(records, cursor, limit, (item) => item.itemId)));
+  }),
+
+  http.get('/api/v1/credential-batches/:batchId/items/:itemId', ({ params }) => {
+    const batchId = String(params.batchId);
+    const batch = manufacturingBatches.find((item) => item.batchId === batchId);
+    if (!batch) return fail('BATCH_NOT_FOUND', '量产批次不存在。', 404);
+    const item = manufacturingItems.find((entry) => entry.itemId === String(params.itemId) && entry.batchId === batchId);
+    if (!item) return fail('ITEM_NOT_FOUND', '制造项不存在。', 404);
+    return HttpResponse.json(ok(clone(item)));
+  }),
+
+  http.post('/api/v1/credential-batches/:batchId/items/:itemId/void', async ({ params, request }) => {
+    try {
+      const batchId = String(params.batchId);
+      const batch = manufacturingBatches.find((entry) => entry.batchId === batchId);
+      if (!batch) return fail('BATCH_NOT_FOUND', '量产批次不存在。', 404);
+      const item = manufacturingItems.find((entry) => entry.itemId === String(params.itemId) && entry.batchId === batchId);
+      if (!item) return fail('ITEM_NOT_FOUND', '制造项不存在。', 404);
+      const body = (await request.json()) as { reasonCode?: string; reason?: string; expectedVersion?: number };
+      if (!body.reasonCode?.trim() || !Number.isInteger(body.expectedVersion)) return fail('PARAM_INVALID', 'reasonCode 和 expectedVersion 为必填项。', 400);
+      if (body.reason && body.reason.length > 256) return fail('PARAM_INVALID', 'reason 不能超过 256 个字符。', 400);
+      if (item.status === 'VOID') return HttpResponse.json(ok(clone(item)));
+      if (item.status !== 'AVAILABLE' || body.expectedVersion !== item.version) return fail('INVALID_STATE', '制造项状态或版本已变化，请刷新后重试。', 409);
+      const credential = credentials.find((entry) => entry.credentialId === item.credentialId);
+      if (!credential || credential.kind !== 'DEVICE_SECRET' || credential.credentialStatus !== 'ACTIVE') return fail('INVALID_STATE', '关联设备凭证当前不可作废。', 409);
+      const timestamp = Date.now();
+      credential.credentialStatus = 'REVOKED';
+      credential.securityVersion += 1;
+      credential.updateTime = timestamp;
+      item.status = 'VOID';
+      item.version += 1;
+      item.updateTime = timestamp;
+      batch.availableCount = Math.max(0, batch.availableCount - 1);
+      batch.voidCount += 1;
+      batch.updateTime = timestamp;
+      return HttpResponse.json(ok(clone(item)));
+    } catch {
+      return fail('PARAM_INVALID', '请求内容不是有效 JSON。', 400);
+    }
   }),
 
   http.get('/api/v1/credential-distributions/:batchId/distributions', ({ params }) => {
@@ -2675,14 +2864,25 @@ export const OpenPlatformHandlers = [
       const quantity = Number(body.quantity);
       if (!batch) return fail('BATCH_NOT_FOUND', '量产批次不存在。', 404);
       if (!credentialProductCanProvision(batch.productId)) return fail('PRODUCT_NOT_PUBLISHED', '产品发布后才能划拨凭证。', 409);
+      if (!credentialProductSupportsDeviceSecret(credentialProduct(batch.productId))) {
+        return fail('DEVICE_SECRET_NOT_ENABLED', '当前产品未启用设备密钥，不支持划拨制造凭证。', 409);
+      }
       if (!Number.isInteger(quantity) || quantity < 1) return fail('PARAM_INVALID', '划拨数量需要大于 0。', 400);
       if (quantity > batch.availableCount) return fail('INSUFFICIENT_AVAILABLE_ITEMS', '批次可划拨数量不足。', 409);
       if (!body.requestReference?.trim()) return fail('PARAM_INVALID', '请填写业务幂等引用。', 400);
       const existing = credentialDistributions.find((item) => item.requestReference === body.requestReference);
       if (existing) return HttpResponse.json(ok(clone(existing)));
+      const allocatedItems = manufacturingItems
+        .filter((item) => item.batchId === batch.batchId && item.status === 'AVAILABLE' && !item.distributionId)
+        .sort((left, right) => left.createTime - right.createTime)
+        .slice(0, quantity);
+      if (credentialProductUsesPreRegistration(credentialProduct(batch.productId)) && allocatedItems.length !== quantity) {
+        return fail('MANUFACTURING_ITEMS_NOT_READY', '严格预注册批次的制造项尚未全部生成，暂时不能划拨或导出。', 409);
+      }
       const timestamp = Date.now();
+      const distributionId = newId('distribution');
       const distribution: CredentialDistributionView = {
-        distributionId: newId('distribution'),
+        distributionId,
         productId: batch.productId,
         batchId: batch.batchId,
         requestReference: body.requestReference.trim(),
@@ -2696,6 +2896,11 @@ export const OpenPlatformHandlers = [
         createTime: timestamp,
         updateTime: timestamp,
       };
+      allocatedItems.forEach((item) => {
+        item.distributionId = distributionId;
+        item.allocatedAt = timestamp;
+        item.updateTime = timestamp;
+      });
       batch.availableCount -= quantity;
       batch.allocatedQuantity += quantity;
       batch.updateTime = timestamp;
@@ -2728,8 +2933,17 @@ export const OpenPlatformHandlers = [
       const body = (await request.json()) as { distributionId?: string; format?: 'JSON' | 'EXCEL' };
       const distribution = credentialDistributions.find((item) => item.distributionId === body.distributionId);
       if (!distribution) return fail('DISTRIBUTION_NOT_FOUND', '凭证划拨不存在。', 404);
+      if (!credentialProductSupportsDeviceSecret(credentialProduct(distribution.productId))) {
+        return fail('DEVICE_SECRET_NOT_ENABLED', '当前产品未启用设备密钥，不支持导出设备凭证。', 409);
+      }
       if (distribution.status !== 'FROZEN') return fail('DISTRIBUTION_NOT_READY', '只有已冻结的划拨集合可以导出。', 409);
       if (!body.format || !['JSON', 'EXCEL'].includes(body.format)) return fail('PARAM_INVALID', '导出格式不合法。', 400);
+      const snapshotItemIds = manufacturingItems
+        .filter((item) => item.distributionId === distribution.distributionId && !['VOID', 'EXPIRED', 'REVOKED'].includes(item.status))
+        .map((item) => item.itemId);
+      if (credentialProductUsesPreRegistration(credentialProduct(distribution.productId)) && snapshotItemIds.length !== distribution.allocatedQuantity) {
+        return fail('EXPORT_ITEMS_NOT_READY', '严格预注册划拨集合的制造项数量与导出数量不一致，不能创建导出任务。', 409);
+      }
       const timestamp = Date.now();
       const task: CredentialExportTaskView = {
         exportId: newId('export'),
@@ -2746,6 +2960,7 @@ export const OpenPlatformHandlers = [
         updateTime: timestamp,
       };
       credentialExports.unshift(task);
+      credentialExportSnapshots.set(task.exportId, snapshotItemIds);
       return HttpResponse.json(ok(task), { status: 201 });
     } catch {
       return fail('PARAM_INVALID', '请求内容不是有效 JSON。', 400);
@@ -2761,24 +2976,43 @@ export const OpenPlatformHandlers = [
   http.post('/api/v1/credential-exports/:exportId/download-grants', ({ params }) => {
     const task = credentialExports.find((item) => item.exportId === String(params.exportId));
     if (!task) return fail('EXPORT_NOT_FOUND', '导出任务不存在。', 404);
+    if (!credentialProductSupportsDeviceSecret(credentialProduct(task.productId))) {
+      return fail('DEVICE_SECRET_NOT_ENABLED', '当前产品未启用设备密钥，不支持下载设备凭证导出文件。', 409);
+    }
     if (!['SUCCEEDED', 'PARTIALLY_SUCCEEDED'].includes(task.status)) return fail('EXPORT_NOT_READY', '导出任务尚未完成。', 409);
+    const snapshotItemIds = credentialExportSnapshots.get(task.exportId);
+    if (snapshotItemIds && credentialProductUsesPreRegistration(credentialProduct(task.productId)) && snapshotItemIds.length !== task.expectedCount) {
+      return fail('EXPORT_ITEMS_NOT_READY', '导出快照与严格预注册批次数量不一致，不能创建下载授权。', 409);
+    }
     return HttpResponse.json(ok({ downloadUrl: `/mock-downloads/${task.exportId}.${task.format.toLowerCase()}`, expiresAt: Date.now() + 10 * 60 * 1000 }));
   }),
 
   http.get('/api/v1/credential-exports/:exportId/content', ({ params }) => {
     const task = credentialExports.find((item) => item.exportId === String(params.exportId));
     if (!task) return fail('EXPORT_NOT_FOUND', '导出任务不存在。', 404);
+    if (!credentialProductSupportsDeviceSecret(credentialProduct(task.productId))) {
+      return fail('DEVICE_SECRET_NOT_ENABLED', '当前产品未启用设备密钥，不支持下载设备凭证导出文件。', 409);
+    }
     if (!['SUCCEEDED', 'PARTIALLY_SUCCEEDED'].includes(task.status)) return fail('EXPORT_NOT_READY', '导出任务尚未完成。', 409);
+    const snapshotItemIds = credentialExportSnapshots.get(task.exportId);
+    if (snapshotItemIds && credentialProductUsesPreRegistration(credentialProduct(task.productId)) && snapshotItemIds.length !== task.expectedCount) {
+      return fail('EXPORT_ITEMS_NOT_READY', '导出快照与严格预注册批次数量不一致，不能下载文件。', 409);
+    }
     return HttpResponse.json(ok({ downloadUrl: `/mock-downloads/${task.exportId}.${task.format.toLowerCase()}`, expiresAt: Date.now() + 10 * 60 * 1000 }));
   }),
 
   http.get('/api/v1/products/:productId/pre-registrations', ({ params, request }) => {
     if (!credentialProduct(String(params.productId))) return fail('PRODUCT_NOT_FOUND', '产品不存在。', 404);
     const url = new URL(request.url);
-    const pageSize = Math.min(Math.max(Number(url.searchParams.get('pageSize') ?? 20), 1), 100);
+    const pageSize = Math.min(Math.max(Number(url.searchParams.get('limit') ?? url.searchParams.get('pageSize') ?? 20), 1), 100);
     const cursor = url.searchParams.get('cursor');
+    const status = url.searchParams.get('status');
+    const hardwareUuidPrefix = url.searchParams.get('hardwareUuidPrefix')?.trim();
+    if (status && !['PENDING', 'BOUND', 'EXPIRED', 'REMOVED'].includes(status)) return fail('PARAM_INVALID', '预注册状态不合法。', 400);
     const records = preRegistrations
       .filter((item) => item.productId === String(params.productId))
+      .filter((item) => !status || item.status === status)
+      .filter((item) => !hardwareUuidPrefix || item.hardwareUuid.startsWith(hardwareUuidPrefix))
       .sort((left, right) => right.createTime - left.createTime);
     return HttpResponse.json(ok(credentialCursorPage(records, cursor, pageSize, (item) => item.preRegistrationId)));
   }),
@@ -2786,8 +3020,12 @@ export const OpenPlatformHandlers = [
   http.post('/api/v1/products/:productId/pre-registrations', async ({ params, request }) => {
     try {
       const productId = String(params.productId);
-      if (!credentialProduct(productId)) return fail('PRODUCT_NOT_FOUND', '产品不存在。', 404);
+      const product = credentialProduct(productId);
+      if (!product) return fail('PRODUCT_NOT_FOUND', '产品不存在。', 404);
       if (!credentialProductCanProvision(productId)) return fail('PRODUCT_NOT_PUBLISHED', '产品发布后才能导入预注册资格。', 409);
+      if (product.bootstrapMode !== 'STRICT' || !product.authModes.includes('PRODUCT_SECRET')) {
+        return fail('PRE_REGISTRATION_NOT_ENABLED', '当前产品未启用严格预注册接入。', 409);
+      }
       const body = (await request.json()) as { hardwareUuids?: string[]; note?: string; expiresAt?: number };
       if (!Array.isArray(body.hardwareUuids) || body.hardwareUuids.length === 0 || body.hardwareUuids.length > 500) return fail('PARAM_INVALID', '一次需要导入 1 到 500 个硬件身份。', 400);
       if (!body.expiresAt || body.expiresAt <= Date.now()) return fail('PARAM_INVALID', '预注册有效期必须晚于当前时间。', 400);
@@ -2807,6 +3045,7 @@ export const OpenPlatformHandlers = [
           expiresAt: body.expiresAt!,
           consumedAt: null,
           boundDeviceId: null,
+          issuedCredentialFamilyId: null,
           importBatchId,
           version: 1,
           createTime: timestamp,
@@ -3265,8 +3504,8 @@ export const OpenPlatformHandlers = [
       if (hasConnectionPatch) {
         product.nodeType = body.nodeType ?? null;
         product.transport = body.transport ?? null;
-        product.authModes = normalizeAuthModes(
-          Array.isArray(body.authModes) ? [...body.authModes] : product.authModes,
+        product.authModes = Array.from(
+          new Set(Array.isArray(body.authModes) ? [...body.authModes] : product.authModes),
         );
         product.customAuthProviderId = body.customAuthProviderId ?? null;
         product.dataMode = body.dataMode ?? null;
@@ -3527,7 +3766,11 @@ export const OpenPlatformHandlers = [
       ['PUBLISHED', 'DEPRECATED'].includes(version.status),
     );
     return HttpResponse.json(
-      ok(history.map(({ definition: _definition, ...summary }) => summary)),
+      ok(history.map((version) => {
+        const { definition, ...summary } = version;
+        void definition;
+        return summary;
+      })),
     );
   }),
 
@@ -4137,10 +4380,12 @@ export const OpenPlatformHandlers = [
       const category = categoryType === 'STANDARD' ? findCategory(categoryCode) : null;
       const nodeType = body?.nodeType?.trim() ?? '';
       const transport = body?.transport?.trim() ?? '';
-      const authModes = normalizeAuthModes(
-        Array.isArray(body?.authModes)
-          ? body.authModes.map((mode) => String(mode).trim()).filter(Boolean)
-          : [],
+      const authModes = Array.from(
+        new Set(
+          Array.isArray(body?.authModes)
+            ? body.authModes.map((mode) => String(mode).trim()).filter(Boolean)
+            : [],
+        ),
       );
       const dataMode = body?.dataMode?.trim() ?? '';
       const bootstrapMode = body?.bootstrapMode?.trim() ?? '';

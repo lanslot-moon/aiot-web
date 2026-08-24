@@ -1,13 +1,16 @@
-import { useState, type FormEvent } from 'react';
+import { Fragment, useEffect, useRef, useState, type FormEvent } from 'react';
 import useSWR from 'swr';
+import useSWRInfinite from 'swr/infinite';
 import {
   ArrowLeft,
+  Ban,
   Boxes,
   Check,
   ChevronRight,
   CircleAlert,
   CloudDownload,
   Copy,
+  Eye,
   FileKey2,
   KeyRound,
   Loader2,
@@ -48,6 +51,7 @@ import type {
   CredentialDistributionView,
   CredentialExportTaskView,
   CredentialManufacturingBatchView,
+  CredentialManufacturingItemView,
   CredentialPreRegistrationView,
   CredentialRotationTaskView,
   CredentialSecretDeliveryView,
@@ -133,6 +137,14 @@ const distributionStatusLabel: Record<string, string> = {
   EXPIRED: '已过期',
 };
 
+const manufacturingItemStatusLabel: Record<string, string> = {
+  AVAILABLE: '可绑定',
+  BOUND: '已绑定',
+  EXPIRED: '已过期',
+  REVOKED: '已吊销',
+  VOID: '已作废',
+};
+
 function statusBadge(status: string, tone: 'default' | 'success' | 'warning' | 'danger' = 'default') {
   return (
     <Badge
@@ -191,6 +203,13 @@ function getDistributionTone(status: string) {
   if (status === 'CREATING') return 'warning' as const;
   if (['CANCELLED', 'EXPIRED'].includes(status)) return 'danger' as const;
   return 'default' as const;
+}
+
+function getManufacturingItemTone(status: string) {
+  if (status === 'AVAILABLE') return 'success' as const;
+  if (status === 'BOUND') return 'default' as const;
+  if (status === 'VOID' || status === 'REVOKED') return 'danger' as const;
+  return 'warning' as const;
 }
 
 function OneTimeSecretDialog({
@@ -480,11 +499,15 @@ function CreateBatchDialog({
   open,
   onOpenChange,
   productId,
+  preRegistrationMode,
+  pendingPreRegistrationCount,
   onCreated,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   productId: string;
+  preRegistrationMode: boolean;
+  pendingPreRegistrationCount: number;
   onCreated: () => Promise<unknown>;
 }) {
   const [quantity, setQuantity] = useState('100');
@@ -492,11 +515,19 @@ function CreateBatchDialog({
   const [expiresAt, setExpiresAt] = useState('');
   const [busy, setBusy] = useState(false);
 
+  useEffect(() => {
+    if (open && preRegistrationMode) setQuantity(String(pendingPreRegistrationCount));
+  }, [open, pendingPreRegistrationCount, preRegistrationMode]);
+
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const parsedQuantity = Number(quantity);
     if (!Number.isInteger(parsedQuantity) || parsedQuantity < 1 || parsedQuantity > 10000) {
       toast.error('数量需要填写 1 到 10000 之间的整数。');
+      return;
+    }
+    if (preRegistrationMode && parsedQuantity !== pendingPreRegistrationCount) {
+      toast.error(`严格接入产品的批次数量必须等于当前待绑定预注册数量（${pendingPreRegistrationCount}）。`);
       return;
     }
     if (!grantReference.trim()) {
@@ -528,14 +559,20 @@ function CreateBatchDialog({
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>创建量产批次</DialogTitle>
-          <DialogDescription>先生成固定数量的设备凭证，再按产线或渠道划拨。批次创建后不会直接把 Secret 显示在页面上。</DialogDescription>
+          <DialogDescription>{preRegistrationMode ? '严格接入产品会按当前待绑定预注册资格创建设备凭证，批次数量和硬件 UUID 由预注册列表决定。' : '先生成固定数量的设备凭证，再按产线或渠道划拨。批次创建后不会直接把 Secret 显示在页面上。'}</DialogDescription>
         </DialogHeader>
         <form className="space-y-4" onSubmit={(event) => void submit(event)}>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="credential-batch-quantity">凭证数量</Label>
-              <Input id="credential-batch-quantity" type="number" min={1} max={10000} value={quantity} onChange={(event) => setQuantity(event.target.value)} />
-              <p className="text-xs text-muted-foreground">单批最多 10000 个设备凭证。</p>
+              {preRegistrationMode ? (
+                <div id="credential-batch-quantity" className="flex h-9 items-center rounded-md border bg-muted/30 px-3 text-sm font-medium tabular-nums">
+                  {formatNumber(pendingPreRegistrationCount)}
+                </div>
+              ) : (
+                <Input id="credential-batch-quantity" type="number" min={1} max={10000} value={quantity} onChange={(event) => setQuantity(event.target.value)} />
+              )}
+              <p className="text-xs text-muted-foreground">{preRegistrationMode ? '数量固定为当前待绑定预注册资格数量。' : '单批最多 10000 个设备凭证。'}</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="credential-batch-expires">失效时间（可选）</Label>
@@ -558,6 +595,226 @@ function CreateBatchDialog({
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function ManufacturingBatchDetailDialog({
+  batch,
+  preRegistrationMode,
+  pendingPreRegistrationCount,
+  onOpenChange,
+  onBatchUpdated,
+}: {
+  batch: CredentialManufacturingBatchView | null;
+  preRegistrationMode: boolean;
+  pendingPreRegistrationCount: number;
+  onOpenChange: (open: boolean) => void;
+  onBatchUpdated: () => Promise<unknown>;
+}) {
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const [itemDetail, setItemDetail] = useState<CredentialManufacturingItemView | null>(null);
+  const [itemDetailLoading, setItemDetailLoading] = useState(false);
+  const [pendingVoid, setPendingVoid] = useState<CredentialManufacturingItemView | null>(null);
+  const [voidReason, setVoidReason] = useState('');
+  const [voidBusy, setVoidBusy] = useState(false);
+  const [itemStatusFilter, setItemStatusFilter] = useState('ALL');
+  const [hardwareUuidPrefix, setHardwareUuidPrefix] = useState('');
+  const [credentialIdFilter, setCredentialIdFilter] = useState('');
+  const itemDetailRef = useRef<HTMLDivElement | null>(null);
+
+  const batchId = batch?.batchId ?? '';
+  const batchKey = batch ? `/api/v1/credential-batches/${encodeURIComponent(batch.batchId)}` : null;
+  const { data: batchDetail, error: batchError, isLoading: batchLoading, mutate: mutateBatch } = useSWR<CredentialManufacturingBatchView>(batchKey, openPlatformGetFetcher);
+
+  const getItemPageKey = (pageIndex: number, previousPageData: CursorResult<CredentialManufacturingItemView> | null) => {
+    if (!batch) return null;
+    if (pageIndex > 0 && (!previousPageData || !previousPageData.hasMore)) return null;
+    const params = new URLSearchParams({ limit: '100', sortBy: 'createTime', sortDirection: 'DESC' });
+    if (previousPageData?.nextCursor) params.set('cursor', previousPageData.nextCursor);
+    if (itemStatusFilter !== 'ALL') params.set('status', itemStatusFilter);
+    if (hardwareUuidPrefix.trim()) params.set('hardwareUuidPrefix', hardwareUuidPrefix.trim());
+    if (credentialIdFilter.trim()) params.set('credentialId', credentialIdFilter.trim());
+    return `/api/v1/credential-batches/${encodeURIComponent(batch.batchId)}/items?${params.toString()}`;
+  };
+  const {
+    data: itemPages,
+    error: itemsError,
+    isLoading: itemsLoading,
+    isValidating: itemsValidating,
+    size: itemPageCount,
+    setSize: setItemPageCount,
+    mutate: mutateItems,
+  } = useSWRInfinite<CursorResult<CredentialManufacturingItemView>>(getItemPageKey, openPlatformGetFetcher);
+
+  const items = itemPages?.flatMap((page) => page.items) ?? [];
+  const lastItemPage = itemPages?.[itemPages.length - 1];
+  const hasMoreItems = lastItemPage?.hasMore ?? false;
+  const detail = batchDetail ?? batch;
+
+  useEffect(() => {
+    setSelectedItemId(null);
+    setItemDetail(null);
+    setPendingVoid(null);
+    setVoidReason('');
+  }, [batchId]);
+
+  useEffect(() => {
+    if (selectedItemId && (itemDetailLoading || itemDetail)) {
+      itemDetailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [itemDetail, itemDetailLoading, selectedItemId]);
+
+  const openItemDetail = async (item: CredentialManufacturingItemView) => {
+    setSelectedItemId(item.itemId);
+    setItemDetail(null);
+    setItemDetailLoading(true);
+    try {
+      const result = await openPlatformGetFetcher<CredentialManufacturingItemView>(`/api/v1/credential-batches/${encodeURIComponent(item.batchId)}/items/${encodeURIComponent(item.itemId)}`);
+      setItemDetail(result);
+    } catch (error) {
+      toast.error(error instanceof OpenPlatformApiError ? error.message : '制造项详情加载失败，请稍后重试。');
+    } finally {
+      setItemDetailLoading(false);
+    }
+  };
+
+  const voidItem = async () => {
+    if (!pendingVoid) return;
+    setVoidBusy(true);
+    try {
+      const result = await openPlatformPost<CredentialManufacturingItemView>(`/api/v1/credential-batches/${encodeURIComponent(pendingVoid.batchId)}/items/${encodeURIComponent(pendingVoid.itemId)}/void`, {
+        reasonCode: 'MANUAL_VOID',
+        reason: voidReason.trim() || '管理台手动作废',
+        expectedVersion: pendingVoid.version,
+      });
+      toast.success('制造项已作废，关联设备凭证已吊销。');
+      setSelectedItemId(result.itemId);
+      setItemDetail(result);
+      setPendingVoid(null);
+      setVoidReason('');
+      await Promise.all([mutateItems(), mutateBatch(), onBatchUpdated()]);
+    } catch (error) {
+      toast.error(error instanceof OpenPlatformApiError ? error.message : '制造项作废失败，请稍后重试。');
+    } finally {
+      setVoidBusy(false);
+    }
+  };
+
+  const itemDetailPanel = (
+    <div ref={itemDetailRef} aria-live="polite">
+      {itemDetailLoading ? (
+        <div className="flex min-h-24 items-center justify-center rounded-xl border bg-muted/20 text-sm text-muted-foreground">
+          <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />
+          正在加载制造项详情…
+        </div>
+      ) : itemDetail ? (
+        <div className="space-y-3 rounded-xl border bg-muted/20 p-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h3 className="text-sm font-semibold">制造项详情</h3>
+              <p className="mt-0.5 text-xs text-muted-foreground">仅展示管理所需的非敏感字段。</p>
+            </div>
+            {statusBadge(manufacturingItemStatusLabel[itemDetail.status] ?? itemDetail.status, getManufacturingItemTone(itemDetail.status))}
+          </div>
+          {preRegistrationMode ? (
+            <Alert className="rounded-xl border-primary/20 bg-primary/5">
+              <ShieldCheck className="size-4 text-primary" aria-hidden />
+              <AlertDescription>制造项中的 Hardware UUID 会直接取自这 {formatNumber(pendingPreRegistrationCount)} 条待绑定预注册资格，不会重新生成或允许手动输入。</AlertDescription>
+            </Alert>
+          ) : null}
+          <div className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+            <div><p className="text-xs text-muted-foreground">制造项 ID</p><code className="mt-1 block break-all font-mono text-xs">{itemDetail.itemId}</code></div>
+            <div><p className="text-xs text-muted-foreground">硬件身份</p><code className="mt-1 block break-all font-mono text-xs">{itemDetail.hardwareUuid}</code></div>
+            <div><p className="text-xs text-muted-foreground">凭证</p><code className="mt-1 block break-all font-mono text-xs">{itemDetail.credentialId} · v{itemDetail.credentialVersion}</code></div>
+            <div><p className="text-xs text-muted-foreground">凭证族</p><code className="mt-1 block break-all font-mono text-xs">{itemDetail.credentialFamilyId}</code></div>
+            <div><p className="text-xs text-muted-foreground">绑定设备</p><p className="mt-1">{itemDetail.boundDeviceId || '尚未绑定'}</p></div>
+            <div><p className="text-xs text-muted-foreground">划拨集合</p><p className="mt-1 break-all">{itemDetail.distributionId || '尚未划拨'}</p></div>
+            <div><p className="text-xs text-muted-foreground">分配时间</p><p className="mt-1">{itemDetail.allocatedAt ? formatDate(itemDetail.allocatedAt) : '尚未分配'}</p></div>
+            <div><p className="text-xs text-muted-foreground">绑定时间</p><p className="mt-1">{itemDetail.boundAt ? formatDate(itemDetail.boundAt) : '尚未绑定'}</p></div>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+
+  return (
+    <>
+      <Dialog open={batch != null} onOpenChange={(next) => !voidBusy && onOpenChange(next)}>
+        <DialogContent className="w-[calc(100vw-2rem)] max-w-none max-h-[calc(100dvh-2rem)] overflow-x-hidden overflow-y-auto sm:!max-w-6xl">
+          <DialogHeader className="min-w-0">
+            <DialogTitle>制造批次详情</DialogTitle>
+            <DialogDescription>查看批次生成的制造项及其当前状态。列表不会展示 Device Secret 明文。</DialogDescription>
+          </DialogHeader>
+          {batch ? (
+            <div className="min-w-0 space-y-4">
+              {batchError ? <Alert className="rounded-xl border-destructive/30 bg-destructive/5 text-destructive"><CircleAlert className="size-4" aria-hidden /><AlertDescription>{batchError instanceof Error ? batchError.message : '批次详情加载失败，请刷新重试。'}</AlertDescription></Alert> : null}
+              <div className="grid gap-2 rounded-xl border bg-muted/20 p-3 sm:grid-cols-4">
+                <div className="min-w-0"><p className="text-xs text-muted-foreground">批次 ID</p><code className="mt-1 block break-all font-mono text-xs">{detail?.batchId ?? batch.batchId}</code></div>
+                <div><p className="text-xs text-muted-foreground">状态</p><div className="mt-1">{statusBadge(batchStatusLabel[getBatchDisplayStatus(detail ?? batch)] ?? (detail ?? batch).status, getBatchTone((detail ?? batch).status))}</div></div>
+                <div><p className="text-xs text-muted-foreground">目标数量</p><p className="mt-1 font-semibold tabular-nums">{formatNumber((detail ?? batch).targetQuantity)}</p></div>
+                <div><p className="text-xs text-muted-foreground">可绑定 / 已绑定 / 已作废</p><p className="mt-1 text-sm tabular-nums">{formatNumber((detail ?? batch).availableCount)} / {formatNumber((detail ?? batch).boundCount)} / {formatNumber((detail ?? batch).voidCount)}</p></div>
+              </div>
+
+              <div className="min-w-0 space-y-3 rounded-xl border">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b px-3 py-2.5">
+                  <div><h3 className="text-sm font-semibold">制造项</h3><p className="mt-0.5 text-xs text-muted-foreground">制造项是单台设备的凭证与硬件身份关联记录。</p></div>
+                  {batchLoading ? <span className="text-xs text-muted-foreground">正在刷新批次…</span> : null}
+                </div>
+                <div className="grid gap-2 px-3 pt-1 md:grid-cols-[10rem_minmax(0,1fr)_minmax(0,1fr)]">
+                  <Select value={itemStatusFilter} onValueChange={(value) => setItemStatusFilter(value ?? 'ALL')}>
+                    <SelectTrigger aria-label="制造项状态" className="w-full"><SelectValue placeholder="全部状态" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ALL">全部状态</SelectItem>
+                      <SelectItem value="AVAILABLE">可绑定</SelectItem>
+                      <SelectItem value="BOUND">已绑定</SelectItem>
+                      <SelectItem value="EXPIRED">已过期</SelectItem>
+                      <SelectItem value="REVOKED">已吊销</SelectItem>
+                      <SelectItem value="VOID">已作废</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Input aria-label="硬件身份前缀" value={hardwareUuidPrefix} onChange={(event) => setHardwareUuidPrefix(event.target.value)} placeholder="按硬件身份前缀筛选" />
+                  <Input aria-label="凭证 ID" value={credentialIdFilter} onChange={(event) => setCredentialIdFilter(event.target.value)} placeholder="按凭证 ID 精确筛选" />
+                </div>
+                {itemsError ? <Alert className="mx-3 rounded-xl border-destructive/30 bg-destructive/5 text-destructive"><CircleAlert className="size-4" aria-hidden /><AlertDescription>{itemsError instanceof Error ? itemsError.message : '制造项列表加载失败，请重试。'}</AlertDescription></Alert> : null}
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader><TableRow><TableHead>制造项</TableHead><TableHead>硬件身份</TableHead><TableHead>状态</TableHead><TableHead>凭证</TableHead><TableHead>绑定信息</TableHead><TableHead className="text-right">操作</TableHead></TableRow></TableHeader>
+                    <TableBody>
+                      {itemsLoading && itemPages == null ? <TableRow><TableCell colSpan={6} className="h-28 text-center text-sm text-muted-foreground"><Loader2 className="mr-2 inline size-4 animate-spin" aria-hidden />正在加载制造项…</TableCell></TableRow> : null}
+                      {!itemsLoading && items.length === 0 ? <TableRow><TableCell colSpan={6} className="h-28 text-center text-sm text-muted-foreground">当前筛选条件下没有制造项。</TableCell></TableRow> : null}
+                      {items.map((item) => (
+                        <Fragment key={item.itemId}>
+                          <TableRow className={cn('transition-colors hover:bg-muted/20', selectedItemId === item.itemId && 'bg-muted/30')}>
+                            <TableCell className="whitespace-normal"><button type="button" className="max-w-full break-all whitespace-normal text-left font-medium underline-offset-4 hover:underline" onClick={() => void openItemDetail(item)}>{item.itemId}</button><div className="mt-1 text-xs text-muted-foreground">创建于 {formatDateShort(item.createTime)}</div></TableCell>
+                            <TableCell className="whitespace-normal break-all"><code className="break-all font-mono text-xs">{item.hardwareUuid}</code></TableCell>
+                            <TableCell>{statusBadge(manufacturingItemStatusLabel[item.status] ?? item.status, getManufacturingItemTone(item.status))}</TableCell>
+                            <TableCell className="whitespace-normal break-all"><code className="break-all font-mono text-xs">{item.credentialId}</code><div className="mt-1 text-xs text-muted-foreground">v{item.credentialVersion}</div></TableCell>
+                            <TableCell className="whitespace-normal break-words text-sm">{item.status === 'BOUND' ? item.boundDeviceId || '已绑定设备' : item.status === 'AVAILABLE' ? '尚未绑定' : item.status === 'VOID' ? '已作废' : '—'}</TableCell>
+                            <TableCell><div className="flex justify-end gap-1.5"><Button type="button" variant="ghost" size="sm" className="gap-1.5" onClick={() => void openItemDetail(item)}><Eye className="size-3.5" aria-hidden />查看</Button>{item.status === 'AVAILABLE' ? <Button type="button" variant="ghost" size="sm" className="gap-1.5 text-destructive hover:text-destructive" onClick={() => { setPendingVoid(item); setVoidReason(''); }}><Ban className="size-3.5" aria-hidden />作废</Button> : null}</div></TableCell>
+                          </TableRow>
+                          {selectedItemId === item.itemId ? <TableRow className="bg-muted/10"><TableCell colSpan={6} className="p-3">{itemDetailPanel}</TableCell></TableRow> : null}
+                        </Fragment>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                {hasMoreItems ? <div className="flex justify-center border-t p-2.5"><Button type="button" variant="outline" size="sm" onClick={() => void setItemPageCount(itemPageCount + 1)} disabled={itemsValidating} className="gap-1.5">{itemsValidating ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : null}加载更多</Button></div> : null}
+              </div>
+
+            </div>
+          ) : null}
+          <DialogFooter><Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={voidBusy}>关闭</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={pendingVoid != null} onOpenChange={(open) => { if (!open && !voidBusy) { setPendingVoid(null); setVoidReason(''); } }}>
+        <AlertDialogContent>
+          <AlertDialogHeader><AlertDialogTitle>作废这个制造项？</AlertDialogTitle><AlertDialogDescription>作废后该制造项不能再绑定设备，关联的设备凭证也会被吊销。这个操作不可恢复，请确认当前硬件身份和凭证版本。</AlertDialogDescription></AlertDialogHeader>
+          {pendingVoid ? <div className="space-y-2"><div className="rounded-lg border bg-muted/20 p-3 text-xs"><div className="flex items-center justify-between gap-3"><span className="text-muted-foreground">制造项</span><code className="font-mono">{pendingVoid.itemId}</code></div><div className="mt-2 flex items-center justify-between gap-3"><span className="text-muted-foreground">硬件身份</span><code className="font-mono">{pendingVoid.hardwareUuid}</code></div></div><Label htmlFor="manufacturing-void-reason">作废说明（可选）</Label><Input id="manufacturing-void-reason" value={voidReason} onChange={(event) => setVoidReason(event.target.value)} maxLength={256} placeholder="例如：产线抽检失败" /></div> : null}
+          <AlertDialogFooter><AlertDialogCancel disabled={voidBusy}>取消</AlertDialogCancel><AlertDialogAction variant="destructive" disabled={voidBusy} onClick={(event) => { event.preventDefault(); void voidItem(); }}>{voidBusy ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Ban className="size-4" aria-hidden />}确认作废</AlertDialogAction></AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 
@@ -718,11 +975,13 @@ function ExportDialog({
 function DistributionDetailDialog({
   distribution,
   loading,
+  canExport,
   onOpenChange,
   onExport,
 }: {
   distribution: CredentialDistributionView | null;
   loading: boolean;
+  canExport: boolean;
   onOpenChange: (open: boolean) => void;
   onExport: (distribution: CredentialDistributionView) => void;
 }) {
@@ -758,7 +1017,7 @@ function DistributionDetailDialog({
           </div>
         ) : null}
         <DialogFooter>
-          {distribution?.status === 'FROZEN' ? <Button type="button" onClick={() => { onExport(distribution); onOpenChange(false); }} className="gap-1.5"><CloudDownload className="size-4" aria-hidden />创建导出任务</Button> : null}
+          {distribution?.status === 'FROZEN' && canExport ? <Button type="button" onClick={() => { onExport(distribution); onOpenChange(false); }} className="gap-1.5"><CloudDownload className="size-4" aria-hidden />创建导出任务</Button> : null}
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>关闭</Button>
         </DialogFooter>
       </DialogContent>
@@ -911,6 +1170,7 @@ function CredentialsPageSkeleton() {
 const ProductCredentialsPage = () => {
   const { projectId = '', productId = '' } = useParams<{ projectId: string; productId: string }>();
   const [batchDialogOpen, setBatchDialogOpen] = useState(false);
+  const [manufacturingBatch, setManufacturingBatch] = useState<CredentialManufacturingBatchView | null>(null);
   const [allocateBatch, setAllocateBatch] = useState<CredentialManufacturingBatchView | null>(null);
   const [exportDistribution, setExportDistribution] = useState<CredentialDistributionView | null>(null);
   const [distributionDetail, setDistributionDetail] = useState<CredentialDistributionView | null>(null);
@@ -928,20 +1188,33 @@ const ProductCredentialsPage = () => {
   const batchesKey = productId ? `/api/v1/credential-batches?productId=${encodeURIComponent(productId)}&pageSize=100` : null;
   const credentialsKey = productId ? `/api/v1/credentials?productId=${encodeURIComponent(productId)}&pageSize=100` : null;
   const exportsKey = productId ? `/api/v1/credential-exports?productId=${encodeURIComponent(productId)}&pageSize=100` : null;
-  const preRegistrationsKey = productId ? `/api/v1/products/${encodeURIComponent(productId)}/pre-registrations?pageSize=100` : null;
   const rotationsKey = productId ? `/api/v1/rotation-tasks?productId=${encodeURIComponent(productId)}&pageSize=100` : null;
 
   const { data: product, error: productError, isLoading: productLoading } = useSWR<ProductDetailView>(productKey, openPlatformGetFetcher);
   const { data: batchesData, error: batchesError, mutate: mutateBatches } = useSWR<CursorResult<CredentialManufacturingBatchView>>(batchesKey, openPlatformGetFetcher);
   const { data: credentialsData, error: credentialsError, mutate: mutateCredentials } = useSWR<CursorResult<CredentialSummaryView>>(credentialsKey, openPlatformGetFetcher);
   const { data: exportsData, error: exportsError, mutate: mutateExports } = useSWR<CursorResult<CredentialExportTaskView>>(exportsKey, openPlatformGetFetcher);
-  const { data: preRegistrationsData, error: preRegistrationsError, mutate: mutatePreRegistrations } = useSWR<CursorResult<CredentialPreRegistrationView>>(preRegistrationsKey, openPlatformGetFetcher);
+  const getPreRegistrationPageKey = (pageIndex: number, previousPageData: CursorResult<CredentialPreRegistrationView> | null) => {
+    if (!productId) return null;
+    if (pageIndex > 0 && (!previousPageData || !previousPageData.hasMore)) return null;
+    const params = new URLSearchParams({ pageSize: '100' });
+    if (previousPageData?.nextCursor) params.set('cursor', previousPageData.nextCursor);
+    return `/api/v1/products/${encodeURIComponent(productId)}/pre-registrations?${params.toString()}`;
+  };
+  const { data: preRegistrationPages, error: preRegistrationsError, size: preRegistrationPageCount, setSize: setPreRegistrationPageCount, mutate: mutatePreRegistrations } = useSWRInfinite<CursorResult<CredentialPreRegistrationView>>(getPreRegistrationPageKey, openPlatformGetFetcher);
   const { data: rotationsData, error: rotationsError, mutate: mutateRotations } = useSWR<CursorResult<CredentialRotationTaskView>>(rotationsKey, openPlatformGetFetcher);
+
+  useEffect(() => {
+    const lastPage = preRegistrationPages?.[preRegistrationPages.length - 1];
+    if (preRegistrationPages && lastPage?.hasMore && preRegistrationPages.length === preRegistrationPageCount) {
+      void setPreRegistrationPageCount(preRegistrationPageCount + 1);
+    }
+  }, [preRegistrationPageCount, preRegistrationPages, setPreRegistrationPageCount]);
 
   const batches = batchesData?.items ?? [];
   const credentials = credentialsData?.items ?? [];
   const exports = exportsData?.items ?? [];
-  const preRegistrations = preRegistrationsData?.items ?? [];
+  const preRegistrations = preRegistrationPages?.flatMap((page) => page.items) ?? [];
   const rotations = rotationsData?.items ?? [];
   const productSecret = credentials.find((credential) => credential.kind === 'PRODUCT_SECRET' && credential.credentialStatus === 'ACTIVE');
   const deviceCredentials = credentials.filter((credential) => credential.kind === 'DEVICE_SECRET');
@@ -960,6 +1233,22 @@ const ProductCredentialsPage = () => {
   const allocationTotal = allocatedCount + availableCount;
   const allocationPercent = allocationTotal ? Math.round((allocatedCount / allocationTotal) * 100) : 0;
   const canProvision = product != null && ['PUBLISHED', 'DISABLED'].includes(product.lifecycleStatus);
+  const supportsProductSecret = product?.authModes.includes('PRODUCT_SECRET') ?? false;
+  const supportsDeviceSecret = product?.authModes.includes('DEVICE_SECRET') ?? false;
+  const preRegistrationMode = product?.bootstrapMode === 'STRICT';
+  const pendingPreRegistrationCount = preRegistrations.filter(
+    (item) => item.productId === productId
+      && item.status === 'PENDING'
+      && item.expiresAt > Date.now()
+      && !deviceCredentials.some(
+        (credential) => credential.hardwareUuid === item.hardwareUuid
+          && ['ACTIVE', 'RETIRING'].includes(credential.credentialStatus),
+      ),
+  ).length;
+  const manufacturingFlowEnabled = canProvision && supportsDeviceSecret;
+  const canCreateBatch = manufacturingFlowEnabled && (!preRegistrationMode || pendingPreRegistrationCount > 0);
+  const canImportPreRegistrations = canProvision && preRegistrationMode && supportsProductSecret;
+  const productSecretOnly = supportsProductSecret && !supportsDeviceSecret;
   const hasErrors = productError || batchesError || credentialsError || exportsError || preRegistrationsError || rotationsError || distributionsError;
 
   const refreshAll = async () => {
@@ -982,6 +1271,10 @@ const ProductCredentialsPage = () => {
   };
 
   const downloadExport = async (task: CredentialExportTaskView) => {
+    if (!supportsDeviceSecret) {
+      toast.info('当前产品未启用设备密钥，不支持下载设备凭证导出文件。');
+      return;
+    }
     try {
       const result = await openPlatformPost<{ downloadUrl: string; expiresAt: number }>(`/api/v1/credential-exports/${encodeURIComponent(task.exportId)}/download-grants`, {});
       toast.success(`下载链接已签发，将于 ${formatDate(result.expiresAt)} 失效。`);
@@ -992,6 +1285,10 @@ const ProductCredentialsPage = () => {
   };
 
   const openExportForBatch = async (batch: CredentialManufacturingBatchView) => {
+    if (!manufacturingFlowEnabled) {
+      toast.info('当前产品未启用设备密钥，不支持导出设备凭证。');
+      return;
+    }
     try {
       const batchDistributions = await openPlatformGetFetcher<CredentialDistributionView[]>(`/api/v1/credential-distributions/${encodeURIComponent(batch.batchId)}/distributions`);
       const frozen = batchDistributions.find((item) => item.status === 'FROZEN');
@@ -1071,7 +1368,7 @@ const ProductCredentialsPage = () => {
               <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => void refreshAll()}>
                 <RefreshCw className="size-3.5" aria-hidden /> 刷新状态
               </Button>
-              <Button type="button" size="sm" className="gap-1.5" onClick={() => setBatchDialogOpen(true)} disabled={!canProvision}>
+              <Button type="button" size="sm" className="gap-1.5" onClick={() => setBatchDialogOpen(true)} disabled={!canCreateBatch}>
                 <Plus className="size-3.5" aria-hidden /> 创建量产批次
               </Button>
             </div>
@@ -1089,6 +1386,24 @@ const ProductCredentialsPage = () => {
               <AlertDescription>当前产品尚未发布，凭证签发、量产批次、预注册和导出操作会在发布后开放；现在可以先查看已有安全状态。</AlertDescription>
             </Alert>
           ) : null}
+          {canProvision && productSecretOnly && product.bootstrapMode === 'OPEN' ? (
+            <Alert className="rounded-xl border-primary/20 bg-primary/5">
+              <ShieldCheck className="size-4 text-primary" aria-hidden />
+              <AlertDescription>当前产品仅使用产品密钥并采用免预注册动态接入。设备首次上线时由平台动态生成设备凭证，因此不支持制造批次、划拨、预注册和导出操作。</AlertDescription>
+            </Alert>
+          ) : null}
+          {canProvision && productSecretOnly && product.bootstrapMode === 'STRICT' ? (
+            <Alert className="rounded-xl border-primary/20 bg-primary/5">
+              <ShieldCheck className="size-4 text-primary" aria-hidden />
+              <AlertDescription>当前产品仅启用产品密钥，不能生成设备凭证；可以维护预注册资格，但不支持制造批次、划拨和导出设备凭证。</AlertDescription>
+            </Alert>
+          ) : null}
+          {canProvision && !productSecretOnly && preRegistrationMode ? (
+            <Alert className="rounded-xl border-primary/20 bg-primary/5">
+              <ShieldCheck className="size-4 text-primary" aria-hidden />
+              <AlertDescription>当前产品使用严格预注册接入。创建制造批次时会自动使用全部待绑定预注册 Hardware UUID，批次数量固定为 {formatNumber(pendingPreRegistrationCount)}。</AlertDescription>
+            </Alert>
+          ) : null}
 
           <div className="grid items-stretch gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)]">
             <Card className="h-full overflow-hidden">
@@ -1098,8 +1413,8 @@ const ProductCredentialsPage = () => {
               </CardHeader>
               <CardContent className="grid flex-1 gap-3 p-4 sm:grid-cols-2">
                 <div className="rounded-xl border bg-background p-3 transition-colors hover:bg-muted/30">
-                  <div className="flex items-center justify-between gap-2"><span className="text-xs text-muted-foreground">Product Secret</span>{productSecret ? statusBadge(credentialStatusLabel[productSecret.credentialStatus] ?? productSecret.credentialStatus, getCredentialTone(productSecret.credentialStatus)) : statusBadge('未签发', 'warning')}</div>
-                  {productSecret ? <><p className="mt-3 font-mono text-xs">{productSecret.fingerprint}</p><p className="mt-1 text-xs text-muted-foreground">版本 v{productSecret.versionNo} · 更新于 {formatDateShort(productSecret.updateTime)}</p><Button type="button" variant="outline" size="sm" className="mt-3 w-full gap-1.5" onClick={() => setResetCredential(productSecret)} disabled={!canProvision}><RefreshCw className="size-3.5" aria-hidden />重置并交付新密钥</Button></> : <><p className="mt-3 text-xs text-muted-foreground">产品发布后可以签发第一把产品密钥。</p><Button type="button" variant="outline" size="sm" className="mt-3 w-full gap-1.5" onClick={() => setIssueCredentialKind('PRODUCT_SECRET')} disabled={!canProvision}><KeyRound className="size-3.5" aria-hidden />签发 Product Secret</Button></>}
+                  <div className="flex items-center justify-between gap-2"><span className="text-xs text-muted-foreground">Product Secret</span>{productSecret ? statusBadge(credentialStatusLabel[productSecret.credentialStatus] ?? productSecret.credentialStatus, getCredentialTone(productSecret.credentialStatus)) : supportsProductSecret ? statusBadge('未签发', 'warning') : statusBadge('未启用', 'default')}</div>
+                  {productSecret ? <><p className="mt-3 font-mono text-xs">{productSecret.fingerprint}</p><p className="mt-1 text-xs text-muted-foreground">版本 v{productSecret.versionNo} · 更新于 {formatDateShort(productSecret.updateTime)}</p>{supportsProductSecret ? <Button type="button" variant="outline" size="sm" className="mt-3 w-full gap-1.5" onClick={() => setResetCredential(productSecret)} disabled={!canProvision}><RefreshCw className="size-3.5" aria-hidden />重置并交付新密钥</Button> : <p className="mt-3 text-xs text-muted-foreground">当前产品未启用产品密钥认证，不能继续重置。</p>}</> : supportsProductSecret ? <><p className="mt-3 text-xs text-muted-foreground">产品发布后可以签发第一把产品密钥。</p><Button type="button" variant="outline" size="sm" className="mt-3 w-full gap-1.5" onClick={() => setIssueCredentialKind('PRODUCT_SECRET')} disabled={!canProvision}><KeyRound className="size-3.5" aria-hidden />签发 Product Secret</Button></> : <p className="mt-3 text-xs text-muted-foreground">当前产品使用设备密钥认证，不需要产品密钥。</p>}
                 </div>
                 <div className="rounded-xl border bg-background p-3 transition-colors hover:bg-muted/30">
                   <div className="flex items-center justify-between gap-2"><span className="text-xs text-muted-foreground">Device Secret</span>{statusBadge(`${formatNumber(deviceCredentials.length)} 个摘要`, 'default')}</div>
@@ -1128,10 +1443,10 @@ const ProductCredentialsPage = () => {
           </div>
 
           <Card className="!gap-3 !py-3">
-            <CardHeader className="!gap-0"><CardTitle className="text-base">推荐工作流</CardTitle><CardDescription>按“批次 → 划拨 → 导出”推进，避免把 Secret 直接暴露给不该看到的人。</CardDescription></CardHeader>
+            <CardHeader className="!gap-0"><CardTitle className="text-base">推荐工作流</CardTitle><CardDescription>{productSecretOnly && product.bootstrapMode === 'OPEN' ? '当前模式由产品密钥完成首次接入，不需要提前生成或导出设备凭证。' : preRegistrationMode ? '按“预注册 → 批次 → 划拨 → 导出”推进，批次成员始终来自预注册 Hardware UUID。' : '按“批次 → 划拨 → 导出”推进，避免把 Secret 直接暴露给不该看到的人。'}</CardDescription></CardHeader>
             <CardContent className="grid gap-2 md:grid-cols-3">
               {[
-                { icon: Plus, title: '1. 创建制造批次', description: '生成指定数量的 Device Secret 和硬件身份。', done: batches.length > 0 },
+                { icon: Plus, title: '1. 创建制造批次', description: preRegistrationMode ? `使用 ${formatNumber(pendingPreRegistrationCount)} 条预注册 Hardware UUID。` : '生成指定数量的 Device Secret 和硬件身份。', done: batches.length > 0 },
                 { icon: PackageCheck, title: '2. 固定划拨集合', description: '按产线或渠道冻结一组不可变成员。', done: allocatedCount > 0 },
                 { icon: CloudDownload, title: '3. 创建导出任务', description: '选择 Excel 或 JSON，按固定集合限时下载。', done: exports.length > 0 },
               ].map((step) => (
@@ -1147,17 +1462,18 @@ const ProductCredentialsPage = () => {
           </Card>
 
           <Tabs defaultValue="batches" className="flex-col gap-4">
-            <TabsList variant="line" className="w-full gap-3 justify-start overflow-x-auto rounded-none border-b px-0 md:ml-4 md:w-[calc((100%_-_3rem)/3)]">
-              <TabsTrigger value="batches" className="min-w-max flex-1 px-3">量产批次 <span className="text-xs text-muted-foreground">{batches.length}</span></TabsTrigger>
-              <TabsTrigger value="distributions" className="min-w-max flex-1 px-3">领取单 <span className="text-xs text-muted-foreground">{distributions.length}</span></TabsTrigger>
-              <TabsTrigger value="credentials" className="min-w-max flex-1 px-3">设备凭证 <span className="text-xs text-muted-foreground">{deviceCredentials.length}</span></TabsTrigger>
-              <TabsTrigger value="exports" className="min-w-max flex-1 px-3">导出记录 <span className="text-xs text-muted-foreground">{exports.length}</span></TabsTrigger>
-              <TabsTrigger value="pre-registrations" className="min-w-max flex-1 px-3">预注册 <span className="text-xs text-muted-foreground">{preRegistrations.filter((item) => item.status === 'PENDING').length} 待绑定</span></TabsTrigger>
-              <TabsTrigger value="rotations" className="min-w-max flex-1 px-3">密钥轮换 <span className="text-xs text-muted-foreground">{rotations.filter((item) => !['COMPLETED', 'CANCELLED', 'FAILED'].includes(item.status)).length} 进行中</span></TabsTrigger>
+            <TabsList variant="line" className="w-full gap-3 justify-start overflow-x-auto rounded-none border-b px-0 md:ml-4 md:w-1/2">
+              <TabsTrigger value="batches" className="min-w-0 flex-1 basis-0 px-3">量产批次</TabsTrigger>
+              <TabsTrigger value="distributions" className="min-w-0 flex-1 basis-0 px-3">领取单</TabsTrigger>
+              <TabsTrigger value="credentials" className="min-w-0 flex-1 basis-0 px-3">设备凭证</TabsTrigger>
+              <TabsTrigger value="exports" className="min-w-0 flex-1 basis-0 px-3">导出记录</TabsTrigger>
+              <TabsTrigger value="pre-registrations" className="min-w-0 flex-1 basis-0 px-3">预注册</TabsTrigger>
+              <TabsTrigger value="rotations" className="min-w-0 flex-1 basis-0 px-3">密钥轮换</TabsTrigger>
             </TabsList>
 
             <TabsContent value="batches" className="space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-3"><div className="flex min-w-0 items-start gap-2"><div className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-md border border-border/60 bg-muted/40 text-muted-foreground"><PackagePlus className="size-3.5" aria-hidden /></div><div className="min-w-0"><h2 className="text-sm font-semibold leading-5">制造批次</h2><p className="mt-1 text-xs leading-4 text-muted-foreground">批次是生成凭证的来源，导出前还需要先创建固定划拨。</p></div></div><Button type="button" size="sm" className="gap-1.5" onClick={() => setBatchDialogOpen(true)} disabled={!canProvision}><Plus className="size-3.5" aria-hidden />创建批次</Button></div>
+              <div className="flex flex-wrap items-center justify-between gap-3"><div className="flex min-w-0 items-start gap-2"><div className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-md border border-border/60 bg-muted/40 text-muted-foreground"><PackagePlus className="size-3.5" aria-hidden /></div><div className="min-w-0"><h2 className="text-sm font-semibold leading-5">制造批次</h2><p className="mt-1 text-xs leading-4 text-muted-foreground">{productSecretOnly ? '当前认证配置不生成可导出的设备凭证。' : preRegistrationMode ? '批次数量和 Hardware UUID 取自待绑定预注册资格。' : '批次是生成凭证的来源，导出前还需要先创建固定划拨。'}</p></div></div><Button type="button" size="sm" className="gap-1.5" onClick={() => setBatchDialogOpen(true)} disabled={!canCreateBatch}><Plus className="size-3.5" aria-hidden />创建批次</Button></div>
+              {canProvision && preRegistrationMode && supportsDeviceSecret && pendingPreRegistrationCount === 0 ? <div className="rounded-lg border border-dashed bg-muted/20 px-3 py-2 text-xs text-muted-foreground">当前没有可用于制造批次的待绑定预注册资格。请先在“预注册”中导入 Hardware UUID。</div> : null}
               <div className="overflow-hidden rounded-xl border">
                 <Table>
                   <TableHeader><TableRow><TableHead>批次</TableHead><TableHead>状态</TableHead><TableHead>数量</TableHead><TableHead>失效时间</TableHead><TableHead className="text-right">操作</TableHead></TableRow></TableHeader>
@@ -1170,7 +1486,7 @@ const ProductCredentialsPage = () => {
                         <TableCell>{statusBadge(batchStatusLabel[displayStatus] ?? displayStatus, getBatchTone(displayStatus))}</TableCell>
                         <TableCell><div className="font-medium tabular-nums">{formatNumber(batch.targetQuantity)}</div><div className="mt-1 text-xs text-muted-foreground">{fullyAllocated ? `已全部划拨 ${formatNumber(batch.allocatedQuantity)}` : `可划拨 ${formatNumber(batch.availableCount)}`} · 已绑定 {formatNumber(batch.boundCount)}</div></TableCell>
                         <TableCell className="text-sm text-muted-foreground">{formatDate(batch.expiresAt)}</TableCell>
-                        <TableCell className="text-right"><div className="flex justify-end gap-1.5"><Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => setAllocateBatch(batch)} disabled={!canProvision || batch.availableCount === 0}><PackageCheck className="size-3.5" aria-hidden />{fullyAllocated ? '已全部划拨' : '划拨凭证'}</Button><Button type="button" variant="ghost" size="sm" className="gap-1.5" onClick={() => void openExportForBatch(batch)} disabled={batch.allocatedQuantity === 0}><CloudDownload className="size-3.5" aria-hidden />导出</Button></div></TableCell>
+                        <TableCell className="text-right"><div className="flex flex-wrap justify-end gap-1.5"><Button type="button" variant="ghost" size="sm" className="gap-1.5" onClick={() => setManufacturingBatch(batch)}><Eye className="size-3.5" aria-hidden />制造项</Button><Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => setAllocateBatch(batch)} disabled={!manufacturingFlowEnabled || batch.availableCount === 0}><PackageCheck className="size-3.5" aria-hidden />{fullyAllocated ? '已全部划拨' : '划拨凭证'}</Button><Button type="button" variant="ghost" size="sm" className="gap-1.5" onClick={() => void openExportForBatch(batch)} disabled={!manufacturingFlowEnabled || batch.allocatedQuantity === 0}><CloudDownload className="size-3.5" aria-hidden />导出</Button></div></TableCell>
                       </TableRow>;
                     })}
                   </TableBody>
@@ -1181,7 +1497,7 @@ const ProductCredentialsPage = () => {
             <TabsContent value="distributions" className="space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div><h2 className="text-sm font-semibold">领取单列表</h2><p className="text-xs text-muted-foreground">领取单由制造批次划拨产生；成员集合冻结后才能导出和交付。</p></div>
-                <Button type="button" size="sm" className="gap-1.5" onClick={() => { const nextBatch = batches.find((batch) => batch.availableCount > 0); if (nextBatch) setAllocateBatch(nextBatch); else toast.info('暂无可划拨的制造批次。'); }} disabled={!canProvision || !batches.some((batch) => batch.availableCount > 0)}><Plus className="size-3.5" aria-hidden />创建领取单</Button>
+                <Button type="button" size="sm" className="gap-1.5" onClick={() => { const nextBatch = batches.find((batch) => batch.availableCount > 0); if (nextBatch) setAllocateBatch(nextBatch); else toast.info('暂无可划拨的制造批次。'); }} disabled={!manufacturingFlowEnabled || !batches.some((batch) => batch.availableCount > 0)}><Plus className="size-3.5" aria-hidden />创建领取单</Button>
               </div>
               <div className="overflow-hidden rounded-xl border">
                 <Table>
@@ -1194,7 +1510,7 @@ const ProductCredentialsPage = () => {
                       <TableCell>{statusBadge(distributionStatusLabel[distribution.status] ?? distribution.status, getDistributionTone(distribution.status))}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{distribution.frozenAt ? formatDate(distribution.frozenAt) : '尚未冻结'}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{formatDate(distribution.expiresAt)}</TableCell>
-                      <TableCell><div className="flex justify-end gap-1.5"><Button type="button" variant="ghost" size="sm" onClick={() => void openDistributionDetail(distribution)}>查看</Button>{distribution.status === 'FROZEN' ? <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => setExportDistribution(distribution)}><CloudDownload className="size-3.5" aria-hidden />导出</Button> : null}</div></TableCell>
+                      <TableCell><div className="flex justify-end gap-1.5"><Button type="button" variant="ghost" size="sm" onClick={() => void openDistributionDetail(distribution)}>查看</Button>{distribution.status === 'FROZEN' && manufacturingFlowEnabled ? <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => setExportDistribution(distribution)}><CloudDownload className="size-3.5" aria-hidden />导出</Button> : null}</div></TableCell>
                     </TableRow>)}
                   </TableBody>
                 </Table>
@@ -1202,7 +1518,7 @@ const ProductCredentialsPage = () => {
             </TabsContent>
 
             <TabsContent value="credentials" className="space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2"><div><h2 className="text-sm font-semibold">设备凭证摘要</h2><p className="text-xs text-muted-foreground">列表不返回 Device Secret，只展示设备身份、指纹和安全状态。</p></div><Button type="button" size="sm" className="gap-1.5" onClick={() => setIssueCredentialKind('DEVICE_SECRET')} disabled={!canProvision}><Plus className="size-3.5" aria-hidden />手动签发</Button></div>
+              <div className="flex flex-wrap items-center justify-between gap-2"><div><h2 className="text-sm font-semibold">设备凭证摘要</h2><p className="text-xs text-muted-foreground">列表不返回 Device Secret，只展示设备身份、指纹和安全状态。</p></div><Button type="button" size="sm" className="gap-1.5" onClick={() => setIssueCredentialKind('DEVICE_SECRET')} disabled={!manufacturingFlowEnabled}><Plus className="size-3.5" aria-hidden />手动签发</Button></div>
               <div className="overflow-hidden rounded-xl border">
                 <Table>
                   <TableHeader><TableRow><TableHead>设备身份</TableHead><TableHead>凭证版本</TableHead><TableHead>状态</TableHead><TableHead>指纹</TableHead><TableHead>更新时间</TableHead><TableHead className="text-right">操作</TableHead></TableRow></TableHeader>
@@ -1212,7 +1528,7 @@ const ProductCredentialsPage = () => {
                     <TableCell><div className="flex flex-wrap gap-1.5">{statusBadge(credentialStatusLabel[credential.credentialStatus] ?? credential.credentialStatus, getCredentialTone(credential.credentialStatus))}{statusBadge(accessStateLabel[credential.accessState] ?? credential.accessState, credential.accessState === 'ENABLED' ? 'success' : 'warning')}</div></TableCell>
                     <TableCell><code className="font-mono text-xs text-muted-foreground">{credential.fingerprint}</code></TableCell>
                     <TableCell className="text-sm text-muted-foreground">{formatDate(credential.updateTime)}</TableCell>
-                    <TableCell><div className="flex justify-end gap-1.5"><Button type="button" variant="ghost" size="sm" onClick={() => setRotationCredential(credential)} disabled={!canProvision || credential.credentialStatus !== 'ACTIVE'}><RotateCcw className="size-3.5" aria-hidden />轮换</Button>{credential.credentialStatus !== 'REVOKED' ? <Button type="button" variant="ghost" size="sm" className={credential.accessState === 'ENABLED' ? 'text-amber-600 hover:text-amber-700' : 'text-emerald-600 hover:text-emerald-700'} onClick={() => setPendingCredentialAction({ credential, action: credential.accessState === 'ENABLED' ? 'FREEZE' : 'UNFREEZE' })}>{credential.accessState === 'ENABLED' ? '冻结' : '解冻'}</Button> : null}<Button type="button" variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => setPendingCredentialAction({ credential, action: 'REVOKE' })} disabled={credential.credentialStatus === 'REVOKED'}>吊销</Button></div></TableCell>
+                    <TableCell><div className="flex justify-end gap-1.5"><Button type="button" variant="ghost" size="sm" onClick={() => setRotationCredential(credential)} disabled={!manufacturingFlowEnabled || credential.credentialStatus !== 'ACTIVE'}><RotateCcw className="size-3.5" aria-hidden />轮换</Button>{credential.credentialStatus !== 'REVOKED' ? <Button type="button" variant="ghost" size="sm" className={credential.accessState === 'ENABLED' ? 'text-amber-600 hover:text-amber-700' : 'text-emerald-600 hover:text-emerald-700'} onClick={() => setPendingCredentialAction({ credential, action: credential.accessState === 'ENABLED' ? 'FREEZE' : 'UNFREEZE' })}>{credential.accessState === 'ENABLED' ? '冻结' : '解冻'}</Button> : null}<Button type="button" variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => setPendingCredentialAction({ credential, action: 'REVOKE' })} disabled={credential.credentialStatus === 'REVOKED'}>吊销</Button></div></TableCell>
                   </TableRow>)}</TableBody>
                 </Table>
               </div>
@@ -1228,14 +1544,14 @@ const ProductCredentialsPage = () => {
                     <TableCell><div className="font-mono text-xs">{task.distributionId}</div><div className="mt-1 text-xs text-muted-foreground">{formatNumber(task.expectedCount)} 台</div></TableCell>
                     <TableCell><Badge variant="outline">{task.format}</Badge></TableCell>
                     <TableCell>{statusBadge(exportStatusLabel[task.status] ?? task.status, getExportTone(task.status))}<div className="mt-1 text-xs text-muted-foreground">{formatNumber(task.successCount)} / {formatNumber(task.expectedCount)} 成功</div></TableCell>
-                    <TableCell className="text-right"><Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => void downloadExport(task)} disabled={!['SUCCEEDED', 'PARTIALLY_SUCCEEDED'].includes(task.status)}><CloudDownload className="size-3.5" aria-hidden />下载</Button></TableCell>
+                    <TableCell className="text-right"><Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => void downloadExport(task)} disabled={!manufacturingFlowEnabled || !['SUCCEEDED', 'PARTIALLY_SUCCEEDED'].includes(task.status)}><CloudDownload className="size-3.5" aria-hidden />下载</Button></TableCell>
                   </TableRow>)}</TableBody>
                 </Table>
               </div>
             </TabsContent>
 
             <TabsContent value="pre-registrations" className="space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2"><div><h2 className="text-sm font-semibold">一型一密预注册</h2><p className="text-xs text-muted-foreground">先登记硬件身份，设备首次绑定时再签发 Device Secret。</p></div><Button type="button" size="sm" className="gap-1.5" onClick={() => setPreRegistrationDialogOpen(true)} disabled={!canProvision}><Upload className="size-3.5" aria-hidden />导入资格</Button></div>
+              <div className="flex flex-wrap items-center justify-between gap-2"><div><h2 className="text-sm font-semibold">一型一密预注册</h2><p className="text-xs text-muted-foreground">{preRegistrationMode ? '先登记硬件身份，设备首次绑定时再签发 Device Secret。' : '当前产品未启用预注册模式。'}</p></div><Button type="button" size="sm" className="gap-1.5" onClick={() => setPreRegistrationDialogOpen(true)} disabled={!canImportPreRegistrations}><Upload className="size-3.5" aria-hidden />导入资格</Button></div>
               <div className="overflow-hidden rounded-xl border">
                 <Table>
                   <TableHeader><TableRow><TableHead>Hardware Identity</TableHead><TableHead>状态</TableHead><TableHead>有效期</TableHead><TableHead>备注</TableHead><TableHead className="text-right">操作</TableHead></TableRow></TableHeader>
@@ -1269,10 +1585,11 @@ const ProductCredentialsPage = () => {
         </div>
       </ProjectWorkspaceShell>
 
-      <CreateBatchDialog open={batchDialogOpen} onOpenChange={setBatchDialogOpen} productId={productId} onCreated={mutateBatches} />
+      <CreateBatchDialog open={batchDialogOpen} onOpenChange={setBatchDialogOpen} productId={productId} preRegistrationMode={preRegistrationMode} pendingPreRegistrationCount={pendingPreRegistrationCount} onCreated={async () => { await Promise.all([mutateBatches(), mutateCredentials()]); }} />
+      <ManufacturingBatchDetailDialog batch={manufacturingBatch} preRegistrationMode={preRegistrationMode} pendingPreRegistrationCount={pendingPreRegistrationCount} onOpenChange={(open) => { if (!open) setManufacturingBatch(null); }} onBatchUpdated={mutateBatches} />
       <AllocateDialog batch={allocateBatch} onOpenChange={(open) => { if (!open) setAllocateBatch(null); }} onCreated={async () => { await mutateBatches(); await mutateDistributions(); }} />
       <ExportDialog distribution={exportDistribution} onOpenChange={(open) => { if (!open) setExportDistribution(null); }} onCreated={mutateExports} />
-      <DistributionDetailDialog distribution={distributionDetail} loading={distributionDetailLoading} onOpenChange={(open) => { if (!open) setDistributionDetail(null); }} onExport={setExportDistribution} />
+      <DistributionDetailDialog distribution={distributionDetail} loading={distributionDetailLoading} canExport={manufacturingFlowEnabled} onOpenChange={(open) => { if (!open) setDistributionDetail(null); }} onExport={setExportDistribution} />
       <PreRegistrationDialog open={preRegistrationDialogOpen} onOpenChange={setPreRegistrationDialogOpen} productId={productId} onCreated={mutatePreRegistrations} />
       <IssueCredentialDialog open={issueCredentialKind != null} kind={issueCredentialKind ?? 'PRODUCT_SECRET'} productId={productId} onOpenChange={(open) => { if (!open) setIssueCredentialKind(null); }} onDelivered={(next) => { setDelivery(next); void mutateCredentials(); }} />
       <CredentialActionDialog target={pendingCredentialAction} onOpenChange={(open) => { if (!open) setPendingCredentialAction(null); }} onCompleted={mutateCredentials} />

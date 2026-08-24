@@ -405,6 +405,7 @@ export interface CredentialPreRegistrationView {
   expiresAt: number;
   consumedAt: number | null;
   boundDeviceId: string | null;
+  issuedCredentialFamilyId: string | null;
   importBatchId: string;
   version: number;
   createTime: number;

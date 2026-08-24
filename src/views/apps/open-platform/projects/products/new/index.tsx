@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { ApiErrorAlert } from '@/components/open-platform/api-error-alert';
 import { CategoryDetails } from '@/components/open-platform/category-details';
 import { CategoryTree } from '@/components/open-platform/category-tree';
+import { ProductBootstrapModeField } from '@/components/open-platform/product-bootstrap-mode-field';
 import {
   ParserProfileSelect,
   ParserProfileVersionSelect,
@@ -52,7 +53,6 @@ import BreadcrumbComp from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
 import StyleAwareWrapper from '@/components/shared/StyleAwareWrapper';
 import {
   PRODUCT_AUTH_MODE_LABEL,
-  PRODUCT_BOOTSTRAP_MODE_LABEL,
   PRODUCT_DATA_MODE_LABEL,
   PRODUCT_NODE_TYPE_LABEL,
   PRODUCT_TRANSPORT_LABEL,
@@ -134,9 +134,13 @@ function validateConnection(form: ProductForm): FieldErrors {
   const errors: FieldErrors = {};
   if (!form.nodeType) errors.nodeType = '请选择节点类型。';
   if (!form.transport) errors.transport = '请选择传输协议。';
-  if (!form.authModes.includes('DEVICE_SECRET')) errors.authModes = '设备密钥为必选认证方式。';
+  if (form.authModes.length === 0) errors.authModes = '至少选择一种认证方式。';
   if (!form.dataMode) errors.dataMode = '请选择消息数据模式。';
-  if (!form.bootstrapMode) errors.bootstrapMode = '请选择接入模式。';
+  if (!form.bootstrapMode) {
+    errors.bootstrapMode = form.authModes.includes('PRODUCT_SECRET')
+      ? '请选择动态注册或预注册。'
+      : '请选择注册模式。';
+  }
   if (form.dataMode === 'CUSTOM_PAYLOAD') {
     if (!form.profileId.trim()) errors.profileId = '请选择已发布的 Parser Profile。';
     if (!form.profileVersion.trim()) errors.profileVersion = '请选择可用的 Profile 版本。';
@@ -227,7 +231,6 @@ const CreateProductPage = () => {
   };
 
   const toggleAuthMode = (code: string, checked: boolean) => {
-    if (code === 'DEVICE_SECRET' && !checked) return;
     setForm((current) => ({
       ...current,
       authModes: checked
@@ -437,7 +440,7 @@ const CreateProductPage = () => {
                   </span>
                   <span>
                     <span className="block text-sm font-medium">连接契约</span>
-                    <span className="block text-xs text-muted-foreground">协议、认证和接入策略</span>
+                    <span className="block text-xs text-muted-foreground">协议、认证和注册方式</span>
                   </span>
                 </button>
               </div>
@@ -662,46 +665,36 @@ const CreateProductPage = () => {
                           {errors.dataMode ? <FieldError>{errors.dataMode}</FieldError> : null}
                         </Field>
 
-                        <Field data-invalid={Boolean(errors.bootstrapMode) || undefined}>
-                          <FieldLabel>接入模式 <span className="text-destructive">*</span></FieldLabel>
-                          <Select value={form.bootstrapMode} onValueChange={(value) => updateField('bootstrapMode', value ?? '')}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="选择接入模式">
-                                {labelOf(PRODUCT_BOOTSTRAP_MODE_LABEL, form.bootstrapMode, '选择接入模式')}
-                              </SelectValue>
-                            </SelectTrigger>
-                            <SelectContent>
-                              {Object.entries(PRODUCT_BOOTSTRAP_MODE_LABEL).map(([code, label]) => (
-                                <SelectItem key={code} value={code}>{label}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          {errors.bootstrapMode ? <FieldError>{errors.bootstrapMode}</FieldError> : null}
-                        </Field>
                       </div>
 
                       <Field className="mt-4" data-invalid={Boolean(errors.authModes) || undefined}>
                         <FieldLabel>认证方式 <span className="text-destructive">*</span></FieldLabel>
+                        <FieldDescription>可只使用产品密钥，也可同时启用设备密钥；至少选择一种。</FieldDescription>
                         <div className="grid gap-2 sm:grid-cols-3">
                           {AUTH_MODE_OPTIONS.map(([code, label]) => {
-                            const required = code === 'DEVICE_SECRET';
                             return (
                             <label key={code} className={cn(
                               'flex items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm',
-                              required && 'cursor-not-allowed bg-muted/40',
                             )}>
                               <Checkbox
-                                checked={required || form.authModes.includes(code)}
-                                disabled={required}
+                                checked={form.authModes.includes(code)}
                                 onCheckedChange={(checked) => toggleAuthMode(code, checked === true)}
                               />
                               <span>{label}</span>
-                              {required ? <span className="ml-auto text-xs text-muted-foreground">必选</span> : null}
                             </label>
                           )})}
                         </div>
                         {errors.authModes ? <FieldError>{errors.authModes}</FieldError> : null}
                       </Field>
+
+                      <ProductBootstrapModeField
+                        className="mt-4"
+                        value={form.bootstrapMode}
+                        onValueChange={(value) => updateField('bootstrapMode', value)}
+                        productSecretEnabled={form.authModes.includes('PRODUCT_SECRET')}
+                        deviceSecretEnabled={form.authModes.includes('DEVICE_SECRET')}
+                        error={errors.bootstrapMode}
+                      />
 
                       {form.dataMode === 'CUSTOM_PAYLOAD' ? (
                         <div className="mt-4 grid gap-4 border-t pt-4 sm:grid-cols-2">
