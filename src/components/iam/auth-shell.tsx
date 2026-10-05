@@ -1,6 +1,7 @@
 import { useEffect, type ReactNode } from 'react';
 import logo from '@/assets/images/logos/logoicon.svg';
 import { AuthCube } from './auth-cube';
+import styles from './auth-cube.module.css';
 export function AuthShell({
   title,
   description,
@@ -15,10 +16,9 @@ export function AuthShell({
   }, [title]);
   return (
     <main className="flex min-h-dvh items-stretch bg-background">
-      <aside className="relative hidden w-lg shrink-0 flex-col items-center justify-center overflow-hidden bg-black p-16 text-center text-white lg:flex">
-        <div className="relative z-10 max-w-sm space-y-6">
+      <aside className={styles.panel}>
+        <div className="relative z-10 w-full max-w-sm">
           <AuthCube />
-          <img src={logo} alt="" className="mx-auto size-10" />
         </div>
       </aside>
       <section className="flex flex-1 items-center justify-center p-8 md:p-12">
