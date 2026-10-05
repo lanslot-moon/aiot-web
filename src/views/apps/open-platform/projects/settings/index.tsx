@@ -1,24 +1,25 @@
-import { Link, useParams } from 'react-router';
 import { KeyRound, Package, Users } from 'lucide-react';
+import { Link, useParams } from 'react-router';
 
 import { ProjectWorkspaceShell } from '@/components/open-platform/project-workspace-shell';
 import StyleAwareWrapper from '@/components/shared/StyleAwareWrapper';
 import StyleDivider from '@/components/shared/StyleDivider';
 import { Button } from '@/components/ui/button';
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
+Card,
+CardContent,
+CardDescription,
+CardHeader,
+CardTitle,
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useProjectDetail } from '@/context/open-platform-context';
+import { useProjectDetail } from '../../../../../context/open-platform-context/project-resources';
+
 import BreadcrumbComp from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
 import {
-  PROJECT_ROLE_LABEL,
-  PROJECT_STATUS_LABEL,
-  labelOf,
+PROJECT_ROLE_LABEL,
+PROJECT_STATUS_LABEL,
+labelOf,
 } from '@/lib/open-platform-labels';
 
 const BCrumb = [

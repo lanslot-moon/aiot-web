@@ -3,7 +3,7 @@
 import { BriefcaseBusiness, ArrowDownUp, Ellipsis } from "lucide-react";
 import { CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { DashboardCard } from "../../shared/dashboard-card";
-import { Table,TableBody,TableCell,TableHead,TableHeader,TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import SimpleBar from "simplebar-react";
 import { Button } from "@/components/ui/button";
 import avatar1 from "@/assets/images/profile/user-1.png"

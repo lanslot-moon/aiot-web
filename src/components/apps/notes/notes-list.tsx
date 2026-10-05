@@ -1,24 +1,25 @@
 
-import { Trash2 } from "lucide-react";
-import { useState, useContext, useEffect } from "react";
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-  TooltipProvider,
+Tooltip,
+TooltipContent,
+TooltipProvider,
+TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { NotesContext } from "@/context/notes-context/index";
-import AnimatedItem from "../../animated-components/list-animation";
+import { Trash2 } from "lucide-react";
+import { useContext, useEffect, useState } from "react";
+import { NotesContext } from '../../../context/notes-context/context';
+
 import PlaceholdersInput from "@/components/animated-components/animatedinput-placeholder";
 import { Button } from "@/components/ui/button";
 import { SearchIcon } from "lucide-react";
 import { notesType } from "src/types/apps/notes";
+import AnimatedItem from "../../animated-components/list-animation";
 
 const Notelist = () => {
   const { notes, selectNote, deleteNote } = useContext(NotesContext);
   const [searchTerm, setSearchTerm] = useState<string>("");
-  const [activeNoteId, setActiveNoteId] = useState<any | null>(null);
+  const [activeNoteId, setActiveNoteId] = useState<number | null>(null);
 
   useEffect(() => {
     if (notes.length > 0) {

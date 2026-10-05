@@ -1,93 +1,87 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import useSWR, { useSWRConfig } from 'swr';
 import {
-  ArrowLeft,
-  Braces,
-  Archive,
-  Eye,
-  FileKey2,
-  Pause,
-  Package,
-  Pencil,
-  Play,
-  Radio,
-  Rocket,
-  Router,
-  Settings2,
-  ShieldCheck,
-  Trash2,
+Archive,
+ArrowLeft,
+Braces,
+Eye,
+FileKey2,
+Package,
+Pause,
+Pencil,
+Play,
+Radio,
+Rocket,
+Router,
+Settings2,
+ShieldCheck,
+Trash2,
 } from 'lucide-react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { toast } from 'sonner';
+import useSWR, { useSWRConfig } from 'swr';
 
 import { ApiErrorAlert } from '@/components/open-platform/api-error-alert';
 import { CopyIdButton } from '@/components/open-platform/copy-id-button';
-import { ProductBootstrapModeField } from '@/components/open-platform/product-bootstrap-mode-field';
 import {
-  ParserProfileSelect,
-  ParserProfileVersionSelect,
+ParserProfileSelect,
+ParserProfileVersionSelect,
 } from '@/components/open-platform/parser-profile-selector';
+import { ProductBootstrapModeField } from '@/components/open-platform/product-bootstrap-mode-field';
 import { ProductLifecycleBadge } from '@/components/open-platform/product-lifecycle-badge';
 import { ProjectWorkspaceShell } from '@/components/open-platform/project-workspace-shell';
+import StyleAwareWrapper from '@/components/shared/StyleAwareWrapper';
+import {
+AlertDialog,
+AlertDialogAction,
+AlertDialogCancel,
+AlertDialogContent,
+AlertDialogDescription,
+AlertDialogFooter,
+AlertDialogHeader,
+AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import {
+Card,
+CardContent,
+CardDescription,
+CardHeader,
+CardTitle,
+} from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+Dialog,
+DialogContent,
+DialogDescription,
+DialogFooter,
+DialogHeader,
+DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
-import StyleAwareWrapper from '@/components/shared/StyleAwareWrapper';
-import {
-  OpenPlatformApiError,
-  openPlatformDelete,
-  openPlatformGetFetcher,
-  openPlatformPost,
-  openPlatformPut,
-  useProjectDetail,
-} from '@/context/open-platform-context';
+import { OpenPlatformApiError, openPlatformDelete, openPlatformGetFetcher, openPlatformPost, openPlatformPut, useProjectDetail } from '../../../../../../context/open-platform-context/project-resources';
+
 import BreadcrumbComp from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
 import {
-  labelOf,
-  PRODUCT_AUTH_MODE_LABEL,
-  PRODUCT_BOOTSTRAP_MODE_LABEL,
-  PRODUCT_DATA_MODE_LABEL,
-  PRODUCT_NODE_TYPE_LABEL,
-  PRODUCT_TRANSPORT_LABEL,
+labelOf,
+PRODUCT_AUTH_MODE_LABEL,
+PRODUCT_BOOTSTRAP_MODE_LABEL,
+PRODUCT_DATA_MODE_LABEL,
+PRODUCT_NODE_TYPE_LABEL,
+PRODUCT_TRANSPORT_LABEL,
 } from '@/lib/open-platform-labels';
 import { cn } from '@/lib/utils';
 import type {
-  CursorResult,
-  ParserProfileVersionView,
-  ParserProfileView,
-  ProductUpdateRequest,
-  ProductDetailView,
-  ProtocolProfileRefView,
-  ThingModelDefinition,
+CursorResult,
+ParserProfileVersionView,
+ParserProfileView,
+ProductDetailView,
+ProductUpdateRequest,
+ProtocolProfileRefView,
+ThingModelDefinition,
 } from '@/types/apps/open-platform';
 
 function productModelKey(productId: string) {

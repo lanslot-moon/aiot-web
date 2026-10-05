@@ -1,12 +1,13 @@
 
 import { useContext, useEffect, useState } from "react";
 
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
 import { Plus, X } from "lucide-react";
 import React from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BlogContext } from "src/context/blog-context";
+import { BlogContext } from '../../../../context/blog-context/context';
+
 
 const CategoryTags = () => {
   const { posts } = useContext(BlogContext);

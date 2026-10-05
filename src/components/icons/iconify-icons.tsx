@@ -1,8 +1,9 @@
 
-import { Card } from 'src/components/ui/card';
 import SyntaxHighlighter from 'react-syntax-highlighter';
-import { docco, vs2015 } from 'react-syntax-highlighter/dist/esm/styles/hljs'
-import { useTheme } from 'src/context/shadcntheme/ThemeContext';
+import { docco, vs2015 } from 'react-syntax-highlighter/dist/esm/styles/hljs';
+import { Card } from 'src/components/ui/card';
+import { useTheme } from '../../context/shadcntheme/theme-context';
+
 
 
 

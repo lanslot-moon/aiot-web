@@ -1,41 +1,39 @@
-import { useMemo, useState } from 'react';
-import useSWR from 'swr';
-import { Link, useParams } from 'react-router';
 import { Library, PackagePlus, SearchIcon, X } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { usePermission } from '@/context/iam-context/identity';
+import { Link, useParams } from 'react-router';
+import useSWR from 'swr';
 
 import { ApiErrorAlert } from '@/components/open-platform/api-error-alert';
 import { CopyIdButton } from '@/components/open-platform/copy-id-button';
 import { ProductLifecycleBadge } from '@/components/open-platform/product-lifecycle-badge';
 import { ProjectWorkspaceShell } from '@/components/open-platform/project-workspace-shell';
+import StyleAwareWrapper from '@/components/shared/StyleAwareWrapper';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+Select,
+SelectContent,
+SelectItem,
+SelectTrigger,
+SelectValue,
 } from '@/components/ui/select';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import StyleAwareWrapper from '@/components/shared/StyleAwareWrapper';
 import {
-  OpenPlatformApiError,
-  openPlatformGetFetcher,
-  useProjectDetail,
-} from '@/context/open-platform-context';
+Table,
+TableBody,
+TableCell,
+TableHead,
+TableHeader,
+TableRow,
+} from '@/components/ui/table';
+import { OpenPlatformApiError, openPlatformGetFetcher, useProjectDetail } from '../../../../../context/open-platform-context/project-resources';
+
 import BreadcrumbComp from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
 import {
-  PRODUCT_LIFECYCLE_LABEL,
-  PROJECT_STATUS_LABEL,
-  labelOf,
+PRODUCT_LIFECYCLE_LABEL,
+PROJECT_STATUS_LABEL,
+labelOf,
 } from '@/lib/open-platform-labels';
 import type { CursorResult, ProductListItem } from '@/types/apps/open-platform';
 
@@ -61,7 +59,7 @@ const ProjectProductsPage = () => {
     mutate,
   } = useSWR<CursorResult<ProductListItem>>(productsKey, openPlatformGetFetcher);
 
-  const products = data?.items ?? [];
+  const products = useMemo(() => data?.items ?? [], [data?.items]);
   const filtered = useMemo(() => {
     const q = keyword.trim().toLowerCase();
     return products.filter((product) => {
@@ -86,7 +84,8 @@ const ProjectProductsPage = () => {
     [products],
   );
 
-  const canCreate = project?.status === 'ACTIVE';
+  const mayCreateProduct = usePermission('product:create');
+  const canCreate = project?.status === 'ACTIVE' && mayCreateProduct;
   const productError = error as OpenPlatformApiError | undefined;
 
   return (
@@ -146,7 +145,7 @@ const ProjectProductsPage = () => {
             </div>
           </div>
 
-          {project && !canCreate ? (
+          {project && project.status !== 'ACTIVE' ? (
             <p className="rounded-lg border border-dashed bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
               当前项目为“{labelOf(PROJECT_STATUS_LABEL, project.status)}”状态，暂不能创建产品。
             </p>

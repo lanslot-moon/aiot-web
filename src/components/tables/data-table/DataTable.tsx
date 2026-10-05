@@ -1,71 +1,45 @@
+import { getColorForValue, toTitleCase } from './table-utils';
 
 
-import React, { useMemo, useState } from 'react'
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
-  useReactTable,
-  getCoreRowModel,
-  getSortedRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  flexRender,
-  CellContext,
-} from '@tanstack/react-table'
-import { Badge } from '@/components/ui/badge'
+Select,
+SelectContent,
+SelectItem,
+SelectTrigger,
+SelectValue,
+} from '@/components/ui/select';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import type { ColumnDef, SortingState } from '@tanstack/react-table'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import { Icon } from '@iconify/react/dist/iconify.js'
+Table,
+TableBody,
+TableCell,
+TableHead,
+TableHeader,
+TableRow,
+} from '@/components/ui/table';
+import { Icon } from '@iconify/react/dist/iconify.js';
+import type { ColumnDef, SortingState } from '@tanstack/react-table';
 import {
-  ArrowUp,
-  ArrowDown,
-  ChevronsUpDown,
-  Trash2,
-  Pencil,
-} from 'lucide-react'
+CellContext,
+flexRender,
+getCoreRowModel,
+getFilteredRowModel,
+getPaginationRowModel,
+getSortedRowModel,
+useReactTable,
+} from '@tanstack/react-table';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-
-const badgeColors = [
-  'bg-blue-100 text-blue-700',
-  'bg-green-100 text-green-700',
-  'bg-yellow-100 text-yellow-700',
-  'bg-purple-100 text-purple-700',
-  'bg-pink-100 text-pink-700',
-  'bg-indigo-100 text-indigo-700',
-  'bg-teal-100 text-teal-700',
-  'bg-orange-100 text-orange-700',
-]
-
-export function getColorForValue(value: string) {
-  const index =
-    Math.abs(
-      value.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
-    ) % badgeColors.length
-  return badgeColors[index]
-}
-
-export function toTitleCase(str: string) {
-  return str
-    .toLowerCase()
-    .split(' ')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ')
-}
+ArrowDown,
+ArrowUp,
+ChevronsUpDown,
+Pencil,
+Trash2,
+} from 'lucide-react';
+import React, { useMemo, useState } from 'react';
 
 interface DynamicTableProps<T> {
   data?: T[]
@@ -554,3 +528,63 @@ const DataTable = <T extends Record<string, unknown>>({
 }
 
 export default DataTable
+
+export function GatewayDataTable<T>({
+  rows,
+  columns,
+}: {
+  rows: T[];
+  columns: { label: string; render: (row: T) => React.ReactNode }[];
+}) {
+  const definitions: ColumnDef<T>[] = columns.map((column, i) => ({
+    id: String(i),
+    header: column.label,
+    cell: ({ row }) => column.render(row.original),
+  }));
+  const table = useReactTable({
+    data: rows,
+    columns: definitions,
+    getCoreRowModel: getCoreRowModel(),
+  });
+  return (
+    <div className="min-h-40 overflow-x-auto rounded-lg border">
+      <Table>
+        <TableHeader>
+          {table.getHeaderGroups().map((group) => (
+            <TableRow key={group.id}>
+              {group.headers.map((header) => (
+                <TableHead key={header.id}>
+                  {flexRender(
+                    header.column.columnDef.header,
+                    header.getContext(),
+                  )}
+                </TableHead>
+              ))}
+            </TableRow>
+          ))}
+        </TableHeader>
+        <TableBody>
+          {table.getRowModel().rows.map((row) => (
+            <TableRow key={row.id}>
+              {row.getVisibleCells().map((cell) => (
+                <TableCell key={cell.id}>
+                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                </TableCell>
+              ))}
+            </TableRow>
+          ))}
+          {!rows.length && (
+            <TableRow>
+              <TableCell
+                colSpan={columns.length}
+                className="h-24 text-center text-muted-foreground"
+              >
+                暂无数据，请调整筛选或创建记录。
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}

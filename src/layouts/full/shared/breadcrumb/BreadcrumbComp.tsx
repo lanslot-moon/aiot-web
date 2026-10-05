@@ -1,49 +1,17 @@
-import { Card } from "@/components/ui/card";
-import { Link } from "react-router";
-
-
-interface BreadcrumbItem {
-  to?: string;
-  title: string;
-}
-
-interface BreadCrumbType {
-  subtitle?: string;
-  items?: BreadcrumbItem[];
-  title: string;
-}
-
-const BreadcrumbComp = ({ title }: BreadCrumbType) => {
-  return (
-    <>
-      <Card
-        className={`py-5 px-6 bg-background  overflow-hidden rounded-xl border`}
-      >
-        <div className="flex items-center justify-between gap-6 relative">
-          <h4 className="font-semibold text-xl text-forground">{title}</h4>
-          <ol
-            className="flex items-center whitespace-nowrap"
-            aria-label="Breadcrumb"
-          >
-            <li className="flex items-center">
-              <Link className="text-forground text-sm  leading-none" to="/">
-                Home
-              </Link>
-            </li>
-            <li className="mx-2">
-              <div className="p-0.5 text-forground">/</div>
-            </li>
-            <li
-              className="flex items-center text-sm text-forground leading-none opacity-80"
-              aria-current="page"
-            >
-              {title}
-            </li>
-          </ol>
-        </div>
-      </Card>
-    </>
-  );
+import { Card } from '@/components/ui/card';
+import { Link } from 'react-router';
+interface BreadcrumbItem { to?: string; title: string }
+interface BreadCrumbType { subtitle?: string; items?: BreadcrumbItem[]; title: string }
+const BreadcrumbComp = ({ title, items }: BreadCrumbType) => {
+  const parents = items ?? (title === '全部项目' ? [] : [{ title: '全部项目', to: '/projects' }]);
+  return <Card className="overflow-hidden rounded-xl border bg-background px-6 py-5">
+    <div className="relative flex flex-wrap items-center justify-between gap-6">
+      <h1 className="text-xl font-semibold">{title}</h1>
+      <nav aria-label="当前位置"><ol className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+        {parents.map((item) => <li key={item.title} className="flex items-center gap-2">{item.to ? <Link className="hover:text-foreground hover:underline focus-visible:outline focus-visible:outline-ring" to={item.to}>{item.title}</Link> : item.title}<span aria-hidden="true">/</span></li>)}
+        <li aria-current="page" className="text-foreground">{title}</li>
+      </ol></nav>
+    </div>
+  </Card>;
 };
-
 export default BreadcrumbComp;

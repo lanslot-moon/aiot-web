@@ -13,7 +13,7 @@ import { mutate } from "swr";
 
 interface colorsType {
   lineColor: string;
-  disp: string | any;
+  disp: string;
   id: number;
 }
 

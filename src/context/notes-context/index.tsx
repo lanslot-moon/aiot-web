@@ -1,36 +1,10 @@
-import { createContext, useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { NotesContext, initialContext } from './context';
 
 import React from 'react';
-import useSWR from 'swr';
 import { deleteFetcher, getFetcher, postFetcher, putFetcher } from 'src/api/global-fetcher';
 import { notesType } from 'src/types/apps/notes';
-
-// Define context type
-interface NotesContextType {
-  notes: notesType[];
-  loading: boolean;
-  error: Error | null;
-  selectedNoteId: number;
-  selectNote: (id: number) => void;
-  addNote: (newNote: notesType) => Promise<void>;
-  updateNote: (id: number, title: string, color: string) => Promise<void>;
-  deleteNote: (id: number) => Promise<void>;
-}
-
-// Initial context values
-const initialContext: NotesContextType = {
-  notes: [],
-  loading: true,
-  error: null,
-  selectedNoteId: 1,
-  selectNote: () => {},
-  addNote: async () => {},
-  updateNote: async () => {},
-  deleteNote: async () => {},
-};
-
-// Create context
-export const NotesContext = createContext<NotesContextType>(initialContext);
+import useSWR from 'swr';
 
 // Provider component
 export const NotesProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {

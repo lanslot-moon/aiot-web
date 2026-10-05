@@ -1,8 +1,9 @@
 
-import React, { useContext, useState, useEffect } from "react";
-import { Check } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
-import { NotesContext } from "@/context/notes-context/index";
+import { Check } from "lucide-react";
+import React, { useContext, useEffect, useState } from "react";
+import { NotesContext } from '../../../context/notes-context/context';
+
 
 interface colorsType {
   lineColor: string;

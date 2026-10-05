@@ -1,37 +1,35 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router';
-import { Plus, SearchIcon, X } from 'lucide-react';
+import { SearchIcon, X } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router';
+import { useIam } from '../../../../context/iam-context/identity';
 
+
+import { CreateProjectAction } from '@/components/iam/create-project-action';
 import { ProjectListTable } from '@/components/open-platform/project-list-table';
 import StyleAwareWrapper from '@/components/shared/StyleAwareWrapper';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+Select,
+SelectContent,
+SelectItem,
+SelectTrigger,
+SelectValue,
 } from '@/components/ui/select';
-import {
-  openPlatformGetFetcher,
-  projectsListKey,
-  useOpenPlatform,
-} from '@/context/open-platform-context';
+import { openPlatformGetFetcher, projectsListKey, useOpenPlatform } from '../../../../context/open-platform-context/project-resources';
+
 import BreadcrumbComp from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
 import { PROJECT_STATUS_LABEL } from '@/lib/open-platform-labels';
 import type { CursorResult, ProjectView } from '@/types/apps/open-platform';
-
-const BCrumb = [
-  { to: '/', title: 'Home' },
-  { title: 'Projects' },
-];
 
 const STATUS_ALL = 'ALL';
 const STATUS_OPTIONS = ['ACTIVE', 'SUSPENDED', 'ARCHIVED', 'CLOSED'] as const;
 
 const ProjectsListPage = () => {
+  const { authorization } = useIam();
+  const canCreate = authorization.data?.permissionCodes.includes('project:create') ?? false;
+  useEffect(() => { document.title = '全部项目 · AIoT'; }, []);
   const [searchParams] = useSearchParams();
   const {
     projects,
@@ -44,6 +42,9 @@ const ProjectsListPage = () => {
     mutateProjects,
   } = useOpenPlatform();
 
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const composing = useRef(false);
+  useEffect(() => () => { if (searchTimer.current) clearTimeout(searchTimer.current); }, []);
   const [keywordDraft, setKeywordDraft] = useState(listFilters.keyword ?? '');
   const [extraItems, setExtraItems] = useState<ProjectView[]>([]);
   const [moreMeta, setMoreMeta] = useState<{
@@ -82,8 +83,9 @@ const ProjectsListPage = () => {
     if (!listFilters.cursor) return;
     setListFilters((prev) => {
       if (!prev.cursor) return prev;
-      const { cursor: _cursor, ...rest } = prev;
-      return rest;
+      const next = { ...prev };
+      delete next.cursor;
+      return next;
     });
   }, [listFilters.cursor, setListFilters]);
 
@@ -96,8 +98,9 @@ const ProjectsListPage = () => {
 
   const hasActiveFilters = Boolean(listFilters.keyword || listFilters.status);
 
-  const applyKeyword = useCallback(
+  const commitKeyword = useCallback(
     (raw: string) => {
+      if (searchTimer.current) clearTimeout(searchTimer.current);
       const keyword = raw.trim() ? raw.trim() : undefined;
       setListFilters((prev) => ({
         ...prev,
@@ -107,6 +110,11 @@ const ProjectsListPage = () => {
     },
     [setListFilters],
   );
+
+  const applyKeyword = (raw: string) => {
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => commitKeyword(raw), 300);
+  };
 
   const handleStatusChange = (value: string | null) => {
     const next = value && value !== STATUS_ALL ? value : undefined;
@@ -118,6 +126,7 @@ const ProjectsListPage = () => {
   };
 
   const clearFilters = () => {
+    if (searchTimer.current) clearTimeout(searchTimer.current);
     setKeywordDraft('');
     setListFilters((prev) => ({
       pageSize: prev.pageSize ?? 20,
@@ -158,7 +167,7 @@ const ProjectsListPage = () => {
       lyraClassName="flex flex-col gap-px bg-border p-px"
       defaultClassName="flex flex-col gap-4"
     >
-      <BreadcrumbComp title="项目" items={BCrumb} />
+      <BreadcrumbComp title="全部项目" items={[]} />
 
       <Card className="gap-0 py-0">
         <CardHeader className="border-b py-4">
@@ -166,17 +175,10 @@ const ProjectsListPage = () => {
             <div className="space-y-1">
               <CardTitle>项目</CardTitle>
               <CardDescription>
-                Project 是资源边界。打开后优先进入产品管理；成员与 API 授权在「设置」中。
+                进入项目管理产品、成员与 API 授权；账号设置在平台范围共用。
               </CardDescription>
             </div>
-            <Button
-              nativeButton={false}
-              render={<Link to="/projects/new" />}
-              className="shrink-0 self-start"
-            >
-              <Plus aria-hidden />
-              创建项目
-            </Button>
+            {canCreate && <CreateProjectAction />}
           </div>
         </CardHeader>
 
@@ -189,27 +191,35 @@ const ProjectsListPage = () => {
                 aria-hidden
               />
               <Input
+                id="project-list-search"
                 value={keywordDraft}
                 onChange={(e) => {
                   const value = e.target.value;
                   setKeywordDraft(value);
-                  applyKeyword(value);
+                  if (!composing.current) applyKeyword(value);
                 }}
+                onCompositionStart={() => { composing.current = true; if (searchTimer.current) clearTimeout(searchTimer.current); }}
+                onCompositionEnd={(event) => { composing.current = false; applyKeyword(event.currentTarget.value); }}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') applyKeyword(keywordDraft);
+                  if (e.key === 'Enter' && !e.nativeEvent.isComposing) commitKeyword(keywordDraft);
                 }}
                 placeholder="搜索名称或 Project ID…"
                 className="!pr-8 !pl-8"
                 aria-label="按关键词筛选项目"
               />
+              {keywordDraft && <Button type="button" variant="ghost" size="icon" aria-label="清除项目搜索"
+                className="absolute right-0 top-0 size-9" onClick={() => {
+                  setKeywordDraft(''); commitKeyword(''); document.getElementById('project-list-search')?.focus();
+                }}><X className="size-4" /></Button>}
             </div>
 
             <Select
               value={listFilters.status ?? STATUS_ALL}
               onValueChange={handleStatusChange}
+              items={[{ value: STATUS_ALL, label: '全部状态' }, ...STATUS_OPTIONS.map((value) => ({ value, label: PROJECT_STATUS_LABEL[value] }))]}
             >
               <SelectTrigger className="w-full sm:w-44" aria-label="按状态筛选">
-                <SelectValue placeholder="状态" />
+                <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value={STATUS_ALL}>全部状态</SelectItem>
@@ -231,6 +241,7 @@ const ProjectsListPage = () => {
 
           <ProjectListTable
             projects={displayProjects}
+            canCreate={canCreate}
             loading={listLoading}
             error={listError}
             hasActiveFilters={hasActiveFilters}

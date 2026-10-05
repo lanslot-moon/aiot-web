@@ -1,4 +1,6 @@
 export interface ChildItem {
+  activePaths?: string[];
+  labelSource?: "app" | "iam";
   id?: number | string;
   name: string;
   icon?: LucideIcon;
@@ -84,10 +86,16 @@ const SidebarContent: MenuItem[] = [
     items: [
       {
         id: uniqueId(),
-        name: "Project",
+        name: "项目",
         icon: FolderKanban,
         url: "/projects",
       },
+      { id: uniqueId(), name: "个人资料", icon: CircleUserRound, url: "/account/profile" },
+      { id: uniqueId(), name: "账号安全", icon: ShieldCheck, url: "/account/security" },
+      { id: uniqueId(), name: "登录设备", icon: Key, url: "/account/sessions" },
+      { id: uniqueId(), name: "角色与权限", icon: Users, url: "/iam/roles" },
+      { id: uniqueId(), name: "菜单管理", icon: List, url: "/iam/menus" },
+      { id: uniqueId(), name: "加入申请", icon: UserPlus, url: "/account/access-requests" },
     ],
   },
   {

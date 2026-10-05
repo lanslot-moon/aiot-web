@@ -9,7 +9,7 @@ const getFetcher = (url: string | Request | URL) =>
     return res.json();
   });
 
-const postFetcher = (url: string, arg: any) =>
+const postFetcher = (url: string, arg: unknown) =>
   fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -21,7 +21,7 @@ const postFetcher = (url: string, arg: any) =>
     return res.json();
   });
 
-const putFetcher = (url: string, arg: any) =>
+const putFetcher = (url: string, arg: unknown) =>
   fetch(url, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
@@ -33,7 +33,7 @@ const putFetcher = (url: string, arg: any) =>
     return res.json();
   });
 
-const patchFetcher = (url: string, arg: any) =>
+const patchFetcher = (url: string, arg: unknown) =>
   fetch(url, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
@@ -45,7 +45,7 @@ const patchFetcher = (url: string, arg: any) =>
     return res.json();
   });
 
-const deleteFetcher = (url: string, arg: any) =>
+const deleteFetcher = (url: string, arg: unknown) =>
   fetch(url, {
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json' },

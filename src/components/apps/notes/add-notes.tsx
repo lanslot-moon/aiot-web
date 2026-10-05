@@ -1,18 +1,19 @@
 
 
-import { useContext, useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
+Dialog,
+DialogContent,
+DialogFooter,
+DialogHeader,
+DialogTitle,
+DialogTrigger,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
 import { Check } from "lucide-react";
-import { NotesContext } from "@/context/notes-context/index";
+import { useContext, useState } from "react";
+import { NotesContext } from '../../../context/notes-context/context';
+
 
 interface ColorOption {
   lineColor: string;

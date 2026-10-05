@@ -1,135 +1,89 @@
-
-
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
 import {
-  Sheet,
-  SheetTrigger,
-  SheetContent,
-  SheetFooter,
-  SheetClose,
-} from "src/components/ui/sheet";
-import { Avatar, AvatarImage, AvatarFallback } from "src/components/ui/avatar";
-import { Button } from "src/components/ui/button";
-import { Icon } from "@iconify/react";
+Sheet,
+SheetContent,
+SheetDescription,
+SheetFooter,
+SheetTitle,
+SheetTrigger,
+} from '@/components/ui/sheet';
+import { LogOut, Mailbox, UserRound } from 'lucide-react';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router';
+import { logout, useIam } from '../../../../context/iam-context/identity';
 
-import { cn } from "src/lib/utils";
-import { Mailbox } from 'lucide-react';
-
-import { profileDD } from "./data";
-import { Link } from "react-router";
-import avatar from '@/assets/images/profile/avtar.webp';
-import Buynow from '@/assets/images/backgrounds/sidebarbuynow.svg';
+import { accountNavigation, authorizedNavigation } from '@/components/iam/menu-navigation';
+import { ErrorNotice } from '@/components/iam/shared';
 export default function ProfileSheet() {
-
-
+  const { account, platformAuthorization: authorization } = useIam();
+  const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<unknown>(null);
   return (
-    <Sheet>
-      {/* Trigger Button */}
-      <SheetTrigger className="cursor-pointer hover:bg-primary/5 flex items-center justify-center rounded-full h-10 w-10">
-        <Avatar className="h-8 w-8">
-          <AvatarImage src={avatar} alt="profile" />
-          <AvatarFallback>CM</AvatarFallback>
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger
+        aria-label="打开账号菜单"
+        className="flex size-10 cursor-pointer items-center justify-center rounded-full hover:bg-primary/5 focus-visible:outline focus-visible:outline-ring"
+      >
+        <Avatar className="size-8">
+          <AvatarImage src={account.data?.avatarUrl ?? undefined} alt="账号头像" />
+          <AvatarFallback>
+            {account.data?.username?.slice(0, 2).toUpperCase() ?? <UserRound className="size-4" />}
+          </AvatarFallback>
         </Avatar>
       </SheetTrigger>
-
-      {/* Drawer Panel */}
-      <SheetContent
-        showCloseButton={false}
-        side="right"
-        className="border-s-0 w-full sm:max-w-80 max-w-60"
-      >
-        <SheetClose className="absolute top-5 end-5 p-2 hover:bg-primary/5 hover:text-primary rounded-full">
-          <Icon icon="tabler:x" width={20} height={20} />
-        </SheetClose>
-        {/* Top Profile Section */}
+      <SheetContent side="right" className="w-full sm:max-w-80">
         <div className="p-6 py-6">
-          <div className="flex flex-col gap-4 justify-center items-center pt-10">
-            <Avatar className="h-16 w-16">
-              <AvatarImage
-                src={avatar}
-                alt="Profile"
-                width={30}
-                height={30}
-              />
-              <AvatarFallback>CM</AvatarFallback>
+          <div className="flex flex-col items-center justify-center gap-4 pt-10">
+            <Avatar className="size-16!">
+              <AvatarImage src={account.data?.avatarUrl ?? undefined} alt="账号头像" />
+              <AvatarFallback>{account.data?.username?.slice(0, 2).toUpperCase() ?? <UserRound />}</AvatarFallback>
             </Avatar>
-
-            <div className="text-center">
-              <h6 className="text-lg font-semibold">Cameron</h6>
-              <div className="flex items-center gap-2 justify-center">
-                <Mailbox
-                  size={18} className="text-muted-foreground"
-                />
-                <span className="text-sm font-normal text-muted-foreground">
-                  info@shadcndashboard.com
-                </span>
-              </div>
+            <div className="w-full text-center">
+              <SheetTitle className="text-lg font-semibold">{account.data?.displayName || account.data?.username || '平台账号'}</SheetTitle>
+              <SheetDescription className="mt-1 flex items-center justify-center gap-2">
+                <Mailbox className="size-4 shrink-0" />
+                <span className="min-w-0 break-all">{account.data?.email ?? '维护个人资料与账号安全'}</span>
+              </SheetDescription>
             </div>
           </div>
         </div>
-
-        {/* Menu List */}
-        <div className="border-t  border-border">
-          <ul className="flex flex-col gap-2 p-6">
-            {profileDD.map((item) => (
-              <li key={item.title} className="group">
-                <Link
-                  to={item.href}
-                  className={cn(
-                    "flex gap-3 py-2 px-3 rounded-md group-hover:bg-primary/5 text-muted-foreground"
-                  )}
-                >
-                  <item.avatar
-                    width={20}
-                    height={20}
-                    className="group-hover:text-primary"
-                  />
-
-                  <div className="flex gap-3 items-center">
-                    <h6 className="text-sm group-hover:text-primary">
-                      {item.title}
-                    </h6>
-
-                    {item.badge && (
-                      <span className="h-5 w-6 text-sm flex justify-center items-center text-primary rounded-sm bg-primary/5">
-                        4
-                      </span>
-                    )}
-                  </div>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        {/* Footer */}
-        <SheetFooter className="px-0 pb-6">
-          <div className="border-t border-border w-full">
-            <div className="rounded-sm pt-6 flex flex-col justify-center items-center gap-3">
-              <div>
-                <img
-                  src={Buynow}
-                  alt="login-bg"
-                />
-              </div>
-
-              <div className="text-center">
-                <h5 className="text-xl font-semibold">
-                  Grab ShadcnDashboard Admin
-                </h5>
-                <p className="text-sm text-muted-foreground">
-                  Customize your dashboard
-                </p>
-              </div>
-
-              <Button
-                variant="secondary"
-                render={<Link to="/auth/auth2/login" />}
-                className="text-primary"
-              >
-                Log Out
-              </Button>
-            </div>
-          </div>
+        <nav className="space-y-1 border-t p-6" aria-label="账号导航">
+          {authorizedNavigation([{ items: accountNavigation }], authorization.data?.menus ?? [], authorization.data?.permissionCodes ?? []).flatMap((group) => group.items ?? []).map((link) => (
+            <Link
+              className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-primary/5 hover:text-primary focus-visible:outline focus-visible:outline-ring"
+              key={link.url}
+              to={link.url ?? '/projects'}
+              onClick={() => setOpen(false)}
+            >
+              {link.icon && <link.icon className="size-5 shrink-0" />}
+              {link.name}
+            </Link>
+          ))}
+        </nav>
+        <SheetFooter className="border-t px-6 pb-6 pt-6">
+          <ErrorNotice error={error} />
+          <Button
+            variant="outline"
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true);
+              setError(null);
+              try {
+                await logout();
+                navigate('/auth/auth2/login', { replace: true });
+              } catch (failure) {
+                setError(failure);
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            <LogOut className="size-4" />
+            退出登录
+          </Button>
         </SheetFooter>
       </SheetContent>
     </Sheet>

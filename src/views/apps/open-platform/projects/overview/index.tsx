@@ -1,8 +1,8 @@
+import { Eye, EyeOff, KeyRound, Loader2, Shield, Users } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router';
-import useSWR from 'swr';
-import { Eye, EyeOff, KeyRound, Loader2, Shield, Users } from 'lucide-react';
 import { toast } from 'sonner';
+import useSWR from 'swr';
 
 import { ApiErrorAlert } from '@/components/open-platform/api-error-alert';
 import { CopyIdButton } from '@/components/open-platform/copy-id-button';
@@ -11,29 +11,26 @@ import StyleAwareWrapper from '@/components/shared/StyleAwareWrapper';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
+Card,
+CardContent,
+CardDescription,
+CardHeader,
+CardTitle,
 } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  OpenPlatformApiError,
-  openPlatformGetFetcher,
-  useProjectDetail,
-} from '@/context/open-platform-context';
+import { OpenPlatformApiError, openPlatformGetFetcher, useProjectDetail } from '../../../../../context/open-platform-context/project-resources';
+
 import BreadcrumbComp from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
 import {
-  AUTHORIZATION_STATUS_LABEL,
-  PROJECT_STATUS_LABEL,
-  labelOf,
+AUTHORIZATION_STATUS_LABEL,
+PROJECT_STATUS_LABEL,
+labelOf,
 } from '@/lib/open-platform-labels';
 import type {
-  AuthorizationMetadataView,
-  ProjectKeyPairView,
-  ProjectSummaryView,
+AuthorizationMetadataView,
+ProjectKeyPairView,
+ProjectSummaryView,
 } from '@/types/apps/open-platform';
 
 const BCrumb = [

@@ -12,6 +12,7 @@ export interface CursorResult<T> {
 }
 
 export interface TokenResponse {
+  sessionId?: string | null;
   accessToken: string;
   refreshToken: string;
   tokenType: "Bearer";
@@ -61,7 +62,7 @@ export interface ProjectView {
   projectName: string;
   description: string | null;
   status: string;
-  myRole: string;
+  myRole?: string;
   createTime: number;
   updateTime: number;
 }

@@ -1,57 +1,58 @@
-import { useEffect, useMemo, useState } from 'react';
-import useSWR from 'swr';
 import {
-  ArrowLeft,
-  ArrowRight,
-  Archive,
-  Braces,
-  Check,
-  CheckCircle2,
-  FileKey2,
-  GitCompare,
-  History,
-  Package,
-  Plus,
-  RefreshCw,
-  RotateCcw,
-  Save,
-  Trash2,
-  Upload,
+Archive,
+ArrowLeft,
+ArrowRight,
+Braces,
+Check,
+CheckCircle2,
+FileKey2,
+GitCompare,
+History,
+Package,
+Plus,
+RefreshCw,
+RotateCcw,
+Save,
+Trash2,
+Upload,
 } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
+import useSWR from 'swr';
 
 import { ApiErrorAlert } from '@/components/open-platform/api-error-alert';
 import { CopyIdButton } from '@/components/open-platform/copy-id-button';
-import {
-  ThingModelCapabilitySummary,
-  ThingModelCapabilityTabs,
-  type ThingModelCapabilityKind,
-} from '@/components/open-platform/thing-model-capabilities';
 import { ProductLifecycleBadge } from '@/components/open-platform/product-lifecycle-badge';
 import { ProjectWorkspaceShell } from '@/components/open-platform/project-workspace-shell';
+import {
+ThingModelCapabilitySummary,
+ThingModelCapabilityTabs,
+type ThingModelCapabilityKind,
+} from '@/components/open-platform/thing-model-capabilities';
+import StyleAwareWrapper from '@/components/shared/StyleAwareWrapper';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+AlertDialog,
+AlertDialogAction,
+AlertDialogCancel,
+AlertDialogContent,
+AlertDialogDescription,
+AlertDialogFooter,
+AlertDialogHeader,
+AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+Dialog,
+DialogContent,
+DialogDescription,
+DialogFooter,
+DialogHeader,
+DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -59,32 +60,25 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
-import StyleAwareWrapper from '@/components/shared/StyleAwareWrapper';
-import {
-  OpenPlatformApiError,
-  openPlatformDelete,
-  openPlatformGetFetcher,
-  openPlatformPost,
-  openPlatformPut,
-  useProjectDetail,
-} from '@/context/open-platform-context';
+import { OpenPlatformApiError, openPlatformDelete, openPlatformGetFetcher, openPlatformPost, openPlatformPut, useProjectDetail } from '../../../../../../context/open-platform-context/project-resources';
+
 import BreadcrumbComp from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
 import {
-  labelOf,
-  MODEL_DRAFT_STATUS_LABEL,
-  MODEL_REVISION_STATUS_LABEL,
+labelOf,
+MODEL_DRAFT_STATUS_LABEL,
+MODEL_REVISION_STATUS_LABEL,
 } from '@/lib/open-platform-labels';
 import type {
-  CategoryMergeView,
-  ModelDiffView,
-  ModelDraftView,
-  ModelVersionView,
-  ProductDetailView,
-  SchemaValidationView,
-  ThingModelDefinition,
-  ThingModelAction,
-  ThingModelEvent,
-  ThingModelProperty,
+CategoryMergeView,
+ModelDiffView,
+ModelDraftView,
+ModelVersionView,
+ProductDetailView,
+SchemaValidationView,
+ThingModelAction,
+ThingModelDefinition,
+ThingModelEvent,
+ThingModelProperty,
 } from '@/types/apps/open-platform';
 
 type ConfirmAction =

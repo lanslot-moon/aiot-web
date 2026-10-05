@@ -1,7 +1,8 @@
 import { Button } from "@/components/ui/button";
-import { useEffect, useState } from "react";
 import { Moon, Sun } from "lucide-react";
-import { useTheme } from "src/context/shadcntheme/ThemeContext";
+import { useEffect, useState } from "react";
+import { useTheme } from '../../../../context/shadcntheme/theme-context';
+
 
 const LightDark = () => {
   const { theme: activeMode, setTheme: setActiveMode } = useTheme();
@@ -16,12 +17,12 @@ const LightDark = () => {
       setActiveMode(activeMode === "light" ? "dark" : "light");
     };
 
-    if (!(document as any).startViewTransition) {
+    if (!document.startViewTransition) {
       toggleMode();
       return;
     }
 
-    const transition = (document as any).startViewTransition(() => {
+    const transition = document.startViewTransition(() => {
       toggleMode();
     });
 

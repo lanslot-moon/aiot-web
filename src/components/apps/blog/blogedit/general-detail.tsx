@@ -1,10 +1,11 @@
 
-import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
-import { useContext, useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { BlogContext } from "src/context/blog-context";
+import { Textarea } from "@/components/ui/textarea";
+import { useContext, useEffect, useState } from "react";
+import { BlogContext } from '../../../../context/blog-context/context';
+
 
 const GeneralDetail = () => {
   const { posts } = useContext(BlogContext);

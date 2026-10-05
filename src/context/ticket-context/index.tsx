@@ -1,24 +1,9 @@
-import { createContext, useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { deleteFetcher, getFetcher, postFetcher } from 'src/api/global-fetcher';
 import { TicketType } from '../../types/apps/ticket';
-import { getFetcher, deleteFetcher, postFetcher } from 'src/api/global-fetcher';
+import { TicketContext } from './context';
 
 import useSWR from 'swr';
-
-export interface TicketContextType {
-  tickets: TicketType[];
-  deleteTicket: (id: number) => void;
-  setTicketSearch: (searchTerm: string) => void;
-  searchTickets: (searchTerm: string) => void;
-  ticketSearch: string;
-  filter: string;
-  error: null;
-  loading: boolean;
-  setFilter: (filter: string) => void;
-  addTicket: (ticket: any) => void;
-}
-
-// Create Context
-export const TicketContext = createContext<TicketContextType>({} as TicketContextType);
 
 // Provider Component
 export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -26,7 +11,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [ticketSearch, setTicketSearch] = useState<string>('');
   const [filter, setFilter] = useState<string>('total_tickets');
   const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<any>(null);
+  const [error, setError] = useState<unknown>(null);
 
   // Fetch tickets from the API when the component mounts using useEffect
   const {

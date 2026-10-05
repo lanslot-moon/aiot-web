@@ -1,64 +1,61 @@
+import {
+ArrowLeft,
+Braces,
+ChevronDown,
+Cpu,
+LayoutDashboard,
+ListTree,
+Loader2,
+Package,
+Pencil,
+Settings,
+} from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
-import {
-  ArrowLeft,
-  Braces,
-  ChevronDown,
-  Cpu,
-  ListTree,
-  LayoutDashboard,
-  Loader2,
-  Package,
-  Pencil,
-  Settings,
-} from 'lucide-react';
 import { toast } from 'sonner';
 
 import { ApiErrorAlert } from '@/components/open-platform/api-error-alert';
 import { CopyIdButton } from '@/components/open-platform/copy-id-button';
 import { ProjectStatusBadge } from '@/components/open-platform/project-status-badge';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+AlertDialog,
+AlertDialogAction,
+AlertDialogCancel,
+AlertDialogContent,
+AlertDialogDescription,
+AlertDialogFooter,
+AlertDialogHeader,
+AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
+Collapsible,
+CollapsibleContent,
+CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+Dialog,
+DialogContent,
+DialogDescription,
+DialogFooter,
+DialogHeader,
+DialogTitle,
 } from '@/components/ui/dialog';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
+DropdownMenu,
+DropdownMenuContent,
+DropdownMenuItem,
+DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  OpenPlatformApiError,
-  useOpenPlatform,
-  useProjectDetail,
-} from '@/context/open-platform-context';
+import { OpenPlatformApiError, useOpenPlatform, useProjectDetail } from '../../context/open-platform-context/project-resources';
+
 import { cn } from '@/lib/utils';
 import type { ProjectView } from '@/types/apps/open-platform';
 
@@ -192,9 +189,13 @@ type LifecycleAction = 'activate' | 'suspend' | 'archive' | 'close';
 export function ProjectWorkspaceShell({
   children,
   activePrimary,
+  settingsNavigation,
+  navigationMode = 'sidebar',
 }: {
   children: React.ReactNode;
   activePrimary?: PrimaryTab;
+  settingsNavigation?: SettingsTab[];
+  navigationMode?: 'tabs' | 'sidebar';
 }) {
   const { projectId = '' } = useParams<{ projectId: string }>();
   const location = useLocation();
@@ -358,7 +359,7 @@ export function ProjectWorkspaceShell({
       <ApiErrorAlert
         code={(error as OpenPlatformApiError).code}
         message={error.message}
-        onRetry={() => void mutate()}
+        onRetry={() => mutate()}
       />
     );
   }
@@ -370,7 +371,7 @@ export function ProjectWorkspaceShell({
       <Collapsible open={projectHeaderOpen} onOpenChange={handleProjectHeaderOpenChange}>
         <Card className="gap-0 px-5 py-3">
           <div className="flex flex-wrap items-center gap-2">
-            <Button
+            {navigationMode === 'tabs' && <Button
               variant="ghost"
               size="sm"
               className="h-7 -ml-2 gap-1 px-2 text-muted-foreground"
@@ -379,7 +380,7 @@ export function ProjectWorkspaceShell({
             >
               <ArrowLeft className="size-3.5" aria-hidden />
               全部项目
-            </Button>
+            </Button>}
             <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
               <h2 className="truncate text-lg font-semibold tracking-tight">
                 {project.projectName}
@@ -400,7 +401,7 @@ export function ProjectWorkspaceShell({
               </span>
             </div>
 
-            {onSettings ? (
+            {onSettings && navigationMode === 'tabs' ? (
               <div className="flex shrink-0 flex-wrap gap-2">
                 {canEdit ? (
                   <Button
@@ -458,7 +459,7 @@ export function ProjectWorkspaceShell({
               </div>
             ) : null}
 
-            <CollapsibleTrigger
+            {navigationMode === 'tabs' && <CollapsibleTrigger
               type="button"
               className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-transparent text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
               aria-label={projectHeaderOpen ? '收起项目信息' : '展开项目信息'}
@@ -471,10 +472,10 @@ export function ProjectWorkspaceShell({
                 )}
                 aria-hidden
               />
-            </CollapsibleTrigger>
+            </CollapsibleTrigger>}
           </div>
 
-          <CollapsibleContent className="pt-3">
+          {navigationMode === 'tabs' && <CollapsibleContent className="pt-3">
             <div className="border-t pt-3">
               <p className="max-w-3xl text-sm text-muted-foreground">
                 {project.description?.trim()
@@ -482,13 +483,13 @@ export function ProjectWorkspaceShell({
                   : '暂无项目描述，可在「项目设置」中补充。'}
               </p>
             </div>
-          </CollapsibleContent>
+          </CollapsibleContent>}
         </Card>
       </Collapsible>
 
       {/* Project navigation + content */}
       <Card className="!gap-0 !py-0 overflow-hidden p-0">
-        <div className="border-b bg-muted/20">
+        {navigationMode === 'tabs' && <div className="border-b bg-muted/20">
           <div className="overflow-x-auto">
             <nav
               className="flex min-w-max items-center gap-1 p-2"
@@ -497,7 +498,7 @@ export function ProjectWorkspaceShell({
               <span className="shrink-0 px-2 text-xs font-medium text-muted-foreground">
                 云开发
               </span>
-              {PRIMARY_NAV.map((item) => {
+              {PRIMARY_NAV.filter((item) => navigationMode === 'tabs' || !['overview', 'settings'].includes(item.id)).map((item) => {
                 const Icon = item.icon;
                 const active = primaryTab === item.id;
                 return (
@@ -526,7 +527,7 @@ export function ProjectWorkspaceShell({
             </nav>
           </div>
 
-          {onSettings ? (
+          {onSettings && navigationMode === 'tabs' ? (
             <div className="border-t bg-background/70 px-2 py-1.5">
               <div className="overflow-x-auto">
                 <nav
@@ -534,7 +535,7 @@ export function ProjectWorkspaceShell({
                   aria-label="项目设置"
                 >
                   <span className="shrink-0 px-2 text-xs text-muted-foreground">设置</span>
-                  {SETTINGS_NAV.map((item) => {
+                  {SETTINGS_NAV.filter((item) => !settingsNavigation || settingsNavigation.includes(item.id)).map((item) => {
                     const active = settingsTab === item.id;
                     return (
                       <Button
@@ -558,9 +559,9 @@ export function ProjectWorkspaceShell({
               </div>
             </div>
           ) : null}
-        </div>
+        </div>}
 
-        <section className="min-h-[calc(100vh-16rem)] min-w-0 p-4 md:p-6">{children}</section>
+        <section className="min-w-0 p-4 md:p-6">{children}</section>
       </Card>
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>

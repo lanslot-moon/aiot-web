@@ -1,8 +1,9 @@
-import { Link, useLocation } from "react-router";
-import NavItem from "../nav-items/index";
 import { cn } from "@/lib/utils";
-import { useSidebar } from "@/components/ui/sidebar";
-import { MenuItem, ChildItem } from "../sidebaritems";
+import { Link, useLocation } from "react-router";
+import { useSidebar } from '../../../../../components/ui/sidebar-hooks';
+import NavItem from "../nav-items/index";
+
+import { ChildItem, MenuItem } from "../sidebaritems";
 
 interface NavCollapseProps {
   menu: MenuItem[];
@@ -11,11 +12,12 @@ interface NavCollapseProps {
 
 export default function NavCollapse({ menu, className }: NavCollapseProps) {
   const { pathname } = useLocation();
-  const { state } = useSidebar();
+  const { state, isMobile, setOpenMobile } = useSidebar();
   const isCollapse = state === "collapsed";
 
   const isActiveRoute = (item: ChildItem): boolean => {
-    if (item.url && pathname === item.url) return true;
+    if (item.activePaths?.some((path) => pathname === path || pathname.startsWith(`${path}/`))) return true;
+    if (item.url && (pathname === item.url || pathname.startsWith(`${item.url}/`))) return true;
     if (item.items) return item.items.some(isActiveRoute);
     return false;
   };
@@ -28,7 +30,7 @@ export default function NavCollapse({ menu, className }: NavCollapseProps) {
           {/* Heading */}
 
 
-          <span className={cn(
+          {section.heading && <span className={cn(
             "text-xs uppercase block font-semibold text-muted-foreground mb-2 transition-all duration-200",
             isCollapse ? "text-center group-hover:text-start group-data-[state=expanded]:text-start" : ""
           )}>
@@ -40,7 +42,7 @@ export default function NavCollapse({ menu, className }: NavCollapseProps) {
             ) : (
               section.heading ?? ""
             )}
-          </span>
+          </span>}
 
           {section.items?.map((item: ChildItem, index) => {
             const hasChildren =
@@ -52,10 +54,13 @@ export default function NavCollapse({ menu, className }: NavCollapseProps) {
               return (
                 <Link
                   key={index}
+                  onClick={() => { if (isMobile) setOpenMobile(false); }}
+                  aria-label={item.name}
+                  aria-current={active ? "page" : undefined}
                   to={item.url || "#"}
                   target={item.external ? "_blank" : undefined}
                   className={cn(
-                    "flex items-center gap-3  rounded-md transition-all duration-200 ease-in-out ",
+                    "flex cursor-pointer items-center gap-3 rounded-md transition-all duration-200 ease-in-out focus-visible:outline focus-visible:outline-ring",
 
                     className,
                   )}
@@ -73,13 +78,13 @@ export default function NavCollapse({ menu, className }: NavCollapseProps) {
             // 👉 With children → collapsible
             return (
               <details
-                key={index}
+                key={`${item.name}:${active ? pathname : 'inactive'}`}
                 className="group/nav"
                 open={active || item.isActive}
               >
                 <summary
                   className={cn(
-                    "cursor-pointer rounded-md flex items-center transition-all duration-200 ease-in-out",
+                    "cursor-pointer rounded-md flex items-center transition-all duration-200 ease-in-out focus-visible:outline focus-visible:outline-ring",
 
                   )}
                 >
@@ -102,6 +107,9 @@ export default function NavCollapse({ menu, className }: NavCollapseProps) {
                     ) : (
                       <Link
                         key={index}
+                        onClick={() => { if (isMobile) setOpenMobile(false); }}
+                        aria-label={sub.name}
+                        aria-current={isActiveRoute(sub) ? "page" : undefined}
                         to={sub.url || "#"}
                         target={sub.external ? "_blank" : undefined}
                         className={cn(

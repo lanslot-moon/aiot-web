@@ -2,12 +2,13 @@
 // @ts-ignore
 import { lazy } from 'react';
 import { Navigate, createBrowserRouter } from 'react-router';
+import { DraftBoundary } from '@/components/iam/draft-boundary';
+import { RequireSession } from '@/components/iam/require-session';
 import Loadable from '../layouts/full/shared/loadable/Loadable';
 
 /* ***Layouts**** */
 const FullLayout = Loadable(lazy(() => import('../layouts/full/FullLayout')));
 const BlankLayout = Loadable(lazy(() => import('../layouts/blank/BlankLayout')));
-
 
 // dashboards
 
@@ -30,9 +31,7 @@ const TicketCreate = Loadable(lazy(() => import('../views/apps/tickets/create'))
 // open platform
 const ProjectsList = Loadable(lazy(() => import('../views/apps/open-platform/projects')));
 const ProjectCreate = Loadable(lazy(() => import('../views/apps/open-platform/projects/new')));
-const ProjectOverview = Loadable(
-  lazy(() => import('../views/apps/open-platform/projects/overview')),
-);
+const ProjectOverview = Loadable(lazy(() => import('../views/iam/project')));
 const ProjectProducts = Loadable(
   lazy(() => import('../views/apps/open-platform/projects/products')),
 );
@@ -51,18 +50,10 @@ const ProjectProductCredentials = Loadable(
 const ProjectProductCategories = Loadable(
   lazy(() => import('../views/apps/open-platform/projects/products/categories')),
 );
-const ProjectDevices = Loadable(
-  lazy(() => import('../views/apps/open-platform/projects/devices')),
-);
-const ProjectSettings = Loadable(
-  lazy(() => import('../views/apps/open-platform/projects/settings')),
-);
-const ProjectMembers = Loadable(
-  lazy(() => import('../views/apps/open-platform/projects/members')),
-);
-const ProjectAuthorization = Loadable(
-  lazy(() => import('../views/apps/open-platform/projects/authorization')),
-);
+const ProjectDevices = Loadable(lazy(() => import('../views/apps/open-platform/projects/devices')));
+const ProjectSettings = Loadable(lazy(() => import('../views/iam/project')));
+const ProjectMembers = Loadable(lazy(() => import('../views/iam/members')));
+const ProjectAuthorization = Loadable(lazy(() => import('../views/iam/credentials')));
 const ProjectUsage = Loadable(lazy(() => import('../views/apps/open-platform/projects/usage')));
 const ProjectSubscriptions = Loadable(
   lazy(() => import('../views/apps/open-platform/projects/subscriptions')),
@@ -70,12 +61,8 @@ const ProjectSubscriptions = Loadable(
 const ProjectThingModelProducts = Loadable(
   lazy(() => import('../views/apps/open-platform/projects/thing-model/products')),
 );
-const ProjectInvitation = Loadable(
-  lazy(() => import('../views/apps/open-platform/invitations')),
-);
-const ParserProfiles = Loadable(
-  lazy(() => import('../views/apps/open-platform/parser-profiles')),
-);
+const ProjectInvitation = Loadable(lazy(() => import('../views/iam/invitation')));
+const ParserProfiles = Loadable(lazy(() => import('../views/apps/open-platform/parser-profiles')));
 const ParserProfileDetail = Loadable(
   lazy(() => import('../views/apps/open-platform/parser-profiles/detail')),
 );
@@ -96,16 +83,25 @@ const Register2 = Loadable(lazy(() => import('../views/auth/auth2/register')));
 
 const ForgotPassword2 = Loadable(lazy(() => import('../views/auth/auth2/forgot-password')));
 
-const TwoSteps2 = Loadable(lazy(() => import('../views/auth/auth2/two-steps')));
+const TwoSteps2 = Loadable(lazy(() => import('../views/iam/verification')));
 
 const Maintainance = Loadable(lazy(() => import('../views/auth/maintenance')));
+
+const IamAccount = Loadable(lazy(() => import('../views/iam/account')));
+const IamRoles = Loadable(lazy(() => import('../views/iam/roles')));
+const IamMenus = Loadable(lazy(() => import('../views/iam/menus')));
+const IamProjectEntry = Loadable(lazy(() => import('../views/iam/project-entry')));
 
 const Router = [
   {
     path: '/',
-    element: <FullLayout />,
+    element: (
+      <RequireSession>
+        <FullLayout />
+      </RequireSession>
+    ),
     children: [
-      { path: '/', element: <ModernDashboard /> },
+      { path: '/', element: <Navigate to="/projects" replace /> },
 
       { path: '/dashboards/modern', element: <ModernDashboard /> },
 
@@ -121,6 +117,21 @@ const Router = [
       { path: '/apps/tickets/create', element: <TicketCreate /> },
 
       { path: '/projects', element: <ProjectsList /> },
+      { path: '/account', element: <Navigate to="/account/profile" replace /> },
+      { path: '/roles', element: <Navigate to="/iam/roles" replace /> },
+      { path: '/open-api', element: <Navigate to="/projects" replace /> },
+      { path: '/open-api/credentials', element: <IamProjectEntry /> },
+      { path: '/open-api/network-policy', element: <IamProjectEntry /> },
+      { path: '/projects/members', element: <IamProjectEntry /> },
+      { path: '/projects/invitations', element: <IamProjectEntry /> },
+      { path: '/projects/access-requests', element: <IamProjectEntry /> },
+      { path: '/account/profile', element: <IamAccount /> },
+      { path: '/account/security', element: <IamAccount /> },
+      { path: '/account/sessions', element: <IamAccount /> },
+      { path: '/account/access-requests', element: <IamAccount /> },
+      { path: '/iam/roles', element: <IamRoles /> },
+      { path: '/iam/menus', element: <IamMenus /> },
+      { path: '/projects/:projectId/access-requests', element: <ProjectMembers /> },
       { path: '/projects/new', element: <ProjectCreate /> },
       { path: '/projects/:projectId/parser-profiles', element: <ParserProfiles /> },
       {
@@ -168,7 +179,6 @@ const Router = [
 
       { path: '/icons/iconify', element: <SolarIcon /> },
 
-    
       { path: '*', element: <Navigate to="/auth/404" /> },
     ],
   },
@@ -176,6 +186,10 @@ const Router = [
     path: '/',
     element: <BlankLayout />,
     children: [
+      { path: '/auth/auth1/login', element: <Login2 /> },
+      { path: '/auth/auth1/register', element: <Register2 /> },
+      { path: '/auth/auth1/forgot-password', element: <ForgotPassword2 /> },
+      { path: '/auth/auth1/two-steps', element: <TwoSteps2 /> },
       { path: '/auth/auth2/login', element: <Login2 /> },
 
       { path: '/auth/auth2/register', element: <Register2 /> },
@@ -191,6 +205,6 @@ const Router = [
   },
 ];
 
-const router = createBrowserRouter(Router);
+const router = createBrowserRouter([{ element: <DraftBoundary />, children: Router }]);
 
 export default router;

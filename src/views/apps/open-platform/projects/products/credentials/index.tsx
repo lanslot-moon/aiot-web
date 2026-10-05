@@ -1,35 +1,36 @@
-import { Fragment, useEffect, useRef, useState, type FormEvent } from 'react';
-import useSWR from 'swr';
-import useSWRInfinite from 'swr/infinite';
 import {
-  ArrowLeft,
-  Ban,
-  Boxes,
-  Check,
-  ChevronRight,
-  CircleAlert,
-  CloudDownload,
-  Copy,
-  Eye,
-  FileKey2,
-  KeyRound,
-  Loader2,
-  PackageCheck,
-  PackagePlus,
-  Plus,
-  RefreshCw,
-  RotateCcw,
-  ShieldAlert,
-  ShieldCheck,
-  Upload,
+ArrowLeft,
+Ban,
+Boxes,
+Check,
+ChevronRight,
+CircleAlert,
+CloudDownload,
+Copy,
+Eye,
+FileKey2,
+KeyRound,
+Loader2,
+PackageCheck,
+PackagePlus,
+Plus,
+RefreshCw,
+RotateCcw,
+ShieldAlert,
+ShieldCheck,
+Upload,
 } from 'lucide-react';
+import { Fragment, useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, useParams } from 'react-router';
 import { toast } from 'sonner';
+import useSWR from 'swr';
+import useSWRInfinite from 'swr/infinite';
 
 import { ApiErrorAlert } from '@/components/open-platform/api-error-alert';
 import { CopyIdButton } from '@/components/open-platform/copy-id-button';
 import { ProductLifecycleBadge } from '@/components/open-platform/product-lifecycle-badge';
 import { ProjectWorkspaceShell } from '@/components/open-platform/project-workspace-shell';
+import StyleAwareWrapper from '@/components/shared/StyleAwareWrapper';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
@@ -43,21 +44,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import StyleAwareWrapper from '@/components/shared/StyleAwareWrapper';
-import { OpenPlatformApiError, openPlatformDelete, openPlatformGetFetcher, openPlatformPost } from '@/context/open-platform-context';
+import { OpenPlatformApiError, openPlatformDelete, openPlatformGetFetcher, openPlatformPost } from '../../../../../../context/open-platform-context/project-resources';
+
 import BreadcrumbComp from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
 import { cn } from '@/lib/utils';
 import type {
-  CredentialDistributionView,
-  CredentialExportTaskView,
-  CredentialManufacturingBatchView,
-  CredentialManufacturingItemView,
-  CredentialPreRegistrationView,
-  CredentialRotationTaskView,
-  CredentialSecretDeliveryView,
-  CredentialSummaryView,
-  CursorResult,
-  ProductDetailView,
+CredentialDistributionView,
+CredentialExportTaskView,
+CredentialManufacturingBatchView,
+CredentialManufacturingItemView,
+CredentialPreRegistrationView,
+CredentialRotationTaskView,
+CredentialSecretDeliveryView,
+CredentialSummaryView,
+CursorResult,
+ProductDetailView,
 } from '@/types/apps/open-platform';
 
 const PRODUCT_TAB_CLASS = 'h-8 gap-1.5';

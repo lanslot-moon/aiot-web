@@ -1,26 +1,27 @@
 
-import { useState, useContext, useEffect } from "react";
-import { TicketContext } from "@/context/ticket-context/index";
+import { useContext, useEffect, useState } from "react";
+import { TicketContext } from '../../../context/ticket-context/context';
+
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import {
+DropdownMenu,
+DropdownMenuContent,
+DropdownMenuItem,
+DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-import { useNavigate } from "react-router";
-import { isValid, format } from "date-fns";
+import user10 from "@/assets/images/profile/user-10.png";
+import user2 from "@/assets/images/profile/user-2.png";
+import user3 from "@/assets/images/profile/user-3.png";
+import user8 from "@/assets/images/profile/user-8.png";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { format, isValid } from "date-fns";
 import { ChevronDown } from "lucide-react";
+import { useNavigate } from "react-router";
 import { TicketType } from "src/types/apps/ticket";
-import user10 from "@/assets/images/profile/user-10.png"
-import user2 from "@/assets/images/profile/user-2.png"
-import user3 from "@/assets/images/profile/user-3.png"
-import user8 from "@/assets/images/profile/user-8.png"
 
 
 const agents = [

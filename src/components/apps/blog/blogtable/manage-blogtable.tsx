@@ -1,46 +1,46 @@
 
-import { useContext, useEffect, useState } from "react";
-import {
-  useReactTable,
-  getCoreRowModel,
-  getSortedRowModel,
-  getFilteredRowModel,
-  flexRender,
-  getPaginationRowModel,
-  createColumnHelper,
-} from "@tanstack/react-table";
-import { Pen, Trash2, ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft, ChevronRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Tooltip,
-  TooltipTrigger,
-  TooltipProvider,
-  TooltipContent,
+Dialog,
+DialogContent,
+DialogFooter,
+DialogHeader,
+DialogTitle,
+} from "@/components/ui/dialog";
+import {
+Select,
+SelectContent,
+SelectItem,
+SelectTrigger,
+SelectValue,
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import {
+Tooltip,
+TooltipContent,
+TooltipProvider,
+TooltipTrigger,
 } from "@/components/ui/tooltip";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { SearchIcon } from "lucide-react";
-import { BlogContext } from "src/context/blog-context";
-import { BlogPostType } from "src/types/apps/blog";
+createColumnHelper,
+flexRender,
+getCoreRowModel,
+getFilteredRowModel,
+getPaginationRowModel,
+getSortedRowModel,
+useReactTable,
+} from "@tanstack/react-table";
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronsUpDown, ChevronUp, Pen, SearchIcon, Trash2 } from "lucide-react";
+import { useContext, useEffect, useState } from "react";
+import { BlogContext } from '../../../../context/blog-context/context';
+
 import { useNavigate } from "react-router";
 import PlaceholdersInput from "src/components/animated-components/animatedinput-placeholder";
+import { BlogPostType } from "src/types/apps/blog";
 
 const ManageBlogTable = () => {
   const { posts } = useContext(BlogContext);
@@ -253,8 +253,8 @@ const ManageBlogTable = () => {
     onRowSelectionChange: setRowSelection,
     onPaginationChange: setPagination,
     globalFilterFn: (
-      row: { getValue: (arg0: any) => any },
-      columnId: any,
+      row,
+      columnId,
       filterValue: string
     ) => {
       return String(row.getValue(columnId))

@@ -1,20 +1,18 @@
-import { useEffect } from 'react';
-import useSWR from 'swr';
 import { ArrowLeft, PackagePlus } from 'lucide-react';
+import { useEffect } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
+import useSWR from 'swr';
 
 import { ApiErrorAlert } from '@/components/open-platform/api-error-alert';
 import { CategoryDetails } from '@/components/open-platform/category-details';
 import { CategoryTree } from '@/components/open-platform/category-tree';
 import { ProjectWorkspaceShell } from '@/components/open-platform/project-workspace-shell';
+import StyleAwareWrapper from '@/components/shared/StyleAwareWrapper';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import StyleAwareWrapper from '@/components/shared/StyleAwareWrapper';
-import {
-  OpenPlatformApiError,
-  openPlatformGetFetcher,
-} from '@/context/open-platform-context';
+import { OpenPlatformApiError, openPlatformGetFetcher } from '../../../../../../context/open-platform-context/project-resources';
+
 import BreadcrumbComp from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
 import { categoryLabel } from '@/lib/open-platform-category';
 import type { CategoryVersionView, CategoryView } from '@/types/apps/open-platform';

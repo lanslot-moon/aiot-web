@@ -1,71 +1,66 @@
-import { useEffect, useMemo, useState } from 'react';
-import useSWR from 'swr';
 import {
-  ArrowLeft,
-  CheckCircle2,
-  Braces,
-  GitCompare,
-  History,
-  Pencil,
-  Plus,
-  RefreshCw,
-  RotateCcw,
-  Save,
-  Send,
-  TestTube2,
-  Trash2,
-  XCircle,
+ArrowLeft,
+Braces,
+CheckCircle2,
+GitCompare,
+History,
+Pencil,
+Plus,
+RefreshCw,
+RotateCcw,
+Save,
+Send,
+TestTube2,
+Trash2,
+XCircle,
 } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { toast } from 'sonner';
+import useSWR from 'swr';
 
 import { ApiErrorAlert } from '@/components/open-platform/api-error-alert';
 import { ProjectWorkspaceShell } from '@/components/open-platform/project-workspace-shell';
+import StyleAwareWrapper from '@/components/shared/StyleAwareWrapper';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+AlertDialog,
+AlertDialogAction,
+AlertDialogCancel,
+AlertDialogContent,
+AlertDialogDescription,
+AlertDialogFooter,
+AlertDialogHeader,
+AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+Dialog,
+DialogContent,
+DialogDescription,
+DialogFooter,
+DialogHeader,
+DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
-import StyleAwareWrapper from '@/components/shared/StyleAwareWrapper';
-import {
-  OpenPlatformApiError,
-  openPlatformDelete,
-  openPlatformGetFetcher,
-  openPlatformPost,
-  openPlatformPut,
-} from '@/context/open-platform-context';
+import { OpenPlatformApiError, openPlatformDelete, openPlatformGetFetcher, openPlatformPost, openPlatformPut } from '../../../../../context/open-platform-context/project-resources';
+
 import BreadcrumbComp from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
 import type {
-  ParserProfileDiffView,
-  ParserProfileDirection,
-  ParserProfileMapping,
-  ParserProfileMappingRule,
-  ParserProfileMappingType,
-  ParserProfileTestView,
-  ParserProfileValidationView,
-  ParserProfileVersionView,
-  ParserProfileView,
+ParserProfileDiffView,
+ParserProfileDirection,
+ParserProfileMapping,
+ParserProfileMappingRule,
+ParserProfileMappingType,
+ParserProfileTestView,
+ParserProfileValidationView,
+ParserProfileVersionView,
+ParserProfileView,
 } from '@/types/apps/open-platform';
 
 type MappingRow = { source: string; rule: ParserProfileMappingRule };

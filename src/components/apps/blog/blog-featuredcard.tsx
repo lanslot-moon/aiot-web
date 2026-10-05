@@ -1,13 +1,14 @@
 
 
-import { Circle, Eye, MessageSquare } from "lucide-react";
-import { format } from "date-fns";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { useEffect, useContext } from "react";
+import { format } from "date-fns";
+import { Circle, Eye, MessageSquare } from "lucide-react";
+import { useContext, useEffect } from "react";
 
 import { Link } from "react-router";
-import { BlogContext, BlogContextProps } from "src/context/blog-context";
+import { BlogContext, BlogContextProps } from '../../../context/blog-context/context';
+
 import { BlogPostType } from "src/types/apps/blog";
 
 interface Btype {
@@ -30,7 +31,7 @@ const BlogFeaturedCard = ({ post, index }: Btype) => {
     }, 700);
 
     return () => clearTimeout(timer);
-  }, []);
+  }, [setLoading]);
 
   return (
     <>

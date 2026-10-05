@@ -1,38 +1,39 @@
+import { CreateProjectAction } from '@/components/iam/create-project-action';
 import { format } from 'date-fns';
 import { EllipsisVertical, FolderKanban, FolderOpen, Loader2, SearchX } from 'lucide-react';
-import { Link, useNavigate } from 'react-router';
+import { useNavigate } from 'react-router';
 
 import { ApiErrorAlert } from '@/components/open-platform/api-error-alert';
 import { CopyIdButton } from '@/components/open-platform/copy-id-button';
 import { ProjectStatusBadge } from '@/components/open-platform/project-status-badge';
-import { RoleBadge } from '@/components/open-platform/role-badge';
 import { Button } from '@/components/ui/button';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
+DropdownMenu,
+DropdownMenuContent,
+DropdownMenuItem,
+DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
-  Empty,
-  EmptyContent,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
+Empty,
+EmptyContent,
+EmptyDescription,
+EmptyHeader,
+EmptyMedia,
+EmptyTitle,
 } from '@/components/ui/empty';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+Table,
+TableBody,
+TableCell,
+TableHead,
+TableHeader,
+TableRow,
 } from '@/components/ui/table';
-import { OpenPlatformApiError } from '@/context/open-platform-context';
+import { OpenPlatformApiError } from '../../context/open-platform-context/project-resources';
+
+import type { ProjectVO } from '@/api/iam/contracts';
 import { cn } from '@/lib/utils';
-import type { ProjectView } from '@/types/apps/open-platform';
 
 function formatEpoch(ms: number): string {
   return format(new Date(ms), 'MMM d, yyyy HH:mm');
@@ -66,8 +67,9 @@ export function ProjectListTable({
   onLoadMore,
   onClearFilters,
   className,
+  canCreate = true,
 }: {
-  projects: ProjectView[];
+  projects: ProjectVO[];
   loading: boolean;
   error: Error | null;
   hasActiveFilters: boolean;
@@ -78,6 +80,7 @@ export function ProjectListTable({
   onLoadMore: () => void;
   onClearFilters: () => void;
   className?: string;
+  canCreate?: boolean;
 }) {
   const navigate = useNavigate();
 
@@ -130,9 +133,7 @@ export function ProjectListTable({
           </EmptyDescription>
         </EmptyHeader>
         <EmptyContent>
-          <Button nativeButton={false} render={<Link to="/projects/new" />}>
-            创建项目
-          </Button>
+          {canCreate && <CreateProjectAction />}
         </EmptyContent>
       </Empty>
     );
@@ -143,9 +144,9 @@ export function ProjectListTable({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>名称</TableHead>
             <TableHead>Project ID</TableHead>
-            <TableHead>角色</TableHead>
+            <TableHead>名称</TableHead>
+            <TableHead>项目描述</TableHead>
             <TableHead>状态</TableHead>
             <TableHead>创建时间</TableHead>
             <TableHead>更新时间</TableHead>
@@ -154,21 +155,24 @@ export function ProjectListTable({
         </TableHeader>
         <TableBody>
           {projects.map((project) => (
-            <TableRow key={project.projectId}>
-              <TableCell className="max-w-56 sm:max-w-72">
-                <button
-                  type="button"
-                  className="text-left hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
-                  onClick={() => navigate(`/projects/${project.projectId}/overview`)}
-                >
-                  <span className="font-medium line-clamp-1">{project.projectName}</span>
-                </button>
-                {project.description ? (
-                  <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
-                    {project.description}
-                  </p>
-                ) : null}
-              </TableCell>
+            <TableRow
+              key={project.projectId}
+              tabIndex={0}
+              aria-label={`打开项目 ${project.projectName}`}
+              className="cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+              onClick={(event) => {
+                const target = event.target;
+                if (target instanceof Element && target.closest('button, a, input, select, textarea, [role="button"], [role="menuitem"]')) return;
+                navigate(`/projects/${encodeURIComponent(project.projectId)}/overview`);
+              }}
+              onKeyDown={(event) => {
+                if (event.target !== event.currentTarget) return;
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  navigate(`/projects/${encodeURIComponent(project.projectId)}/overview`);
+                }
+              }}
+            >
               <TableCell>
                 <div className="flex items-center gap-1 max-w-44">
                   <code className="text-xs font-mono truncate" title={project.projectId}>
@@ -177,8 +181,17 @@ export function ProjectListTable({
                   <CopyIdButton value={project.projectId} label="Project ID" />
                 </div>
               </TableCell>
-              <TableCell>
-                <RoleBadge role={project.myRole} />
+              <TableCell className="max-w-56 sm:max-w-72">
+                <button
+                  type="button"
+                  className="text-left hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+                  onClick={() => navigate(`/projects/${encodeURIComponent(project.projectId)}/overview`)}
+                >
+                  <span className="font-medium line-clamp-1">{project.projectName}</span>
+                </button>
+              </TableCell>
+              <TableCell className="min-w-48 max-w-80 whitespace-normal break-words text-muted-foreground">
+                {project.description || '—'}
               </TableCell>
               <TableCell>
                 <ProjectStatusBadge status={project.status} />
@@ -196,7 +209,7 @@ export function ProjectListTable({
                     size="sm"
                     variant="outline"
                     className="hidden sm:inline-flex"
-                    onClick={() => navigate(`/projects/${project.projectId}/overview`)}
+                    onClick={() => navigate(`/projects/${encodeURIComponent(project.projectId)}/overview`)}
                   >
                     打开
                   </Button>
@@ -215,7 +228,7 @@ export function ProjectListTable({
                     />
                     <DropdownMenuContent align="end" className="min-w-40">
                       <DropdownMenuItem
-                        onClick={() => navigate(`/projects/${project.projectId}/overview`)}
+                        onClick={() => navigate(`/projects/${encodeURIComponent(project.projectId)}/overview`)}
                       >
                         <FolderOpen aria-hidden />
                         打开工作区

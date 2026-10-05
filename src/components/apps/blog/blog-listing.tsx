@@ -1,13 +1,14 @@
 
-import { useContext } from "react";
 import { orderBy } from "lodash";
+import { useContext } from "react";
 
-import { BlogContext } from "../../../context/blog-context";
+import { BlogContext } from '../../../context/blog-context/context';
+
 import BlogFeaturedCard from "./blog-featuredcard";
 
-import BlogCard from "./blog-card";
-import { BlogPostType } from "src/types/apps/blog";
 import StyleAwareWrapper from "src/components/shared/StyleAwareWrapper";
+import { BlogPostType } from "src/types/apps/blog";
+import BlogCard from "./blog-card";
 
 const BlogListing = () => {
   const { posts, sortBy } = useContext(BlogContext);

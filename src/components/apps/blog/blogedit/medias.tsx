@@ -1,10 +1,11 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BlogContext } from "src/context/blog-context";
-import { useContext } from "react";
+import { BlogContext } from '../../../../context/blog-context/context';
+
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CloudUpload } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { useContext } from "react";
 
 const Media = () => {
   const { posts } = useContext(BlogContext);

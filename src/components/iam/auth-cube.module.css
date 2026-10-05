@@ -1,0 +1,79 @@
+.scene {
+  position: relative;
+  width: 300px;
+  height: 300px;
+  margin-inline: auto;
+  perspective: 900px;
+}
+
+.cube, .layer, .turningLayer {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+}
+
+.cube {
+  transform: rotateX(-24deg) rotateY(-32deg);
+  animation: revolve 24s linear infinite;
+}
+
+.turningLayer {
+  animation: turn-layer 8s ease-in-out infinite;
+}
+
+.cubie {
+  position: absolute;
+  top: calc(50% - 29px);
+  left: calc(50% - 29px);
+  width: 58px;
+  height: 58px;
+  transform-style: preserve-3d;
+  transform: translate3d(calc(var(--x) * 60px), calc(var(--y) * 60px), calc(var(--z) * 60px));
+}
+
+.face {
+  position: absolute;
+  inset: 0;
+  border: 3px solid #101010;
+  border-radius: 7px;
+  background: #101010;
+  backface-visibility: hidden;
+}
+
+.face[data-face='front'] { transform: translateZ(29px); }
+.face[data-face='back'] { transform: rotateY(180deg) translateZ(29px); }
+.face[data-face='right'] { transform: rotateY(90deg) translateZ(29px); }
+.face[data-face='left'] { transform: rotateY(-90deg) translateZ(29px); }
+.face[data-face='top'] { transform: rotateX(90deg) translateZ(29px); }
+.face[data-face='bottom'] { transform: rotateX(-90deg) translateZ(29px); }
+.face[data-sticker='true'][data-face='front'] { background: #eb4938; }
+.face[data-sticker='true'][data-face='back'] { background: #f28c28; }
+.face[data-sticker='true'][data-face='right'] { background: #2778de; }
+.face[data-sticker='true'][data-face='left'] { background: #23a568; }
+.face[data-sticker='true'][data-face='top'] { background: #f4f3eb; }
+.face[data-sticker='true'][data-face='bottom'] { background: #f4ca3c; }
+
+.shadow {
+  position: absolute;
+  left: 70px;
+  right: 70px;
+  bottom: 2px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 8%);
+  filter: blur(12px);
+}
+
+@keyframes revolve {
+  from { transform: rotateX(-24deg) rotateY(-32deg); }
+  to { transform: rotateX(-24deg) rotateY(328deg); }
+}
+
+@keyframes turn-layer {
+  0%, 15%, 85%, 100% { transform: rotateY(0deg); }
+  35%, 65% { transform: rotateY(90deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cube, .turningLayer { animation: none; }
+}

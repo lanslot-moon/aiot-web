@@ -1,73 +1,69 @@
-import { useMemo, useState, type FormEvent } from 'react';
-import useSWR, { useSWRConfig } from 'swr';
 import {
-  ArrowLeft,
-  Braces,
-  Check,
-  ChevronLeft,
-  ChevronRight,
-  PackagePlus,
+ArrowLeft,
+Braces,
+Check,
+ChevronLeft,
+ChevronRight,
+PackagePlus,
 } from 'lucide-react';
+import { useMemo, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { toast } from 'sonner';
+import useSWR, { useSWRConfig } from 'swr';
 
 import { ApiErrorAlert } from '@/components/open-platform/api-error-alert';
 import { CategoryDetails } from '@/components/open-platform/category-details';
 import { CategoryTree } from '@/components/open-platform/category-tree';
-import { ProductBootstrapModeField } from '@/components/open-platform/product-bootstrap-mode-field';
 import {
-  ParserProfileSelect,
-  ParserProfileVersionSelect,
+ParserProfileSelect,
+ParserProfileVersionSelect,
 } from '@/components/open-platform/parser-profile-selector';
+import { ProductBootstrapModeField } from '@/components/open-platform/product-bootstrap-mode-field';
 import { ProjectStatusBadge } from '@/components/open-platform/project-status-badge';
 import { ProjectWorkspaceShell } from '@/components/open-platform/project-workspace-shell';
 import { Button } from '@/components/ui/button';
+import {
+Card,
+CardContent,
+CardDescription,
+CardFooter,
+CardHeader,
+CardTitle,
+} from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import {
-  Field,
-  FieldDescription,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
+Field,
+FieldDescription,
+FieldError,
+FieldGroup,
+FieldLabel,
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  OpenPlatformApiError,
-  openPlatformPost,
-  openPlatformGetFetcher,
-  useProjectDetail,
-} from '@/context/open-platform-context';
-import BreadcrumbComp from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
+import { OpenPlatformApiError, openPlatformGetFetcher, openPlatformPost, useProjectDetail } from '../../../../../../context/open-platform-context/project-resources';
+
 import StyleAwareWrapper from '@/components/shared/StyleAwareWrapper';
-import {
-  PRODUCT_AUTH_MODE_LABEL,
-  PRODUCT_DATA_MODE_LABEL,
-  PRODUCT_NODE_TYPE_LABEL,
-  PRODUCT_TRANSPORT_LABEL,
-  labelOf,
-} from '@/lib/open-platform-labels';
+import BreadcrumbComp from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
 import { categoryLabel } from '@/lib/open-platform-category';
+import {
+PRODUCT_AUTH_MODE_LABEL,
+PRODUCT_DATA_MODE_LABEL,
+PRODUCT_NODE_TYPE_LABEL,
+PRODUCT_TRANSPORT_LABEL,
+labelOf,
+} from '@/lib/open-platform-labels';
 import { cn } from '@/lib/utils';
 import type {
-  CategoryVersionView,
-  CategoryView,
-  CursorResult,
-  ParserProfileVersionView,
-  ParserProfileView,
-  ProductCreateRequest,
-  ProductListItem,
+CategoryVersionView,
+CategoryView,
+CursorResult,
+ParserProfileVersionView,
+ParserProfileView,
+ProductCreateRequest,
+ProductListItem,
 } from '@/types/apps/open-platform';
 
 type ProductForm = {

@@ -1,0 +1,3 @@
+const resourceNames: Record<string, string> = { ACCOUNT: '账号', SESSION: '登录设备', FILE: '文件', PROJECT: '项目', PLATFORM_ROLE: '角色', PLATFORM_MEMBER: '平台成员', PLATFORM_SETTING: '平台设置', MENU: '菜单', PROJECT_MEMBER: '成员与邀请', PROJECT_CREDENTIAL: '项目 API 凭证', PRODUCT: '产品', THING_MODEL: '物模型', DEVICE: '设备', TELEMETRY: '遥测', RULE: '规则', OTA: 'OTA', DEVICE_SHADOW: '设备影子', DEVICE_CONFIG: '设备配置', DEVELOPER_CREDENTIAL: '开发者凭证', AUDIT: '审计' };
+export const moduleNames: Record<string, string> = { IAM: '协作与管理', PRODUCT: '产品', DEVICE: '设备', THING_MODEL: '物模型', TELEMETRY: '遥测', RULE: '规则', OTA: 'OTA', DEVICE_SHADOW: '设备影子', DEVICE_CONFIG: '设备配置' };
+export function permissionResourceName(code: string) { return resourceNames[code] ?? code; }

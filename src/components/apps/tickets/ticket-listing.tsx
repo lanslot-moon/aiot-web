@@ -1,28 +1,29 @@
-import { useNavigate } from "react-router";
-import { useContext } from "react";
-import { CircleAlert, Trash } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
-  Table,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+Table,
+TableCell,
+TableHead,
+TableHeader,
+TableRow,
 } from "@/components/ui/table";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
+Tooltip,
+TooltipContent,
+TooltipProvider,
+TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { format } from "date-fns";
-import { TicketContext } from "@/context/ticket-context";
+import { CircleAlert, Trash } from 'lucide-react';
+import { useContext } from "react";
+import { useNavigate } from "react-router";
+import { TicketContext } from '../../../context/ticket-context/context';
+
 import {
-  AnimatedTableWrapper,
-  AnimatedTableBody,
-  AnimatedTableRow,
+AnimatedTableBody,
+AnimatedTableRow,
+AnimatedTableWrapper,
 } from "@/components/animated-components/animated-table";
 import InputPlaceholderAnimate from "@/components/animated-components/animatedinput-placeholder";
 import { Alert, AlertTitle } from "@/components/ui/alert";

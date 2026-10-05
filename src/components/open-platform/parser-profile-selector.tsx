@@ -45,7 +45,7 @@ function SearchableOptionSelect({
 
   useEffect(() => {
     setInputValue(selectedOption?.label ?? '');
-  }, [selectedOption?.value]);
+  }, [selectedOption?.value, selectedOption?.label]);
 
   return (
     <Combobox

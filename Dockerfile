@@ -29,7 +29,9 @@ RUN npm run build
 FROM nginx:alpine AS runner
 
 COPY --from=builder /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY deploy/nginx.conf.template /etc/nginx/templates/default.conf.template
+
+ENV AIOT_GATEWAY_URL=http://35.252.210.77:9080
 
 EXPOSE 80
 

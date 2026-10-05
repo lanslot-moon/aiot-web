@@ -4,9 +4,8 @@ import StyleDivider from '@/components/shared/StyleDivider';
 import BreadcrumbComp from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
 
 const BCrumb = [
-  { to: '/', title: 'Home' },
-  { to: '/projects', title: 'Projects' },
-  { title: 'New' },
+  { to: '/projects', title: '全部项目' },
+  { title: '创建项目' },
 ];
 
 const CreateProjectPage = () => {
@@ -15,7 +14,7 @@ const CreateProjectPage = () => {
       lyraClassName="flex flex-col p-px gap-px bg-border"
       defaultClassName="flex flex-col gap-4"
     >
-      <BreadcrumbComp title="Create Project" items={BCrumb} />
+      <BreadcrumbComp title="创建项目" items={BCrumb} />
       <StyleDivider />
       <CreateProjectWizard />
     </StyleAwareWrapper>

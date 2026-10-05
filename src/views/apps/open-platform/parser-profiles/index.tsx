@@ -1,44 +1,39 @@
-import { useMemo, useState } from 'react';
-import useSWR from 'swr';
 import { ChevronRight, Info, Pencil, Plus, Search, Trash2 } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { toast } from 'sonner';
+import useSWR from 'swr';
 
 import { ApiErrorAlert } from '@/components/open-platform/api-error-alert';
 import { ProjectWorkspaceShell } from '@/components/open-platform/project-workspace-shell';
+import StyleAwareWrapper from '@/components/shared/StyleAwareWrapper';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+AlertDialog,
+AlertDialogAction,
+AlertDialogCancel,
+AlertDialogContent,
+AlertDialogDescription,
+AlertDialogFooter,
+AlertDialogHeader,
+AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+Dialog,
+DialogContent,
+DialogDescription,
+DialogFooter,
+DialogHeader,
+DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
 import { Skeleton } from '@/components/ui/skeleton';
-import StyleAwareWrapper from '@/components/shared/StyleAwareWrapper';
-import {
-  OpenPlatformApiError,
-  openPlatformDelete,
-  openPlatformGetFetcher,
-  openPlatformPost,
-  openPlatformPut,
-} from '@/context/open-platform-context';
+import { OpenPlatformApiError, openPlatformDelete, openPlatformGetFetcher, openPlatformPost, openPlatformPut } from '../../../../context/open-platform-context/project-resources';
+
 import BreadcrumbComp from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
 import type { CursorResult, ParserProfileView } from '@/types/apps/open-platform';
 
@@ -61,7 +56,7 @@ const ParserProfilesPage = () => {
   const [busy, setBusy] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<ParserProfileView | null>(null);
   const apiError = error as OpenPlatformApiError | undefined;
-  const profiles = data?.items ?? [];
+  const profiles = useMemo(() => data?.items ?? [], [data?.items]);
   const filtered = useMemo(() => {
     const query = keyword.trim().toLowerCase();
     if (!query) return profiles;

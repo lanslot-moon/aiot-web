@@ -1,7 +1,8 @@
 import { useContext, useEffect } from "react";
-import { TicketContext } from "@/context/ticket-context/index";
-import { mutate } from "swr";
+import { TicketContext } from '../../../context/ticket-context/context';
+
 import { useLocation } from "react-router";
+import { mutate } from "swr";
 
 
 

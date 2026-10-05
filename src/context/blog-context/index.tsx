@@ -1,37 +1,8 @@
-import { createContext, useState, useEffect, ReactNode, Dispatch, SetStateAction } from 'react';
-import { BlogPostType, BlogType } from 'src/types/apps/blog';
-import React from 'react';
-import useSWR from 'swr';
+import React, { ReactNode, useEffect, useState } from 'react';
 import { getFetcher } from 'src/api/global-fetcher';
-
-// Define BlogContextProps interface
-export interface BlogContextProps {
-  posts: BlogPostType[];
-  sortBy: string;
-  selectedPost: BlogPostType | null;
-  isLoading: boolean;
-  setPosts: Dispatch<SetStateAction<BlogPostType[]>>;
-  setSortBy: Dispatch<SetStateAction<string>>;
-  setSelectedPost: Dispatch<SetStateAction<BlogPostType | null>>;
-  setLoading: Dispatch<SetStateAction<boolean>>;
-  addComment: (postId: number, newComment: BlogType) => void;
-
-  error: null;
-}
-
-// Create context with default values
-export const BlogContext = createContext<BlogContextProps>({
-  posts: [],
-  sortBy: 'newest',
-  selectedPost: null,
-  isLoading: true,
-  setPosts: () => { },
-  setSortBy: () => { },
-  setSelectedPost: () => { },
-  setLoading: () => { },
-  addComment: () => { },
-  error: null,
-});
+import { BlogPostType, BlogType } from 'src/types/apps/blog';
+import useSWR from 'swr';
+import { BlogContext, BlogContextProps } from './context';
 
 // BlogProvider component
 export const BlogProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -39,7 +10,7 @@ export const BlogProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [sortBy, setSortBy] = useState<string>('newest');
   const [selectedPost, setSelectedPost] = useState<BlogPostType | null>(null);
   const [isLoading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<any>(null);
+  const [error, setError] = useState<unknown>(null);
 
   // Fetch Post data from the API
   const {
@@ -61,7 +32,7 @@ export const BlogProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, [postsData, postsError, isPostsLoading]);
 
   // Adds a new comment to a specific post by updating the state.
-  const addComment = (postId: number, newComment: BlogType) => {
+  const addComment = (postId: NonNullable<BlogPostType['id']>, newComment: BlogType) => {
     setPosts((prevPosts) =>
       prevPosts.map((post) =>
         post.id === postId ? { ...post, comments: [newComment, ...(post.comments || [])] } : post,

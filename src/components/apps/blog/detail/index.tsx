@@ -1,28 +1,26 @@
 
-import React, { useEffect, useContext } from "react";
+import React, { useContext, useEffect } from "react";
 
-import { Circle, Eye, MessageSquare, Quote } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { format } from "date-fns";
 import { uniqueId } from "lodash";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Circle, Eye, MessageSquare, Quote } from "lucide-react";
 import { useLocation } from "react-router";
-import {
-  BlogContext,
-  BlogContextProps,
-} from "../../../../context/blog-context/index";
+import { BlogContext, BlogContextProps } from '../../../../context/blog-context/context';
+
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import BlogComment from "./blog-commnets";
+import { Textarea } from "@/components/ui/textarea";
+import {
+Tooltip,
+TooltipContent,
+TooltipProvider,
+TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { BlogType } from "src/types/apps/blog";
+import BlogComment from "./blog-commnets";
 
 const BlogDetailData = () => {
   const { posts, setLoading, addComment }: BlogContextProps =
@@ -64,7 +62,7 @@ const BlogDetailData = () => {
     }, 700);
 
     return () => clearTimeout(timer);
-  }, []);
+  }, [setLoading]);
 
   return (
     <>
