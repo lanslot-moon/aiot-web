@@ -53,7 +53,7 @@ import {
 type AccountRecord = AccountView & { password: string };
 type ProductRecord = ProductDetailView;
 type ModelVersionRecord = ModelVersionView & { definition: ThingModelDefinition };
-type ParserProfileRecord = ParserProfileView & { deletedAt: number | null };
+type ParserProfileRecord = ParserProfileView & { deletedAt: number | null; version: number };
 type ParserProfileVersionRecord = ParserProfileVersionView;
 
 const now = Date.UTC(2026, 7, 1, 8, 0, 0);
@@ -830,9 +830,9 @@ const seedProducts: ProductRecord[] = [
     protocolProfile: null,
     topicTemplates: {},
     lifecycleStatus: 'PUBLISHED',
-    version: 3,
-    createdAt: Date.UTC(2026, 7, 8, 9, 0, 0),
-    updatedAt: Date.UTC(2026, 7, 18, 10, 0, 0),
+
+    createTime: Date.UTC(2026, 7, 8, 9, 0, 0),
+    updateTime: Date.UTC(2026, 7, 18, 10, 0, 0),
   },
   {
     projectId: 'proj_smart_home',
@@ -853,9 +853,9 @@ const seedProducts: ProductRecord[] = [
     protocolProfile: null,
     topicTemplates: {},
     lifecycleStatus: 'DRAFT',
-    version: 1,
-    createdAt: Date.UTC(2026, 7, 12, 11, 0, 0),
-    updatedAt: Date.UTC(2026, 7, 19, 14, 30, 0),
+
+    createTime: Date.UTC(2026, 7, 12, 11, 0, 0),
+    updateTime: Date.UTC(2026, 7, 19, 14, 30, 0),
   },
   {
     projectId: 'proj_smart_home',
@@ -876,9 +876,9 @@ const seedProducts: ProductRecord[] = [
     protocolProfile: null,
     topicTemplates: {},
     lifecycleStatus: 'DRAFT',
-    version: 2,
-    createdAt: Date.UTC(2026, 7, 14, 10, 20, 0),
-    updatedAt: Date.UTC(2026, 7, 20, 9, 15, 0),
+
+    createTime: Date.UTC(2026, 7, 14, 10, 20, 0),
+    updateTime: Date.UTC(2026, 7, 20, 9, 15, 0),
   },
   {
     projectId: 'proj_smart_home',
@@ -899,9 +899,9 @@ const seedProducts: ProductRecord[] = [
     protocolProfile: null,
     topicTemplates: {},
     lifecycleStatus: 'DRAFT',
-    version: 1,
-    createdAt: Date.UTC(2026, 7, 16, 13, 0, 0),
-    updatedAt: Date.UTC(2026, 7, 20, 11, 40, 0),
+
+    createTime: Date.UTC(2026, 7, 16, 13, 0, 0),
+    updateTime: Date.UTC(2026, 7, 20, 11, 40, 0),
   },
   {
     projectId: 'proj_smart_home',
@@ -922,9 +922,9 @@ const seedProducts: ProductRecord[] = [
     protocolProfile: null,
     topicTemplates: {},
     lifecycleStatus: 'DRAFT',
-    version: 1,
-    createdAt: Date.UTC(2026, 7, 18, 15, 30, 0),
-    updatedAt: Date.UTC(2026, 7, 20, 16, 10, 0),
+
+    createTime: Date.UTC(2026, 7, 18, 15, 30, 0),
+    updateTime: Date.UTC(2026, 7, 20, 16, 10, 0),
   },
   {
     projectId: 'proj_smart_home',
@@ -945,9 +945,9 @@ const seedProducts: ProductRecord[] = [
     protocolProfile: null,
     topicTemplates: {},
     lifecycleStatus: 'PUBLISHED',
-    version: 2,
-    createdAt: Date.UTC(2026, 7, 5, 14, 0, 0),
-    updatedAt: Date.UTC(2026, 7, 15, 9, 12, 0),
+
+    createTime: Date.UTC(2026, 7, 5, 14, 0, 0),
+    updateTime: Date.UTC(2026, 7, 15, 9, 12, 0),
   },
   {
     projectId: 'proj_smart_home',
@@ -968,9 +968,9 @@ const seedProducts: ProductRecord[] = [
     protocolProfile: null,
     topicTemplates: {},
     lifecycleStatus: 'DISABLED',
-    version: 2,
-    createdAt: Date.UTC(2026, 7, 2, 16, 0, 0),
-    updatedAt: Date.UTC(2026, 7, 10, 16, 45, 0),
+
+    createTime: Date.UTC(2026, 7, 2, 16, 0, 0),
+    updateTime: Date.UTC(2026, 7, 10, 16, 45, 0),
   },
 ];
 
@@ -996,9 +996,9 @@ const additionalSeedProducts: ProductRecord[] = [
     protocolProfile: null,
     topicTemplates: {},
     lifecycleStatus: 'DRAFT',
-    version: 1,
-    createdAt: Date.UTC(2026, 7, 19, 8, 30, 0),
-    updatedAt: Date.UTC(2026, 7, 21, 10, 5, 0),
+
+    createTime: Date.UTC(2026, 7, 19, 8, 30, 0),
+    updateTime: Date.UTC(2026, 7, 21, 10, 5, 0),
   },
   {
     projectId: 'proj_smart_home',
@@ -1020,9 +1020,9 @@ const additionalSeedProducts: ProductRecord[] = [
     protocolProfile: null,
     topicTemplates: {},
     lifecycleStatus: 'PUBLISHED',
-    version: 3,
-    createdAt: Date.UTC(2026, 7, 4, 9, 15, 0),
-    updatedAt: Date.UTC(2026, 7, 18, 16, 40, 0),
+
+    createTime: Date.UTC(2026, 7, 4, 9, 15, 0),
+    updateTime: Date.UTC(2026, 7, 18, 16, 40, 0),
   },
   {
     projectId: 'proj_smart_home',
@@ -1044,9 +1044,9 @@ const additionalSeedProducts: ProductRecord[] = [
     protocolProfile: null,
     topicTemplates: {},
     lifecycleStatus: 'PUBLISHED',
-    version: 2,
-    createdAt: Date.UTC(2026, 7, 7, 11, 0, 0),
-    updatedAt: Date.UTC(2026, 7, 17, 13, 20, 0),
+
+    createTime: Date.UTC(2026, 7, 7, 11, 0, 0),
+    updateTime: Date.UTC(2026, 7, 17, 13, 20, 0),
   },
   {
     projectId: 'proj_smart_home',
@@ -1068,9 +1068,9 @@ const additionalSeedProducts: ProductRecord[] = [
     protocolProfile: null,
     topicTemplates: {},
     lifecycleStatus: 'DRAFT',
-    version: 2,
-    createdAt: Date.UTC(2026, 7, 15, 14, 10, 0),
-    updatedAt: Date.UTC(2026, 7, 22, 9, 45, 0),
+
+    createTime: Date.UTC(2026, 7, 15, 14, 10, 0),
+    updateTime: Date.UTC(2026, 7, 22, 9, 45, 0),
   },
   {
     projectId: 'proj_smart_home',
@@ -1092,9 +1092,9 @@ const additionalSeedProducts: ProductRecord[] = [
     protocolProfile: null,
     topicTemplates: {},
     lifecycleStatus: 'PUBLISHED',
-    version: 4,
-    createdAt: Date.UTC(2026, 6, 28, 10, 0, 0),
-    updatedAt: Date.UTC(2026, 7, 20, 17, 35, 0),
+
+    createTime: Date.UTC(2026, 6, 28, 10, 0, 0),
+    updateTime: Date.UTC(2026, 7, 20, 17, 35, 0),
   },
   {
     projectId: 'proj_smart_home',
@@ -1116,9 +1116,9 @@ const additionalSeedProducts: ProductRecord[] = [
     protocolProfile: null,
     topicTemplates: {},
     lifecycleStatus: 'DRAFT',
-    version: 1,
-    createdAt: Date.UTC(2026, 7, 21, 9, 20, 0),
-    updatedAt: Date.UTC(2026, 7, 22, 12, 10, 0),
+
+    createTime: Date.UTC(2026, 7, 21, 9, 20, 0),
+    updateTime: Date.UTC(2026, 7, 22, 12, 10, 0),
   },
   {
     projectId: 'proj_smart_home',
@@ -1140,9 +1140,9 @@ const additionalSeedProducts: ProductRecord[] = [
     protocolProfile: { profileId: 'parser_profile_json_mqtt', profileVersion: '1.1' },
     topicTemplates: { report: '/product/${productKey}/device/${deviceName}/report' },
     lifecycleStatus: 'PUBLISHED',
-    version: 5,
-    createdAt: Date.UTC(2026, 6, 24, 8, 0, 0),
-    updatedAt: Date.UTC(2026, 7, 22, 15, 0, 0),
+
+    createTime: Date.UTC(2026, 6, 24, 8, 0, 0),
+    updateTime: Date.UTC(2026, 7, 22, 15, 0, 0),
   },
   {
     projectId: 'proj_smart_home',
@@ -1164,9 +1164,9 @@ const additionalSeedProducts: ProductRecord[] = [
     protocolProfile: { profileId: 'parser_profile_modbus_meter', profileVersion: '2.0' },
     topicTemplates: {},
     lifecycleStatus: 'DRAFT',
-    version: 2,
-    createdAt: Date.UTC(2026, 7, 20, 13, 50, 0),
-    updatedAt: Date.UTC(2026, 7, 22, 16, 25, 0),
+
+    createTime: Date.UTC(2026, 7, 20, 13, 50, 0),
+    updateTime: Date.UTC(2026, 7, 22, 16, 25, 0),
   },
   {
     projectId: 'proj_smart_home',
@@ -1188,9 +1188,9 @@ const additionalSeedProducts: ProductRecord[] = [
     protocolProfile: { profileId: 'parser_profile_modbus_meter', profileVersion: '2.0' },
     topicTemplates: {},
     lifecycleStatus: 'DRAFT',
-    version: 1,
-    createdAt: Date.UTC(2026, 7, 22, 8, 45, 0),
-    updatedAt: Date.UTC(2026, 7, 22, 8, 45, 0),
+
+    createTime: Date.UTC(2026, 7, 22, 8, 45, 0),
+    updateTime: Date.UTC(2026, 7, 22, 8, 45, 0),
   },
   {
     projectId: 'proj_smart_home',
@@ -1212,9 +1212,9 @@ const additionalSeedProducts: ProductRecord[] = [
     protocolProfile: { profileId: 'parser_profile_lorawan', profileVersion: '3.2' },
     topicTemplates: {},
     lifecycleStatus: 'PUBLISHED',
-    version: 3,
-    createdAt: Date.UTC(2026, 6, 30, 12, 0, 0),
-    updatedAt: Date.UTC(2026, 7, 21, 18, 15, 0),
+
+    createTime: Date.UTC(2026, 6, 30, 12, 0, 0),
+    updateTime: Date.UTC(2026, 7, 21, 18, 15, 0),
   },
   {
     projectId: 'proj_smart_home',
@@ -1236,9 +1236,9 @@ const additionalSeedProducts: ProductRecord[] = [
     protocolProfile: null,
     topicTemplates: {},
     lifecycleStatus: 'DRAFT',
-    version: 1,
-    createdAt: Date.UTC(2026, 7, 22, 16, 30, 0),
-    updatedAt: Date.UTC(2026, 7, 22, 16, 30, 0),
+
+    createTime: Date.UTC(2026, 7, 22, 16, 30, 0),
+    updateTime: Date.UTC(2026, 7, 22, 16, 30, 0),
   },
   {
     projectId: 'proj_smart_home',
@@ -1260,9 +1260,9 @@ const additionalSeedProducts: ProductRecord[] = [
     protocolProfile: null,
     topicTemplates: {},
     lifecycleStatus: 'DISABLED',
-    version: 2,
-    createdAt: Date.UTC(2026, 5, 18, 8, 0, 0),
-    updatedAt: Date.UTC(2026, 6, 30, 10, 0, 0),
+
+    createTime: Date.UTC(2026, 5, 18, 8, 0, 0),
+    updateTime: Date.UTC(2026, 6, 30, 10, 0, 0),
   },
 ];
 
@@ -1274,8 +1274,8 @@ const seedParserProfiles: ParserProfileRecord[] = [
     protocolCode: 'MQTT_JSON',
     currentVersion: '1.1',
     version: 3,
-    createdAt: Date.UTC(2026, 7, 6, 9, 0, 0),
-    updatedAt: Date.UTC(2026, 7, 20, 14, 20, 0),
+    createTime: Date.UTC(2026, 7, 6, 9, 0, 0),
+    updateTime: Date.UTC(2026, 7, 20, 14, 20, 0),
     deletedAt: null,
   },
   {
@@ -1285,8 +1285,8 @@ const seedParserProfiles: ParserProfileRecord[] = [
     protocolCode: 'GATEWAY_BINARY',
     currentVersion: null,
     version: 2,
-    createdAt: Date.UTC(2026, 7, 13, 11, 0, 0),
-    updatedAt: Date.UTC(2026, 7, 21, 10, 45, 0),
+    createTime: Date.UTC(2026, 7, 13, 11, 0, 0),
+    updateTime: Date.UTC(2026, 7, 21, 10, 45, 0),
     deletedAt: null,
   },
 ];
@@ -1300,8 +1300,8 @@ const additionalSeedParserProfiles: ParserProfileRecord[] = [
     protocolCode: 'MODBUS_RTU',
     currentVersion: '2.0',
     version: 4,
-    createdAt: Date.UTC(2026, 6, 28, 8, 30, 0),
-    updatedAt: Date.UTC(2026, 7, 22, 16, 0, 0),
+    createTime: Date.UTC(2026, 6, 28, 8, 30, 0),
+    updateTime: Date.UTC(2026, 7, 22, 16, 0, 0),
     deletedAt: null,
   },
   {
@@ -1311,8 +1311,8 @@ const additionalSeedParserProfiles: ParserProfileRecord[] = [
     protocolCode: 'HTTP_JSON',
     currentVersion: '1.0',
     version: 2,
-    createdAt: Date.UTC(2026, 7, 2, 10, 20, 0),
-    updatedAt: Date.UTC(2026, 7, 12, 9, 15, 0),
+    createTime: Date.UTC(2026, 7, 2, 10, 20, 0),
+    updateTime: Date.UTC(2026, 7, 12, 9, 15, 0),
     deletedAt: null,
   },
   {
@@ -1322,8 +1322,8 @@ const additionalSeedParserProfiles: ParserProfileRecord[] = [
     protocolCode: 'LORAWAN_TLV',
     currentVersion: '3.2',
     version: 5,
-    createdAt: Date.UTC(2026, 6, 20, 14, 0, 0),
-    updatedAt: Date.UTC(2026, 7, 21, 18, 10, 0),
+    createTime: Date.UTC(2026, 6, 20, 14, 0, 0),
+    updateTime: Date.UTC(2026, 7, 21, 18, 10, 0),
     deletedAt: null,
   },
   {
@@ -1333,8 +1333,8 @@ const additionalSeedParserProfiles: ParserProfileRecord[] = [
     protocolCode: 'GB28181',
     currentVersion: null,
     version: 1,
-    createdAt: Date.UTC(2026, 7, 21, 11, 25, 0),
-    updatedAt: Date.UTC(2026, 7, 21, 11, 25, 0),
+    createTime: Date.UTC(2026, 7, 21, 11, 25, 0),
+    updateTime: Date.UTC(2026, 7, 21, 11, 25, 0),
     deletedAt: null,
   },
   {
@@ -1344,8 +1344,8 @@ const additionalSeedParserProfiles: ParserProfileRecord[] = [
     protocolCode: 'COAP_JSON',
     currentVersion: '1.0',
     version: 3,
-    createdAt: Date.UTC(2026, 7, 9, 13, 40, 0),
-    updatedAt: Date.UTC(2026, 7, 19, 15, 30, 0),
+    createTime: Date.UTC(2026, 7, 9, 13, 40, 0),
+    updateTime: Date.UTC(2026, 7, 19, 15, 30, 0),
     deletedAt: null,
   },
   {
@@ -1355,8 +1355,8 @@ const additionalSeedParserProfiles: ParserProfileRecord[] = [
     protocolCode: 'CUSTOM_BINARY',
     currentVersion: null,
     version: 2,
-    createdAt: Date.UTC(2026, 7, 18, 16, 5, 0),
-    updatedAt: Date.UTC(2026, 7, 20, 12, 10, 0),
+    createTime: Date.UTC(2026, 7, 18, 16, 5, 0),
+    updateTime: Date.UTC(2026, 7, 20, 12, 10, 0),
     deletedAt: null,
   },
   {
@@ -1366,8 +1366,8 @@ const additionalSeedParserProfiles: ParserProfileRecord[] = [
     protocolCode: 'ALINK_JSON',
     currentVersion: '2.0',
     version: 3,
-    createdAt: Date.UTC(2026, 6, 12, 9, 0, 0),
-    updatedAt: Date.UTC(2026, 7, 16, 17, 45, 0),
+    createTime: Date.UTC(2026, 6, 12, 9, 0, 0),
+    updateTime: Date.UTC(2026, 7, 16, 17, 45, 0),
     deletedAt: null,
   },
   {
@@ -1377,8 +1377,8 @@ const additionalSeedParserProfiles: ParserProfileRecord[] = [
     protocolCode: 'SPARKPLUG_B',
     currentVersion: '1.0',
     version: 2,
-    createdAt: Date.UTC(2026, 7, 11, 10, 10, 0),
-    updatedAt: Date.UTC(2026, 7, 15, 11, 20, 0),
+    createTime: Date.UTC(2026, 7, 11, 10, 10, 0),
+    updateTime: Date.UTC(2026, 7, 15, 11, 20, 0),
     deletedAt: null,
   },
 ];
@@ -1408,8 +1408,8 @@ const seedParserProfileVersions: ParserProfileVersionRecord[] = [
     },
     versionDigest: 'sha256:parser-json-mqtt-1-0',
     publishedAt: Date.UTC(2026, 7, 16, 10, 0, 0),
-    createdAt: Date.UTC(2026, 7, 15, 9, 0, 0),
-    updatedAt: Date.UTC(2026, 7, 16, 10, 0, 0),
+    createTime: Date.UTC(2026, 7, 15, 9, 0, 0),
+    updateTime: Date.UTC(2026, 7, 16, 10, 0, 0),
   },
   {
     profileId: 'parser_profile_json_mqtt',
@@ -1441,8 +1441,8 @@ const seedParserProfileVersions: ParserProfileVersionRecord[] = [
     },
     versionDigest: 'sha256:parser-json-mqtt-1-1',
     publishedAt: Date.UTC(2026, 7, 20, 14, 20, 0),
-    createdAt: Date.UTC(2026, 7, 18, 9, 0, 0),
-    updatedAt: Date.UTC(2026, 7, 20, 14, 20, 0),
+    createTime: Date.UTC(2026, 7, 18, 9, 0, 0),
+    updateTime: Date.UTC(2026, 7, 20, 14, 20, 0),
   },
   {
     profileId: 'parser_profile_binary_gateway',
@@ -1467,8 +1467,8 @@ const seedParserProfileVersions: ParserProfileVersionRecord[] = [
     },
     versionDigest: '',
     publishedAt: null,
-    createdAt: Date.UTC(2026, 7, 21, 10, 0, 0),
-    updatedAt: Date.UTC(2026, 7, 21, 10, 45, 0),
+    createTime: Date.UTC(2026, 7, 21, 10, 0, 0),
+    updateTime: Date.UTC(2026, 7, 21, 10, 45, 0),
   },
 ];
 
@@ -1486,8 +1486,8 @@ const additionalSeedParserProfileVersions: ParserProfileVersionRecord[] = [
     },
     versionDigest: 'sha256:parser-modbus-meter-1-0',
     publishedAt: Date.UTC(2026, 7, 3, 10, 0, 0),
-    createdAt: Date.UTC(2026, 7, 1, 9, 0, 0),
-    updatedAt: Date.UTC(2026, 7, 3, 10, 0, 0),
+    createTime: Date.UTC(2026, 7, 1, 9, 0, 0),
+    updateTime: Date.UTC(2026, 7, 3, 10, 0, 0),
   },
   {
     profileId: 'parser_profile_modbus_meter',
@@ -1503,8 +1503,8 @@ const additionalSeedParserProfileVersions: ParserProfileVersionRecord[] = [
     },
     versionDigest: 'sha256:parser-modbus-meter-2-0',
     publishedAt: Date.UTC(2026, 7, 18, 16, 0, 0),
-    createdAt: Date.UTC(2026, 7, 12, 9, 0, 0),
-    updatedAt: Date.UTC(2026, 7, 18, 16, 0, 0),
+    createTime: Date.UTC(2026, 7, 12, 9, 0, 0),
+    updateTime: Date.UTC(2026, 7, 18, 16, 0, 0),
   },
   {
     profileId: 'parser_profile_modbus_meter',
@@ -1521,8 +1521,8 @@ const additionalSeedParserProfileVersions: ParserProfileVersionRecord[] = [
     },
     versionDigest: '',
     publishedAt: null,
-    createdAt: Date.UTC(2026, 7, 22, 15, 45, 0),
-    updatedAt: Date.UTC(2026, 7, 22, 16, 0, 0),
+    createTime: Date.UTC(2026, 7, 22, 15, 45, 0),
+    updateTime: Date.UTC(2026, 7, 22, 16, 0, 0),
   },
   {
     profileId: 'parser_profile_http_sensor',
@@ -1538,8 +1538,8 @@ const additionalSeedParserProfileVersions: ParserProfileVersionRecord[] = [
     },
     versionDigest: 'sha256:parser-http-sensor-1-0',
     publishedAt: Date.UTC(2026, 7, 12, 9, 15, 0),
-    createdAt: Date.UTC(2026, 7, 10, 11, 0, 0),
-    updatedAt: Date.UTC(2026, 7, 12, 9, 15, 0),
+    createTime: Date.UTC(2026, 7, 10, 11, 0, 0),
+    updateTime: Date.UTC(2026, 7, 12, 9, 15, 0),
   },
   {
     profileId: 'parser_profile_lorawan',
@@ -1554,8 +1554,8 @@ const additionalSeedParserProfileVersions: ParserProfileVersionRecord[] = [
     },
     versionDigest: 'sha256:parser-lorawan-3-1',
     publishedAt: Date.UTC(2026, 7, 7, 10, 0, 0),
-    createdAt: Date.UTC(2026, 7, 4, 8, 0, 0),
-    updatedAt: Date.UTC(2026, 7, 7, 10, 0, 0),
+    createTime: Date.UTC(2026, 7, 4, 8, 0, 0),
+    updateTime: Date.UTC(2026, 7, 7, 10, 0, 0),
   },
   {
     profileId: 'parser_profile_lorawan',
@@ -1572,8 +1572,8 @@ const additionalSeedParserProfileVersions: ParserProfileVersionRecord[] = [
     },
     versionDigest: 'sha256:parser-lorawan-3-2',
     publishedAt: Date.UTC(2026, 7, 21, 18, 10, 0),
-    createdAt: Date.UTC(2026, 7, 15, 9, 0, 0),
-    updatedAt: Date.UTC(2026, 7, 21, 18, 10, 0),
+    createTime: Date.UTC(2026, 7, 15, 9, 0, 0),
+    updateTime: Date.UTC(2026, 7, 21, 18, 10, 0),
   },
   {
     profileId: 'parser_profile_lorawan',
@@ -1591,8 +1591,8 @@ const additionalSeedParserProfileVersions: ParserProfileVersionRecord[] = [
     },
     versionDigest: '',
     publishedAt: null,
-    createdAt: Date.UTC(2026, 7, 22, 11, 20, 0),
-    updatedAt: Date.UTC(2026, 7, 22, 11, 20, 0),
+    createTime: Date.UTC(2026, 7, 22, 11, 20, 0),
+    updateTime: Date.UTC(2026, 7, 22, 11, 20, 0),
   },
   {
     profileId: 'parser_profile_gb28181',
@@ -1607,8 +1607,8 @@ const additionalSeedParserProfileVersions: ParserProfileVersionRecord[] = [
     },
     versionDigest: '',
     publishedAt: null,
-    createdAt: Date.UTC(2026, 7, 21, 11, 25, 0),
-    updatedAt: Date.UTC(2026, 7, 21, 11, 25, 0),
+    createTime: Date.UTC(2026, 7, 21, 11, 25, 0),
+    updateTime: Date.UTC(2026, 7, 21, 11, 25, 0),
   },
   {
     profileId: 'parser_profile_coap',
@@ -1623,8 +1623,8 @@ const additionalSeedParserProfileVersions: ParserProfileVersionRecord[] = [
     },
     versionDigest: 'sha256:parser-coap-1-0',
     publishedAt: Date.UTC(2026, 7, 15, 11, 20, 0),
-    createdAt: Date.UTC(2026, 7, 12, 10, 0, 0),
-    updatedAt: Date.UTC(2026, 7, 15, 11, 20, 0),
+    createTime: Date.UTC(2026, 7, 12, 10, 0, 0),
+    updateTime: Date.UTC(2026, 7, 15, 11, 20, 0),
   },
   {
     profileId: 'parser_profile_coap',
@@ -1640,8 +1640,8 @@ const additionalSeedParserProfileVersions: ParserProfileVersionRecord[] = [
     },
     versionDigest: '',
     publishedAt: null,
-    createdAt: Date.UTC(2026, 7, 19, 15, 30, 0),
-    updatedAt: Date.UTC(2026, 7, 19, 15, 30, 0),
+    createTime: Date.UTC(2026, 7, 19, 15, 30, 0),
+    updateTime: Date.UTC(2026, 7, 19, 15, 30, 0),
   },
   {
     profileId: 'parser_profile_custom_binary',
@@ -1656,8 +1656,8 @@ const additionalSeedParserProfileVersions: ParserProfileVersionRecord[] = [
     },
     versionDigest: '',
     publishedAt: null,
-    createdAt: Date.UTC(2026, 7, 20, 12, 10, 0),
-    updatedAt: Date.UTC(2026, 7, 20, 12, 10, 0),
+    createTime: Date.UTC(2026, 7, 20, 12, 10, 0),
+    updateTime: Date.UTC(2026, 7, 20, 12, 10, 0),
   },
   {
     profileId: 'parser_profile_alink',
@@ -1672,8 +1672,8 @@ const additionalSeedParserProfileVersions: ParserProfileVersionRecord[] = [
     },
     versionDigest: 'sha256:parser-alink-1-0',
     publishedAt: Date.UTC(2026, 6, 20, 9, 0, 0),
-    createdAt: Date.UTC(2026, 6, 18, 9, 0, 0),
-    updatedAt: Date.UTC(2026, 6, 20, 9, 0, 0),
+    createTime: Date.UTC(2026, 6, 18, 9, 0, 0),
+    updateTime: Date.UTC(2026, 6, 20, 9, 0, 0),
   },
   {
     profileId: 'parser_profile_alink',
@@ -1689,8 +1689,8 @@ const additionalSeedParserProfileVersions: ParserProfileVersionRecord[] = [
     },
     versionDigest: 'sha256:parser-alink-2-0',
     publishedAt: Date.UTC(2026, 7, 16, 17, 45, 0),
-    createdAt: Date.UTC(2026, 7, 10, 9, 0, 0),
-    updatedAt: Date.UTC(2026, 7, 16, 17, 45, 0),
+    createTime: Date.UTC(2026, 7, 10, 9, 0, 0),
+    updateTime: Date.UTC(2026, 7, 16, 17, 45, 0),
   },
   {
     profileId: 'parser_profile_sparkplug',
@@ -1706,8 +1706,8 @@ const additionalSeedParserProfileVersions: ParserProfileVersionRecord[] = [
     },
     versionDigest: 'sha256:parser-sparkplug-1-0',
     publishedAt: Date.UTC(2026, 7, 15, 11, 20, 0),
-    createdAt: Date.UTC(2026, 7, 13, 9, 30, 0),
-    updatedAt: Date.UTC(2026, 7, 15, 11, 20, 0),
+    createTime: Date.UTC(2026, 7, 13, 9, 30, 0),
+    updateTime: Date.UTC(2026, 7, 15, 11, 20, 0),
   },
 ];
 
@@ -2001,7 +2001,7 @@ const preRegistrations: CredentialPreRegistrationView[] = [...seedPreRegistratio
 const credentialExportSnapshots = new Map<string, string[]>();
 const credentialRotations: CredentialRotationTaskView[] = [...seedCredentialRotations];
 const categories: CategoryView[] = [...seedCategories];
-const modelDrafts = new Map<string, ModelDraftView>();
+const modelDrafts = new Map<string, ModelDraftView & { version: number | null }>();
 const modelVersions = new Map<string, ModelVersionRecord[]>();
 const modelValidations = new Map<string, { result: unknown }>();
 
@@ -2086,7 +2086,7 @@ function seedThingModel(product: ProductRecord, revisionCount: number, draftStat
       modelDigest: definition.modelDigest,
       status: 'PUBLISHED',
       publishedAt:
-        product.updatedAt - (revisionCount - revision) * 86_400_000,
+        (product.updateTime ?? product.createTime) - (revisionCount - revision) * 86_400_000,
       definition,
     });
   }
@@ -2170,8 +2170,8 @@ function toProductListItem(product: ProductRecord): ProductListItem {
     categoryNames: product.categoryNames,
     categoryType: product.categoryType ?? (product.categoryCode === 'CUSTOM' ? 'CUSTOM' : 'STANDARD'),
     lifecycleStatus: product.lifecycleStatus,
-    createdAt: product.createdAt,
-    updatedAt: product.updatedAt,
+    createTime: product.createTime,
+    updateTime: product.updateTime,
   };
 }
 
@@ -3144,7 +3144,7 @@ export const OpenPlatformHandlers = [
     const cursor = url.searchParams.get('cursor');
     const active = parserProfiles
       .filter((profile) => !profile.deletedAt)
-      .sort((left, right) => right.updatedAt - left.updatedAt);
+      .sort((left, right) => right.updateTime - left.updateTime);
     const start = cursor ? Math.max(active.findIndex((profile) => profile.profileId === cursor) + 1, 0) : 0;
     const items = active.slice(start, start + pageSize).map((profile) => clone(profile));
     const last = active[start + items.length - 1];
@@ -3172,8 +3172,8 @@ export const OpenPlatformHandlers = [
         protocolCode,
         currentVersion: null,
         version: 1,
-        createdAt: timestamp,
-        updatedAt: timestamp,
+        createTime: timestamp,
+        updateTime: timestamp,
         deletedAt: null,
       };
       parserProfiles.push(profile);
@@ -3202,7 +3202,7 @@ export const OpenPlatformHandlers = [
       if (nextName) profile.profileName = nextName;
       if (body.protocolCode?.trim()) profile.protocolCode = body.protocolCode.trim();
       profile.version += 1;
-      profile.updatedAt = Date.now();
+      profile.updateTime = Date.now();
       return HttpResponse.json(ok(clone(profile)));
     } catch {
       return fail('PARAM_INVALID', '请求内容不是有效 JSON。', 400);
@@ -3219,7 +3219,7 @@ export const OpenPlatformHandlers = [
         return fail('PROFILE_IN_USE', '该 Profile 已被产品引用，不能删除。', 409);
       }
       profile.deletedAt = Date.now();
-      profile.updatedAt = Date.now();
+      profile.updateTime = Date.now();
       return HttpResponse.json(ok(true));
     } catch {
       return fail('PARAM_INVALID', '请求内容不是有效 JSON。', 400);
@@ -3251,12 +3251,12 @@ export const OpenPlatformHandlers = [
         mapping: clone(body.mapping ?? { mappings: {}, codec: null }),
         versionDigest: '',
         publishedAt: null,
-        createdAt: timestamp,
-        updatedAt: timestamp,
+        createTime: timestamp,
+        updateTime: timestamp,
       };
       parserProfileVersions.push(version);
       profile.version += 1;
-      profile.updatedAt = timestamp;
+      profile.updateTime = timestamp;
       return HttpResponse.json(ok(clone(version)), { status: 201 });
     } catch {
       return fail('PARAM_INVALID', '请求内容不是有效 JSON。', 400);
@@ -3281,9 +3281,9 @@ export const OpenPlatformHandlers = [
       const body = (await request.json()) as { mapping?: ParserProfileMapping };
       if (!body.mapping) return fail('PARAM_INVALID', '请提供 mapping。', 400);
       version.mapping = clone(body.mapping);
-      version.updatedAt = Date.now();
+      version.updateTime = Date.now();
       profile.version += 1;
-      profile.updatedAt = version.updatedAt;
+      profile.updateTime = version.updateTime;
       return HttpResponse.json(ok(clone(version)));
     } catch {
       return fail('PARAM_INVALID', '请求内容不是有效 JSON。', 400);
@@ -3315,10 +3315,10 @@ export const OpenPlatformHandlers = [
     version.versionStatus = 'PUBLISHED';
     version.versionDigest = `sha256:${profile.profileId}-${version.profileVersion}-${timestamp}`;
     version.publishedAt = timestamp;
-    version.updatedAt = timestamp;
+    version.updateTime = timestamp;
     profile.currentVersion = version.profileVersion;
     profile.version += 1;
-    profile.updatedAt = timestamp;
+    profile.updateTime = timestamp;
     return HttpResponse.json(ok(true));
   }),
 
@@ -3331,7 +3331,7 @@ export const OpenPlatformHandlers = [
     version.versionStatus = 'DEPRECATED';
     if (profile.currentVersion === version.profileVersion) profile.currentVersion = null;
     profile.version += 1;
-    profile.updatedAt = Date.now();
+    profile.updateTime = Date.now();
     return HttpResponse.json(ok(true));
   }),
 
@@ -3351,12 +3351,12 @@ export const OpenPlatformHandlers = [
       mapping: clone(source.mapping),
       versionDigest: '',
       publishedAt: null,
-      createdAt: timestamp,
-      updatedAt: timestamp,
+      createTime: timestamp,
+      updateTime: timestamp,
     };
     parserProfileVersions.push(draft);
     profile.version += 1;
-    profile.updatedAt = timestamp;
+    profile.updateTime = timestamp;
     return HttpResponse.json(ok(clone(draft)), { status: 201 });
   }),
 
@@ -3380,7 +3380,7 @@ export const OpenPlatformHandlers = [
       if (!profile) return fail('PROFILE_NOT_FOUND', 'Parser Profile 不存在。', 404);
       const version = findParserProfileVersion(profile.profileId, String(params.profileVersion));
       if (!version) return fail('PROFILE_VERSION_NOT_FOUND', 'Profile 版本不存在。', 404);
-      const body = (await request.json()) as { direction?: ParserProfileDirection; payload?: Record<string, unknown>; saveFailureSample?: boolean };
+      const body = (await request.json()) as { direction?: ParserProfileDirection; payload?: Record<string, unknown> };
       const payload = body.payload;
       if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return fail('PARAM_INVALID', 'payload 必须是 JSON 对象。', 400);
       const mapped: Record<string, unknown> = {};
@@ -3406,7 +3406,6 @@ export const OpenPlatformHandlers = [
         mapped,
         issues,
         unparsedFields: issues.map((issue) => issue.message.replace(/^字段 /, '').replace(/ 没有.*$/, '')),
-        failureSampleId: issues.length > 0 && body.saveFailureSample ? newId('sample') : null,
       };
       return HttpResponse.json(ok(result));
     } catch {
@@ -3463,9 +3462,6 @@ export const OpenPlatformHandlers = [
         categoryCode?: string;
         categoryCatalogVersion?: string;
       };
-      if (String(body?.version ?? '') !== String(product.version)) {
-        return fail('VERSION_MISMATCH', '产品已发生变化，请刷新后再试。', 412);
-      }
       if (body.categoryCode && body.categoryCode !== product.categoryCode) {
         return fail('PARAM_INVALID', '产品所属品类创建后不可修改。', 400);
       }
@@ -3514,8 +3510,7 @@ export const OpenPlatformHandlers = [
         product.topicTemplates = body.topicTemplates ?? {};
       }
 
-      product.version += 1;
-      product.updatedAt = Date.now();
+      product.updateTime = Date.now();
       return HttpResponse.json(ok(true));
     } catch {
       return fail('500', 'Internal server error', 500);
@@ -3529,99 +3524,75 @@ export const OpenPlatformHandlers = [
     return failure ? fail(failure.code, failure.message, failure.status) : HttpResponse.json(ok(true));
   }),
 
-  http.post('/api/v1/products/:productId/publish', async ({ params, request }) => {
+  http.post('/api/v1/products/:productId/publish', ({ params }) => {
     try {
       const product = findProduct(String(params.productId));
       if (!product) return fail('PRODUCT_NOT_FOUND', '产品不存在', 404);
-      const body = (await request.json()) as { version?: number | string | null };
       if (product.lifecycleStatus !== 'DRAFT') {
         return fail('INVALID_LIFECYCLE_TRANSITION', '只有草稿产品可以发布。', 409);
-      }
-      if (String(body?.version ?? '') !== String(product.version)) {
-        return fail('VERSION_MISMATCH', '产品已发生变化，请刷新后再发布。', 412);
       }
       const failure = productPublishPrecheckFailure(product);
       if (failure) return fail(failure.code, failure.message, failure.status);
       product.lifecycleStatus = 'PUBLISHED';
-      product.version += 1;
-      product.updatedAt = Date.now();
+      product.updateTime = Date.now();
       return HttpResponse.json(ok(true));
     } catch {
       return fail('500', 'Internal server error', 500);
     }
   }),
 
-  http.post('/api/v1/products/:productId/disable', async ({ params, request }) => {
+  http.post('/api/v1/products/:productId/disable', ({ params }) => {
     try {
       const product = findProduct(String(params.productId));
       if (!product) return fail('PRODUCT_NOT_FOUND', '产品不存在', 404);
-      const body = (await request.json()) as { version?: number | string | null };
       if (product.lifecycleStatus !== 'PUBLISHED') {
         return fail('INVALID_LIFECYCLE_TRANSITION', '只有已发布产品可以停用。', 409);
       }
-      if (String(body?.version ?? '') !== String(product.version)) {
-        return fail('VERSION_MISMATCH', '产品已发生变化，请刷新后再停用。', 412);
-      }
       product.lifecycleStatus = 'DISABLED';
-      product.version += 1;
-      product.updatedAt = Date.now();
+      product.updateTime = Date.now();
       return HttpResponse.json(ok(true));
     } catch {
       return fail('500', 'Internal server error', 500);
     }
   }),
 
-  http.post('/api/v1/products/:productId/enable', async ({ params, request }) => {
+  http.post('/api/v1/products/:productId/enable', ({ params }) => {
     try {
       const product = findProduct(String(params.productId));
       if (!product) return fail('PRODUCT_NOT_FOUND', '产品不存在', 404);
-      const body = (await request.json()) as { version?: number | string | null };
       if (product.lifecycleStatus !== 'DISABLED') {
         return fail('INVALID_LIFECYCLE_TRANSITION', '只有已停用产品可以恢复启用。', 409);
       }
-      if (String(body?.version ?? '') !== String(product.version)) {
-        return fail('VERSION_MISMATCH', '产品已发生变化，请刷新后再恢复。', 412);
-      }
       product.lifecycleStatus = 'PUBLISHED';
-      product.version += 1;
-      product.updatedAt = Date.now();
+      product.updateTime = Date.now();
       return HttpResponse.json(ok(true));
     } catch {
       return fail('500', 'Internal server error', 500);
     }
   }),
 
-  http.post('/api/v1/products/:productId/deprecate', async ({ params, request }) => {
+  http.post('/api/v1/products/:productId/deprecate', ({ params }) => {
     try {
       const product = findProduct(String(params.productId));
       if (!product) return fail('PRODUCT_NOT_FOUND', '产品不存在', 404);
-      const body = (await request.json()) as { version?: number | string | null };
       if (!['PUBLISHED', 'DISABLED'].includes(product.lifecycleStatus)) {
         return fail('INVALID_LIFECYCLE_TRANSITION', '只有已发布或已停用产品可以废弃。', 409);
       }
-      if (String(body?.version ?? '') !== String(product.version)) {
-        return fail('VERSION_MISMATCH', '产品已发生变化，请刷新后再废弃。', 412);
-      }
       product.lifecycleStatus = 'DEPRECATED';
-      product.version += 1;
-      product.updatedAt = Date.now();
+      product.updateTime = Date.now();
       return HttpResponse.json(ok(true));
     } catch {
       return fail('500', 'Internal server error', 500);
     }
   }),
 
-  http.delete('/api/v1/products/:productId', async ({ params, request }) => {
+  http.delete('/api/v1/products/:productId', ({ params }) => {
     try {
       const productId = String(params.productId);
       const product = findProduct(productId);
       if (!product) return fail('PRODUCT_NOT_FOUND', '产品不存在', 404);
-      const body = (await request.json()) as { version?: number | string | null };
       if (product.lifecycleStatus !== 'DRAFT') {
         return fail('PRODUCT_NOT_DRAFT', '只有草稿产品可以删除。', 409);
-      }
-      if (String(body?.version ?? '') !== String(product.version)) {
-        return fail('VERSION_MISMATCH', '产品已发生变化，请刷新后再删除。', 412);
       }
       products = products.filter((item) => item.productId !== productId);
       // 发布成功后不保留可编辑草稿；历史内容通过 Revision 查看或复制为草稿。
@@ -4457,9 +4428,8 @@ export const OpenPlatformHandlers = [
         protocolProfile,
         topicTemplates: body?.topicTemplates ?? {},
         lifecycleStatus: 'DRAFT',
-        version: 1,
-        createdAt: ts,
-        updatedAt: ts,
+        createTime: ts,
+        updateTime: ts,
       };
       products = [product, ...products];
       if (categoryType === 'CUSTOM') {

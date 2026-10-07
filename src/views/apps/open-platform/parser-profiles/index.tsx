@@ -90,7 +90,6 @@ const ParserProfilesPage = () => {
     try {
       if (editing) {
         await openPlatformPut(`/api/v1/parser-profiles/${editing.profileId}`, {
-          version: editing.version,
           profileName: profileName.trim(),
           protocolCode: protocolCode.trim(),
         });
@@ -115,9 +114,7 @@ const ParserProfilesPage = () => {
     if (!deleteTarget) return;
     setBusy(true);
     try {
-      await openPlatformDelete(`/api/v1/parser-profiles/${deleteTarget.profileId}`, {
-        version: deleteTarget.version,
-      });
+      await openPlatformDelete(`/api/v1/parser-profiles/${deleteTarget.profileId}`);
       toast.success('Parser Profile 已删除。');
       setDeleteTarget(null);
       await mutate();
@@ -209,7 +206,7 @@ const ParserProfilesPage = () => {
                         <td className="px-4 py-3">
                           {profile.currentVersion ? <Badge className="bg-emerald-600/15 text-emerald-700 dark:text-emerald-300">v{profile.currentVersion} 已发布</Badge> : <span className="text-muted-foreground">暂无已发布</span>}
                         </td>
-                        <td className="px-4 py-3 text-muted-foreground">{formatDate(profile.updatedAt)}</td>
+                        <td className="px-4 py-3 text-muted-foreground">{formatDate(profile.updateTime)}</td>
                         <td className="px-4 py-3">
                           <div className="flex justify-end gap-1.5">
                             <Button type="button" variant="ghost" size="sm" nativeButton={false} render={<Link to={`${profileListPath}/${profile.profileId}`} />}>

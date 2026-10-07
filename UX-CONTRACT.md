@@ -44,12 +44,11 @@
 
 | Capability | Canonical owner | Source of truth | Allowed variants | Verification |
 | --- | --- | --- | --- | --- |
-| Navigation | components/iam/menu-navigation.ts; layouts/full/vertical/sidebar/Sidebar.tsx | IAM 最终方案与本约定 | 平台 / 项目 | iam-integration/navigation-verification.json; iam-integration/home-menu-ux-verification.json |
+| Navigation | components/iam/menu-navigation.ts; layouts/full/vertical/sidebar/Sidebar.tsx | IAM 最终方案与本约定 | 平台 / 项目 | 以当前接口与页面行为验收 |
 | Select/Listbox | components/ui/select.tsx; components/ui/command.tsx | DESIGN.md; Base UI / cmdk 维护组件 | 已维护的 Select / 项目 Command 下拉 | 项目搜索、清除、键盘、弹层和切换浏览器验证 |
 | Form | components/iam/shared.tsx FieldsForm / Action | 本约定的表单与反馈 | 页面表单 / 操作对话框 | 已有 IAM 联调记录；构建检查 |
 | Scrollbar | css/globals.css; 现有 SimpleBar 样式 | DESIGN.md 运行时 token | 文档滚动 / 表格水平滚动 / 侧栏 | 手机文档无水平溢出；抽屉截图 |
 | Toast | Sonner provider; components/iam/shared.tsx | 本约定的表单与反馈 | 成功 / 错误 | 登录真实反馈与既有 IAM 操作记录 |
-| CRUD | api/iam/client.ts; views/iam | IAM API 与本约定 | 创建后项目概览 / 修改后原详情刷新 | docs/IAM网关联调.md |
 
 ## 文件上传顺序（2026-10-01）
 
@@ -135,7 +134,6 @@ IAM 项目页面复用原 ProjectWorkspaceShell 的项目信息与样式，使�
 - 成员列表展示项目角色，支持多角色替换。撤销全部角色须再次确认；成员关系仍保留。
 - 邀请生成后复制邀请信息，由用户分享；系统不会自动发邮件。接受邀请后刷新授权并进入项目概览。
 
-验证说明见 docs/iam-integration/scoped-ux/verification.md。
 
 
 ## 后端契约同步（2026-10-04）

@@ -698,8 +698,11 @@ const ProductModelPage = () => {
       'save',
       async () => {
         await openPlatformPut<boolean>(modelKey(productId), {
-          version: draft?.version ?? null,
-          definition: currentDefinition,
+          definition: {
+            properties: currentDefinition.properties,
+            actions: currentDefinition.actions,
+            events: currentDefinition.events,
+          },
         });
         setDirty(false);
         setLocalDefinition(null);
@@ -714,12 +717,7 @@ const ProductModelPage = () => {
       'create-empty',
       async () => {
         await openPlatformPut<boolean>(modelKey(productId), {
-          version: null,
           definition: {
-            productId,
-            modelRevision: 0,
-            modelDigest: '',
-            status: 'DRAFT',
             properties: [],
             actions: [],
             events: [],
@@ -746,9 +744,7 @@ const ProductModelPage = () => {
     await runMutation(
       'publish',
       async () => {
-        await openPlatformPost<boolean>(`${modelKey(productId)}/publish`, {
-          version: draft.version,
-        });
+        await openPlatformPost<boolean>(`${modelKey(productId)}/publish`);
         setDirty(false);
         setLocalDefinition(null);
         setConfirmAction(null);
@@ -762,7 +758,7 @@ const ProductModelPage = () => {
     await runMutation(
       'discard',
       async () => {
-        await openPlatformDelete<boolean>(modelKey(productId), { version: draft.version });
+        await openPlatformDelete<boolean>(modelKey(productId));
         setDirty(false);
         setLocalDefinition(null);
         setConfirmAction(null);
@@ -778,7 +774,6 @@ const ProductModelPage = () => {
       async () => {
         await openPlatformPost<boolean>(`${modelKey(productId)}/rollback`, {
           fromRevision: rollbackRevision,
-          version: draft?.version ?? null,
         });
         setDirty(false);
         setLocalDefinition(null);
@@ -795,7 +790,7 @@ const ProductModelPage = () => {
       'deprecate-model',
       async () => {
         await openPlatformPost<boolean>(`${modelKey(productId)}/deprecate`, {
-          modelRevision: String(published.modelRevision),
+          modelRevision: published.modelRevision,
         });
         setConfirmAction(null);
       },
@@ -811,7 +806,6 @@ const ProductModelPage = () => {
         await openPlatformPost<boolean>(`${modelKey(productId)}/category-merge`, {
           targetVersion,
           selectedCodes: selectedMergeCodes,
-          version: draft?.version ?? null,
         });
         setMergeOpen(false);
         setSelectedMergeCodes([]);

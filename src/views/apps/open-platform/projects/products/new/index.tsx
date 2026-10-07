@@ -1,3 +1,4 @@
+import { flattenCategoryTree } from '@/lib/open-platform-category';
 import {
 ArrowLeft,
 Braces,
@@ -63,7 +64,6 @@ CursorResult,
 ParserProfileVersionView,
 ParserProfileView,
 ProductCreateRequest,
-ProductListItem,
 } from '@/types/apps/open-platform';
 
 type ProductForm = {
@@ -73,6 +73,7 @@ type ProductForm = {
   nodeType: string;
   transport: string;
   authModes: string[];
+  customAuthProviderId: string;
   dataMode: string;
   bootstrapMode: string;
   profileId: string;
@@ -90,6 +91,7 @@ const initialForm: ProductForm = {
   nodeType: '',
   transport: '',
   authModes: ['DEVICE_SECRET'],
+  customAuthProviderId: '',
   dataMode: 'STANDARD_MODEL',
   bootstrapMode: 'OPEN',
   profileId: '',
@@ -100,8 +102,7 @@ const AUTH_MODE_OPTIONS = Object.entries(PRODUCT_AUTH_MODE_LABEL).filter(
   ([code]) => ['DEVICE_SECRET', 'PRODUCT_SECRET', 'CUSTOM'].includes(code),
 );
 
-const productListKey = (projectId: string) =>
-  `/api/v1/projects/${projectId}/products?pageSize=100`;
+const productListKey = () => '/api/v1/products?pageSize=100';
 
 function validateProduct(
   form: ProductForm,
@@ -132,6 +133,9 @@ function validateConnection(form: ProductForm): FieldErrors {
   if (!form.transport) errors.transport = '请选择传输协议。';
   if (form.authModes.length === 0) errors.authModes = '至少选择一种认证方式。';
   if (!form.dataMode) errors.dataMode = '请选择消息数据模式。';
+  if (form.authModes.includes('CUSTOM') && !form.customAuthProviderId.trim()) {
+    errors.customAuthProviderId = '请填写自定义认证提供方。';
+  }
   if (!form.bootstrapMode) {
     errors.bootstrapMode = form.authModes.includes('PRODUCT_SECRET')
       ? '请选择动态注册或预注册。'
@@ -168,7 +172,7 @@ const CreateProductPage = () => {
   const apiError = submitError as OpenPlatformApiError | null;
   const categoryApiError = categoriesError as OpenPlatformApiError | undefined;
   const selectedCategory = useMemo(
-    () => categories?.find((category) => category.categoryCode === form.categoryCode),
+    () => flattenCategoryTree(categories ?? []).find((category) => category.categoryCode === form.categoryCode),
     [categories, form.categoryCode],
   );
   const selectedCategoryVersionsKey = selectedCategory
@@ -251,8 +255,20 @@ const CreateProductPage = () => {
     setSubmitError(null);
   };
 
-  const goToConnectionStep = () => {
+  const publishedCategoryVersion = selectedCategoryVersions?.find(
+    (version) => version.versionStatus === 'PUBLISHED',
+  );
+
+  const validateCurrentProduct = (): FieldErrors => {
     const nextErrors = validateProduct(form, selectedCategory, categoryMode);
+    if (categoryMode === 'STANDARD' && selectedCategory && !publishedCategoryVersion) {
+      nextErrors.categoryCode = '该品类没有可用的已发布版本，请选择其他品类。';
+    }
+    return nextErrors;
+  };
+
+  const goToConnectionStep = () => {
+    const nextErrors = validateCurrentProduct();
     setErrors(nextErrors);
     setSubmitError(null);
     if (Object.keys(nextErrors).length > 0 || !canCreate) return;
@@ -267,7 +283,7 @@ const CreateProductPage = () => {
     }
 
     const nextErrors = {
-      ...validateProduct(form, selectedCategory, categoryMode),
+      ...validateCurrentProduct(),
       ...validateConnection(form),
     };
     setErrors(nextErrors);
@@ -276,15 +292,15 @@ const CreateProductPage = () => {
 
     setSubmitting(true);
     try {
-      const created = await openPlatformPost<ProductListItem>(
-        `/api/v1/projects/${projectId}/products`,
+      await openPlatformPost<boolean>(
+        '/api/v1/products',
         {
           productName: form.productName.trim(),
           productModel: form.productModel.trim() || undefined,
-          categoryType: categoryMode,
           nodeType: form.nodeType,
           transport: form.transport,
           authModes: form.authModes,
+          customAuthProviderId: form.authModes.includes('CUSTOM') ? form.customAuthProviderId.trim() : undefined,
           dataMode: form.dataMode,
           bootstrapMode: form.bootstrapMode,
           protocolProfile:
@@ -295,14 +311,14 @@ const CreateProductPage = () => {
                 }
               : null,
           ...(categoryMode === 'STANDARD'
-            ? { categoryCode: form.categoryCode.trim() }
-            : {}),
+            ? { categoryCode: form.categoryCode.trim(), categoryCatalogVersion: publishedCategoryVersion?.categoryVersion }
+            : { categoryCode: 'CUSTOM' }),
         } satisfies ProductCreateRequest,
       );
 
-      await mutateCache(productListKey(projectId));
-      toast.success(`产品“${created.productName}”已创建，下一步配置物模型。`);
-      navigate(`/projects/${projectId}/products/${created.productId}/model`, {
+      await mutateCache(productListKey());
+      toast.success(`产品“${form.productName.trim()}”已创建，请在产品列表中继续配置物模型。`);
+      navigate(`/projects/${projectId}/products`, {
         replace: true,
       });
     } catch (error) {
@@ -487,7 +503,7 @@ const CreateProductPage = () => {
                   <div className="rounded-lg border bg-muted/10 p-4">
                   <p className="text-sm font-medium">品类来源</p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    标准品类会带入平台能力；自定义品类不继承任何品类能力，创建后由你自行定义物模型。
+                    标准产品选择平台品类模板；自定义产品不绑定模板，创建后自行定义物模型。
                   </p>
 
                   <Tabs
@@ -505,7 +521,7 @@ const CreateProductPage = () => {
                           标准品类
                         </TabsTrigger>
                         <TabsTrigger value="CUSTOM" className="h-8 px-3 text-xs">
-                          自定义品类
+                          自定义产品
                         </TabsTrigger>
                       </TabsList>
                     </div>
@@ -563,7 +579,7 @@ const CreateProductPage = () => {
                     <TabsContent value="CUSTOM" className="mt-0 min-w-0 flex-col">
                       <div className="flex min-h-56 flex-col items-center justify-center rounded-lg border border-dashed px-5 text-center">
                         <Braces className="size-7 text-muted-foreground" aria-hidden />
-                        <p className="mt-3 text-sm font-medium">自定义品类</p>
+                        <p className="mt-3 text-sm font-medium">自定义产品</p>
                         <p className="mt-1 max-w-xl text-xs leading-5 text-muted-foreground">
                           不绑定平台标准品类，也不会带入任何属性、动作或事件。产品创建后进入空白物模型草稿，由你自行定义全部能力。
                         </p>
@@ -592,7 +608,7 @@ const CreateProductPage = () => {
                           <span className="text-muted-foreground">品类来源</span>
                           <p className="mt-0.5 font-medium">
                             {categoryMode === 'CUSTOM'
-                              ? '自定义品类'
+                              ? '自定义产品'
                               : selectedCategory
                                 ? categoryLabel(selectedCategory)
                                 : '未选择'}
@@ -682,6 +698,19 @@ const CreateProductPage = () => {
                         </div>
                         {errors.authModes ? <FieldError>{errors.authModes}</FieldError> : null}
                       </Field>
+
+                      {form.authModes.includes('CUSTOM') ? (
+                        <Field className="mt-4" data-invalid={Boolean(errors.customAuthProviderId) || undefined}>
+                          <FieldLabel htmlFor="custom-auth-provider">自定义认证提供方 <span className="text-destructive">*</span></FieldLabel>
+                          <Input
+                            id="custom-auth-provider"
+                            value={form.customAuthProviderId}
+                            onChange={(event) => updateField('customAuthProviderId', event.target.value)}
+                            placeholder="已配置的认证提供方标识"
+                          />
+                          {errors.customAuthProviderId ? <FieldError>{errors.customAuthProviderId}</FieldError> : null}
+                        </Field>
+                      ) : null}
 
                       <ProductBootstrapModeField
                         className="mt-4"

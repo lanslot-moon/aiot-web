@@ -135,7 +135,7 @@ Use plain, direct Chinese labels and stable domain vocabulary. Counts are displa
 - Authentication uses the referenced auth1 layout: rotating cube panel on desktop, centered form, full-width primary action; mobile keeps the form. The decorative cube respects reduced motion and has no visible playback controls.
 - Account screens follow the referenced account-settings/profile structure with shared local navigation, live identity, editable contact information, and dedicated security/session panels. API credentials follow the referenced API-key table pattern with explicit key reveal, rotation confirmation, and network-policy editing.
 - Canonical Select owner is `src/components/ui/select.tsx`; IAM screens do not use native select. Canonical table owner remains `src/components/tables/data-table/DataTable.tsx`, including its gateway cursor variant.
-- Keep real authorization, loading, failure, empty, and unsaved states consistent across all IAM screens. `UX-CONTRACT.md` records behavior; `docs/IAM网关联调.md` records verified service behavior and remaining integration blockers.
+- Keep real authorization, loading, failure, empty, and unsaved states consistent across all IAM screens. `UX-CONTRACT.md` records behavior.
 
 ## IAM navigation scope (2026-10-01)
 

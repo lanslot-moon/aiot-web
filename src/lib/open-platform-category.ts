@@ -25,3 +25,17 @@ export function categoryPath(category: CategoryView) {
     ' / ',
   );
 }
+
+/** 将接口返回的品类树展开，供按编码查找及树控件索引使用。 */
+export function flattenCategoryTree(
+  categories: CategoryView[],
+  parents: CategoryBriefView[] = [],
+): CategoryView[] {
+  return categories.flatMap((category) => [
+    { ...category, parentPath: parents },
+    ...flattenCategoryTree(category.children ?? [], [
+      ...parents,
+      { categoryCode: category.categoryCode, names: category.names },
+    ]),
+  ]);
+}

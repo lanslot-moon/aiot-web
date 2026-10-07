@@ -225,7 +225,7 @@ function ProductEditDialog({
   product: ProductDetailView;
   submitting: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (body: Omit<ProductUpdateRequest, 'version'>) => void;
+  onSubmit: (body: ProductUpdateRequest) => void;
 }) {
   const [form, setForm] = useState<ProductEditForm>(() => productEditForm(product));
 
@@ -519,7 +519,7 @@ const ProductDetailPage = () => {
       : null;
 
   const productListKey = projectId
-    ? `/api/v1/projects/${encodeURIComponent(projectId)}/products?pageSize=100`
+    ? '/api/v1/products?pageSize=100'
     : null;
 
   const refreshProduct = async () => {
@@ -529,15 +529,12 @@ const ProductDetailPage = () => {
     ]);
   };
 
-  const saveProduct = async (body: Omit<ProductUpdateRequest, 'version'>) => {
+  const saveProduct = async (body: ProductUpdateRequest) => {
     if (!product) return;
     setBusyAction('save');
     setActionError(null);
     try {
-      await openPlatformPut<boolean>(productKey as string, {
-        version: String(product.version),
-        ...body,
-      });
+      await openPlatformPut<boolean>(productKey as string, body);
       setEditOpen(false);
       await refreshProduct();
       toast.success('产品配置已保存。');
@@ -569,9 +566,7 @@ const ProductDetailPage = () => {
     setActionError(null);
     try {
       if (action === 'delete') {
-        await openPlatformDelete<boolean>(productKey as string, {
-          version: String(product.version),
-        });
+        await openPlatformDelete<boolean>(productKey as string);
         setConfirmAction(null);
         toast.success('产品已删除。');
         await mutateCache(productListKey);
@@ -579,9 +574,7 @@ const ProductDetailPage = () => {
         return;
       }
 
-      await openPlatformPost<boolean>(`${productKey}/${action}`, {
-        version: String(product.version),
-      });
+      await openPlatformPost<boolean>(`${productKey}/${action}`);
       setConfirmAction(null);
       await refreshProduct();
       toast.success(
@@ -840,11 +833,11 @@ const ProductDetailPage = () => {
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">创建时间</p>
-                    <p className="mt-1 text-sm">{new Date(product.createdAt).toLocaleString('zh-CN')}</p>
+                    <p className="mt-1 text-sm">{new Date(product.createTime).toLocaleString('zh-CN')}</p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">最近更新</p>
-                    <p className="mt-1 text-sm">{new Date(product.updatedAt).toLocaleString('zh-CN')}</p>
+                    <p className="mt-1 text-sm">{product.updateTime == null ? '—' : new Date(product.updateTime).toLocaleString('zh-CN')}</p>
                   </div>
                   {product.description ? (
                     <div className="sm:col-span-2">

@@ -50,7 +50,7 @@ const ProjectProductsPage = () => {
   const [status, setStatus] = useState(STATUS_ALL);
   const { data: project } = useProjectDetail(projectId);
   const productsKey = projectId
-    ? `/api/v1/projects/${projectId}/products?pageSize=100`
+    ? '/api/v1/products?pageSize=100'
     : null;
   const {
     data,
@@ -285,10 +285,10 @@ const ProjectProductsPage = () => {
                         <ProductLifecycleBadge status={product.lifecycleStatus} />
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
-                        {new Date(product.createdAt).toLocaleString()}
+                        {new Date(product.createTime).toLocaleString()}
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
-                        {new Date(product.updatedAt).toLocaleString()}
+                        {product.updateTime == null ? '—' : new Date(product.updateTime).toLocaleString()}
                       </TableCell>
                       <TableCell className="text-start">
                         <div className="flex items-center justify-start gap-1 whitespace-nowrap">

@@ -174,19 +174,13 @@ export default function AccountPage() {
             actions={
               <Action
                 label="申请加入项目"
-                description="输入项目 ID 向项目所有者提交申请。"
+                description="输入项目 ID 和申请说明，审批通过时由审批人分配角色。"
                 fields={[
                   { name: 'projectId', label: '项目 ID', required: true },
                   { name: 'message', label: '申请说明', type: 'textarea', maxLength: 512 },
-                  {
-                    name: 'requestedRoleId',
-                    label: '期望角色 ID',
-                    required: true,
-                    hint: '请向项目所有者获取可申请的角色 ID',
-                  },
                 ]}
-                run={({ projectId, ...values }) =>
-                  post(`/api/v1/projects/${segment(projectId)}/access-requests`, values)
+                run={({ projectId, message }) =>
+                  post(`/api/v1/projects/${segment(projectId)}/access-requests`, { message })
                 }
                 done={refresh}
               />

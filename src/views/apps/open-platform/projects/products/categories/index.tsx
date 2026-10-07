@@ -1,5 +1,5 @@
 import { ArrowLeft, PackagePlus } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
 import useSWR from 'swr';
 
@@ -14,7 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { OpenPlatformApiError, openPlatformGetFetcher } from '../../../../../../context/open-platform-context/project-resources';
 
 import BreadcrumbComp from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
-import { categoryLabel } from '@/lib/open-platform-category';
+import { categoryLabel, flattenCategoryTree } from '@/lib/open-platform-category';
 import type { CategoryVersionView, CategoryView } from '@/types/apps/open-platform';
 
 const CategoryCatalogPage = () => {
@@ -37,7 +37,7 @@ const CategoryCatalogPage = () => {
     ? `/api/v1/categories/${encodeURIComponent(categoryCode)}`
     : null;
   const {
-    data: category,
+    data: categoryDetail,
     error: detailError,
     isLoading: detailLoading,
   } = useSWR<CategoryView>(detailKey, openPlatformGetFetcher, {
@@ -54,6 +54,15 @@ const CategoryCatalogPage = () => {
   } = useSWR<CategoryVersionView[]>(versionsKey, openPlatformGetFetcher, {
     revalidateOnFocus: false,
   });
+
+  // 接口详情未提供祖先列表时，展示路径从当前平台品类树计算。
+  const category = useMemo(() => {
+    if (!categoryDetail) return undefined;
+    const treeNode = flattenCategoryTree(categories ?? []).find(
+      (node) => node.categoryCode === categoryDetail.categoryCode,
+    );
+    return { ...categoryDetail, parentPath: treeNode?.parentPath ?? [] };
+  }, [categories, categoryDetail]);
 
   useEffect(() => {
     document.title = category

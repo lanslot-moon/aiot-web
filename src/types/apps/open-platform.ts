@@ -98,6 +98,7 @@ export interface UpdateProjectRequest {
 }
 
 export interface ProductCreateRequest {
+  categoryCatalogVersion?: string;
   productName: string;
   /** CUSTOM products intentionally omit categoryCode and start with an empty model draft. */
   categoryType?: 'STANDARD' | 'CUSTOM';
@@ -115,7 +116,6 @@ export interface ProductCreateRequest {
 
 /** Product metadata and connection contract update for DRAFT products. */
 export interface ProductUpdateRequest {
-  version: string;
   productName?: string;
   productModel?: string;
   description?: string;
@@ -176,6 +176,7 @@ export interface CategoryVersionView {
 }
 
 export interface CategoryView {
+  children?: CategoryView[] | null;
   categoryCode: string;
   parentCode: string | null;
   level: number;
@@ -248,8 +249,8 @@ export interface ProductListItem {
   /** 自定义品类产品不继承平台品类能力；旧数据可能没有该字段。 */
   categoryType?: 'STANDARD' | 'CUSTOM';
   lifecycleStatus: string;
-  createdAt: number;
-  updatedAt: number;
+  createTime: number;
+  updateTime: number | null;
 }
 
 /** Product detail contract aligned with the thing-model ProductVO. */
@@ -267,7 +268,6 @@ export interface ProductDetailView extends ProductListItem {
   bootstrapMode: string | null;
   protocolProfile: ProtocolProfileRefView | null;
   topicTemplates: Record<string, string>;
-  version: number;
 }
 
 export interface ProtocolProfileRefView {
@@ -454,9 +454,8 @@ export interface ParserProfileView {
   profileName: string;
   protocolCode: string;
   currentVersion: string | null;
-  version: number;
-  createdAt: number;
-  updatedAt: number;
+  createTime: number;
+  updateTime: number;
 }
 
 export type ParserProfileVersionStatus = 'DRAFT' | 'PUBLISHED' | 'DEPRECATED' | string;
@@ -495,8 +494,8 @@ export interface ParserProfileVersionView {
   mapping: ParserProfileMapping;
   versionDigest: string;
   publishedAt: number | null;
-  createdAt?: number | null;
-  updatedAt?: number | null;
+  createTime?: number | null;
+  updateTime?: number | null;
 }
 
 export interface ParserProfileDiffItemView {
@@ -533,7 +532,6 @@ export interface ParserProfileTestView {
   mapped: Record<string, unknown>;
   issues: ParserProfileTestIssueView[];
   unparsedFields: string[];
-  failureSampleId?: string | null;
 }
 
 export interface ThingModelProperty {
@@ -573,7 +571,6 @@ export interface ThingModelDefinition {
 export interface ModelDraftView {
   definition: ThingModelDefinition;
   status: 'DRAFT' | 'VALIDATED' | string;
-  version: number | null;
 }
 
 export interface ModelVersionView {

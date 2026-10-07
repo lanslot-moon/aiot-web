@@ -152,7 +152,6 @@ const ParserProfileDetailPage = () => {
   const [testResult, setTestResult] = useState<ParserProfileTestView | null>(null);
   const [payloadText, setPayloadText] = useState('{\n  "params": {\n    "temp": 235,\n    "humidity": 48,\n    "battery": 86\n  }\n}');
   const [testDirection, setTestDirection] = useState<ParserProfileDirection>('UPLINK');
-  const [saveFailureSample, setSaveFailureSample] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
   const [createVersionOpen, setCreateVersionOpen] = useState(false);
@@ -277,16 +276,16 @@ const ParserProfileDetailPage = () => {
     }
     setBusy('create-version');
     try {
-      const created = await openPlatformPost<ParserProfileVersionView>(`/api/v1/parser-profiles/${profileId}/versions`, {
+      await openPlatformPost<boolean>(`/api/v1/parser-profiles/${profileId}/versions`, {
         profileVersion: newVersion.trim(),
         mapping: { mappings: {}, codec: null },
       });
-      toast.success(`草稿版本 ${created.profileVersion} 已创建。`);
+      toast.success(`草稿版本 ${newVersion.trim()} 已创建。`);
       setCreateVersionOpen(false);
       setNewVersion('');
       await mutateProfile();
       await mutateVersions();
-      setSelectedVersion(created.profileVersion);
+      setSelectedVersion(newVersion.trim());
     } catch (cause) {
       toast.error(cause instanceof Error ? cause.message : '创建版本失败。');
     } finally {
@@ -306,16 +305,16 @@ const ParserProfileDetailPage = () => {
     }
     setBusy('rollback');
     try {
-      const created = await openPlatformPost<ParserProfileVersionView>(
+      await openPlatformPost<boolean>(
         `/api/v1/parser-profiles/${profileId}/versions/${encodeURIComponent(version.profileVersion)}/rollback?targetVersion=${encodeURIComponent(rollbackTarget.trim())}`,
         {},
       );
-      toast.success(`已复制为草稿 ${created.profileVersion}。`);
+      toast.success(`已复制为草稿 ${rollbackTarget.trim()}。`);
       setRollbackOpen(false);
       setRollbackTarget('');
       await mutateProfile();
       await mutateVersions();
-      setSelectedVersion(created.profileVersion);
+      setSelectedVersion(rollbackTarget.trim());
     } catch (cause) {
       toast.error(cause instanceof Error ? cause.message : '复制草稿失败。');
     } finally {
@@ -349,7 +348,6 @@ const ParserProfileDetailPage = () => {
       const result = await openPlatformPost<ParserProfileTestView>(`/api/v1/parser-profiles/${profileId}/versions/${encodeURIComponent(version.profileVersion)}/test`, {
         direction: testDirection,
         payload,
-        saveFailureSample,
       });
       setTestResult(result);
     } catch (cause) {
@@ -364,7 +362,7 @@ const ParserProfileDetailPage = () => {
     if (!editName.trim() || !editProtocol.trim()) { toast.error('名称和协议编码不能为空。'); return; }
     setBusy('metadata');
     try {
-      await openPlatformPut(`/api/v1/parser-profiles/${profile.profileId}`, { version: profile.version, profileName: editName.trim(), protocolCode: editProtocol.trim() });
+      await openPlatformPut(`/api/v1/parser-profiles/${profile.profileId}`, { profileName: editName.trim(), protocolCode: editProtocol.trim() });
       toast.success('Profile 信息已更新。');
       setEditOpen(false);
       await mutateProfile();
@@ -376,7 +374,7 @@ const ParserProfileDetailPage = () => {
     if (!profile) return;
     setBusy('delete');
     try {
-      await openPlatformDelete(`/api/v1/parser-profiles/${profile.profileId}`, { version: profile.version });
+      await openPlatformDelete(`/api/v1/parser-profiles/${profile.profileId}`);
       toast.success('Parser Profile 已删除。');
       navigate(profileListPath);
     } catch (cause) { toast.error(cause instanceof Error ? cause.message : '删除失败。'); }
@@ -435,7 +433,7 @@ const ParserProfileDetailPage = () => {
                 <CardContent className="space-y-4">
                   {loadingVersion ? <Skeleton className="h-64 w-full" /> : version ? (
                     <>
-                      <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/20 px-3 py-2 text-sm"><span className="font-medium">版本 {version.profileVersion}</span><Badge className={statusClass(version.versionStatus)} variant="outline">{statusLabel(version.versionStatus)}</Badge><span className="text-xs text-muted-foreground">更新于 {formatDate(version.updatedAt)}</span></div>
+                      <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/20 px-3 py-2 text-sm"><span className="font-medium">版本 {version.profileVersion}</span><Badge className={statusClass(version.versionStatus)} variant="outline">{statusLabel(version.versionStatus)}</Badge><span className="text-xs text-muted-foreground">发布时间 {formatDate(version.publishedAt)}</span></div>
                       <div className="flex items-center justify-between"><div><h3 className="text-sm font-medium">字段映射</h3><p className="text-xs text-muted-foreground">source key 是厂商报文字段或路径。</p></div><Button type="button" variant="outline" size="sm" className="gap-1.5" disabled={!isDraft} onClick={() => setRows((current) => [...current, { source: '', rule: { code: '', type: 'STRING', sourcePath: '', direction: 'UPLINK' } }])}><Plus className="size-4" aria-hidden />添加映射</Button></div>
                       <div className="space-y-2">
                         {rows.length === 0 ? <div className="rounded-lg border border-dashed px-3 py-8 text-center text-sm text-muted-foreground">还没有映射规则，点击“添加映射”开始配置。</div> : rows.map((row, index) => (
@@ -468,8 +466,8 @@ const ParserProfileDetailPage = () => {
               <Card>
                 <CardHeader><CardTitle className="flex items-center gap-2"><TestTube2 className="size-4" aria-hidden />报文测试</CardTitle><CardDescription>使用真实报文样例验证映射结果；失败时可选择保存样本。</CardDescription></CardHeader>
                 <CardContent className="grid gap-4 lg:grid-cols-2">
-                  <div className="space-y-3"><div className="grid gap-2"><Label>方向<Select value={testDirection} onValueChange={(value) => setTestDirection(value as ParserProfileDirection)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{DIRECTION_OPTIONS.map((direction) => <SelectItem key={direction} value={direction}>{DIRECTION_LABEL[direction]}</SelectItem>)}</SelectContent></Select></Label></div><div className="grid gap-2"><Label htmlFor="profile-test-payload">输入报文（JSON）</Label><Textarea id="profile-test-payload" value={payloadText} onChange={(event) => setPayloadText(event.target.value)} className="min-h-48 font-mono text-xs" /></div><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={saveFailureSample} onChange={(event) => setSaveFailureSample(event.target.checked)} />失败时保存样本</label><Button type="button" className="gap-1.5" onClick={() => void testMapping()} disabled={!version || busy != null}><TestTube2 className="size-4" aria-hidden />{busy === 'test' ? '测试中…' : '运行测试'}</Button></div>
-                  <div className="rounded-lg border bg-muted/20 p-3">{testResult ? <div className="space-y-3"><div className="flex items-center gap-2">{testResult.success ? <CheckCircle2 className="size-4 text-emerald-600" aria-hidden /> : <XCircle className="size-4 text-destructive" aria-hidden />}<span className="font-medium">{testResult.success ? '解析成功' : '解析存在问题'}</span>{testResult.failureSampleId ? <Badge variant="outline">样本已保存</Badge> : null}</div><div><div className="mb-1 text-xs text-muted-foreground">映射结果</div><pre className="max-h-40 overflow-auto rounded-md border bg-background p-2 text-xs">{prettyJson(testResult.mapped)}</pre></div>{testResult.issues.length ? <div><div className="mb-1 text-xs text-muted-foreground">问题</div><ul className="space-y-1 text-xs text-destructive">{testResult.issues.map((issue) => <li key={`${issue.code}-${issue.message}`}>{issue.message}</li>)}</ul></div> : null}</div> : <div className="flex min-h-48 items-center justify-center text-center text-sm text-muted-foreground">运行测试后在这里查看映射结果。</div>}</div>
+                  <div className="space-y-3"><div className="grid gap-2"><Label>方向<Select value={testDirection} onValueChange={(value) => setTestDirection(value as ParserProfileDirection)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{DIRECTION_OPTIONS.map((direction) => <SelectItem key={direction} value={direction}>{DIRECTION_LABEL[direction]}</SelectItem>)}</SelectContent></Select></Label></div><div className="grid gap-2"><Label htmlFor="profile-test-payload">输入报文（JSON）</Label><Textarea id="profile-test-payload" value={payloadText} onChange={(event) => setPayloadText(event.target.value)} className="min-h-48 font-mono text-xs" /></div><Button type="button" className="gap-1.5" onClick={() => void testMapping()} disabled={!version || busy != null}><TestTube2 className="size-4" aria-hidden />{busy === 'test' ? '测试中…' : '运行测试'}</Button></div>
+                  <div className="rounded-lg border bg-muted/20 p-3">{testResult ? <div className="space-y-3"><div className="flex items-center gap-2">{testResult.success ? <CheckCircle2 className="size-4 text-emerald-600" aria-hidden /> : <XCircle className="size-4 text-destructive" aria-hidden />}<span className="font-medium">{testResult.success ? '解析成功' : '解析存在问题'}</span></div><div><div className="mb-1 text-xs text-muted-foreground">映射结果</div><pre className="max-h-40 overflow-auto rounded-md border bg-background p-2 text-xs">{prettyJson(testResult.mapped)}</pre></div>{testResult.issues.length ? <div><div className="mb-1 text-xs text-muted-foreground">问题</div><ul className="space-y-1 text-xs text-destructive">{testResult.issues.map((issue) => <li key={`${issue.code}-${issue.message}`}>{issue.message}</li>)}</ul></div> : null}</div> : <div className="flex min-h-48 items-center justify-center text-center text-sm text-muted-foreground">运行测试后在这里查看映射结果。</div>}</div>
                 </CardContent>
               </Card>
             </div>

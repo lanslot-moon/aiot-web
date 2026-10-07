@@ -86,33 +86,77 @@ export async function parseResponse<T>(response: Response): Promise<T> {
   }
   return payload.data;
 }
+// 同源标签页只同步同一个登录会话的轮换结果，令牌仍只保存在各自的 sessionStorage。
+const sessionChannel = typeof BroadcastChannel === 'function'
+  ? new BroadcastChannel('aiot:iam:session-renewal')
+  : null;
+import.meta.hot?.dispose(() => sessionChannel?.close());
+sessionChannel?.addEventListener('message', (event: MessageEvent) => {
+  const message = event.data;
+  const current = session;
+  if (!message || !current || message.sessionId !== current.sessionId) return;
+  if (message.type === 'query') {
+    sessionChannel.postMessage({ type: 'snapshot', sessionId: current.sessionId, token: current });
+  } else if ((message.type === 'snapshot' || message.type === 'renewed') &&
+    message.previousRefreshToken === current.refreshToken && message.token?.sessionId === current.sessionId) {
+    setSession(message.token);
+  }
+});
+
 export async function renewSession(): Promise<TokenVO> {
   if (renewal) return renewal;
   const previous = session;
-  const initialRevision = revision;
   if (!previous?.refreshToken)
     throw new OpenPlatformApiError('UNAUTHENTICATED', errorCopy.UNAUTHENTICATED, 401);
-  renewal = (async () => {
+  const refresh = async (): Promise<TokenVO> => {
+    if (session?.sessionId !== previous.sessionId)
+      throw new OpenPlatformApiError('SESSION_CHANGED', '登录状态已发生变化，请重试。');
+    // 锁等待期间其他标签页可能已完成轮换；请求其当前令牌，避免消费旧的单次刷新令牌。
+    if (sessionChannel && session.refreshToken === previous.refreshToken) {
+      await new Promise<void>((resolve) => {
+        const receive = (event: MessageEvent) => {
+          const message = event.data;
+          if (message?.type === 'snapshot' && message.sessionId === previous.sessionId &&
+            message.token?.refreshToken && message.token.refreshToken !== previous.refreshToken &&
+            session?.refreshToken === previous.refreshToken) {
+            setSession(message.token);
+          }
+        };
+        sessionChannel.addEventListener('message', receive);
+        sessionChannel.postMessage({ type: 'query', sessionId: previous.sessionId });
+        // 仅给本机标签页通信留一个收集窗口，不改变任何 HTTP 连接或响应预算。
+        setTimeout(() => { sessionChannel.removeEventListener('message', receive); resolve(); }, 100);
+      });
+    }
+    if (session?.sessionId !== previous.sessionId)
+      throw new OpenPlatformApiError('SESSION_CHANGED', '登录状态已发生变化，请重试。');
+    if (session.refreshToken !== previous.refreshToken) return session;
+    const initialRevision = revision;
     try {
       const result = await request<AuthResultVO>(
-        '/api/v1/authentication-session-renewals',
-        'POST',
-        { refreshToken: previous.refreshToken },
-        { anonymous: true },
+        '/api/v1/authentication-session-renewals', 'POST',
+        { refreshToken: previous.refreshToken }, { anonymous: true },
       );
       if (revision !== initialRevision)
         throw new OpenPlatformApiError('SESSION_CHANGED', '登录状态已发生变化，请重试。');
       setSession(result.token);
+      sessionChannel?.postMessage({ type: 'renewed', sessionId: previous.sessionId,
+        previousRefreshToken: previous.refreshToken, token: result.token });
       return result.token;
     } catch (error) {
-      if (
-        revision === initialRevision &&
-        error instanceof OpenPlatformApiError &&
-        error.status < 500 &&
-        error.status !== 0
-      )
+      // 仅认证明确失效才退出；路由、限流和依赖故障保留会话供重试。
+      if (revision === initialRevision && error instanceof OpenPlatformApiError &&
+        ((error.status === 401 && ['REFRESH_INVALID', 'TOKEN_INVALID', 'UNAUTHENTICATED'].includes(error.code)) ||
+          (error.status === 403 && error.code === 'ACCOUNT_DISABLED')))
         setSession(null);
       throw error;
+    }
+  };
+  renewal = (async () => {
+    try {
+      if (typeof navigator !== 'undefined' && navigator.locks && sessionChannel)
+        return await navigator.locks.request(`aiot:iam:renew:${previous.sessionId}`, refresh);
+      return await refresh();
     } finally {
       renewal = null;
     }

@@ -146,7 +146,6 @@ export interface ProjectAccessRequestVO {
   projectId: string;
   applicantAccountId: string | null;
   message: string | null;
-  requestedRoleId: string | null;
   approvedRoleId: string | null;
   status: string;
   reviewedBy: string | null;
@@ -381,7 +380,6 @@ export interface ProfileUpdateRequest {
 
 export interface ProjectAccessRequestCreateRequest {
   message?: string;
-  requestedRoleId?: string;
 }
 
 export interface ProjectAccessRequestListRequest {

@@ -10,14 +10,14 @@ import {
 } from 'lucide-react';
 
 import { Input } from '@/components/ui/input';
-import { categoryEnglishLabel, categoryLabel } from '@/lib/open-platform-category';
+import { categoryEnglishLabel, categoryLabel, flattenCategoryTree } from '@/lib/open-platform-category';
 import { cn } from '@/lib/utils';
 import type { CategoryView } from '@/types/apps/open-platform';
 
 const ROOT_KEY = '__root__';
 
 export function CategoryTree({
-  categories,
+  categories: categoryTree,
   selectedCode,
   onSelect,
   selectableLeafOnly = false,
@@ -33,6 +33,7 @@ export function CategoryTree({
   fillHeight?: boolean;
   actions?: ReactNode;
 }) {
+  const categories = useMemo(() => flattenCategoryTree(categoryTree), [categoryTree]);
   const [query, setQuery] = useState('');
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
