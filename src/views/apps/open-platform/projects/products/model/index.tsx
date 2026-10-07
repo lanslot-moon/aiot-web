@@ -387,7 +387,7 @@ function cloneDefinition(definition: ThingModelDefinition): ThingModelDefinition
 }
 
 function modelRevisionLabel(revision: number) {
-  return `Revision ${revision}`;
+  return `版本 ${revision}`;
 }
 
 function formatVersionTime(value: number | null | undefined) {
@@ -468,7 +468,7 @@ function ValidationResult({ result }: { result?: SchemaValidationView | null }) 
     <Alert className="border-emerald-200 bg-emerald-50/60 text-emerald-950 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-100">
       <Check aria-hidden />
       <AlertTitle>草稿校验通过</AlertTitle>
-      <AlertDescription>当前定义符合物模型契约，可以发布为新的 Revision。</AlertDescription>
+      <AlertDescription>当前定义符合物模型契约，可以发布为新版本。</AlertDescription>
     </Alert>
   ) : (
     <Alert variant="destructive">
@@ -749,7 +749,7 @@ const ProductModelPage = () => {
         setLocalDefinition(null);
         setConfirmAction(null);
       },
-      '物模型已发布为新 Revision。',
+      '物模型已发布为新版本。',
     );
   };
 
@@ -1046,11 +1046,11 @@ const ProductModelPage = () => {
                       </CardTitle>
                       <CardDescription className="mt-1">
                         {publishedOnly
-                          ? '当前查看设备运行时使用的已发布 Revision，只读查看能力定义。'
+                          ? '当前查看设备正在使用的已发布版本，只读查看能力定义。'
                           : readOnlyDefinition
                           ? isCustomCategory
-                            ? '当前没有草稿，以下为已发布 Revision 的只读能力定义；自定义品类不会继承平台能力。'
-                            : '当前没有草稿，以下为已发布 Revision 的只读能力定义。'
+                            ? '当前没有草稿，以下为已发布版本的只读能力定义；自定义品类不会继承平台能力。'
+                            : '当前没有草稿，以下为已发布版本的只读能力定义。'
                           : isCustomCategory
                           ? '自定义品类不继承平台能力，请在此定义产品自己的属性、动作和事件。'
                           : '按属性、动作、事件管理产品可用能力；JSON 仅在展开单项能力后查看。'}
@@ -1133,7 +1133,7 @@ const ProductModelPage = () => {
                       <Braces className="size-7 text-muted-foreground" aria-hidden />
                       <p className="mt-3 text-sm font-medium">尚未发布物模型</p>
                       <p className="mt-1 max-w-md text-xs leading-5 text-muted-foreground">
-                        当前产品还没有可查看的已发布 Revision。
+                        当前产品还没有可查看的已发布版本。
                       </p>
                       <Button
                         type="button"
@@ -1177,9 +1177,9 @@ const ProductModelPage = () => {
                       <div>
                         <CardTitle className="flex items-center gap-2 text-base">
                           <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400" aria-hidden />
-                          当前已发布模型
+                          当前生效版本
                         </CardTitle>
-                        <CardDescription>设备运行时使用的不可变 Revision。</CardDescription>
+                        <CardDescription>设备当前使用的物模型版本，发布后内容不可修改。</CardDescription>
                       </div>
                       {product.lifecycleStatus === 'DEPRECATED' && published && publishedVersion?.status === 'PUBLISHED' ? (
                         <Button
@@ -1211,14 +1211,14 @@ const ProductModelPage = () => {
                             </Badge>
                           </div>
                           <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-300">
-                            设备运行时当前使用
+                            设备当前使用
                           </span>
                         </div>
                         <ThingModelCapabilitySummary definition={published} />
                       </div>
                     ) : (
                       <p className="rounded-lg border border-dashed px-3 py-4 text-center text-xs text-muted-foreground">
-                        尚未发布物模型；校验通过后可以发布第一个 Revision。
+                        尚未发布物模型；校验通过后可以发布第一个版本。
                       </p>
                     )}
                   </CardContent>
@@ -1705,7 +1705,7 @@ const ProductModelPage = () => {
             </AlertDialogTitle>
             <AlertDialogDescription>
               {confirmAction === 'publish'
-                ? '发布后会生成新的 Revision，设备运行时会使用这次发布的模型；草稿内容保留，后续修改需重新校验。'
+                ? '发布后会生成新版本，设备将使用这次发布的物模型；草稿内容保留，后续修改需重新校验。'
                 : confirmAction === 'remove-capability'
                   ? '该能力会从当前草稿中删除，保存草稿后才会生效；已发布的物模型版本不会受到影响。'
                   : confirmAction === 'discard'
