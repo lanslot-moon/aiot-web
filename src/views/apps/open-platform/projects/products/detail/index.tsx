@@ -518,14 +518,13 @@ const ProductDetailPage = () => {
       ? `/projects/${projectId}/parser-profiles/${encodeURIComponent(product.protocolProfile.profileId)}`
       : null;
 
-  const productListKey = projectId
-    ? '/api/v1/products?pageSize=100'
-    : null;
+  const productListKey = (key: unknown) =>
+    typeof key === 'string' && key.startsWith('/api/v1/products?');
 
   const refreshProduct = async () => {
     await Promise.all([
       mutateProduct(),
-      productListKey ? mutateCache(productListKey) : Promise.resolve(),
+      mutateCache(productListKey, undefined, { revalidate: false }),
     ]);
   };
 
@@ -569,7 +568,7 @@ const ProductDetailPage = () => {
         await openPlatformDelete<boolean>(productKey as string);
         setConfirmAction(null);
         toast.success('产品已删除。');
-        await mutateCache(productListKey);
+        await mutateCache(productListKey, undefined, { revalidate: false });
         navigate(`/projects/${projectId}/products`, { replace: true });
         return;
       }

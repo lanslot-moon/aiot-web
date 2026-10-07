@@ -102,8 +102,6 @@ const AUTH_MODE_OPTIONS = Object.entries(PRODUCT_AUTH_MODE_LABEL).filter(
   ([code]) => ['DEVICE_SECRET', 'PRODUCT_SECRET', 'CUSTOM'].includes(code),
 );
 
-const productListKey = () => '/api/v1/products?pageSize=100';
-
 function validateProduct(
   form: ProductForm,
   selectedCategory?: CategoryView,
@@ -316,7 +314,11 @@ const CreateProductPage = () => {
         } satisfies ProductCreateRequest,
       );
 
-      await mutateCache(productListKey());
+      await mutateCache(
+        (key: unknown) => typeof key === 'string' && key.startsWith('/api/v1/products?'),
+        undefined,
+        { revalidate: false },
+      );
       toast.success(`产品“${form.productName.trim()}”已创建，请在产品列表中继续配置物模型。`);
       navigate(`/projects/${projectId}/products`, {
         replace: true,

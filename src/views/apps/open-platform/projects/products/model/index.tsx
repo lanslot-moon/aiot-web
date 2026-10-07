@@ -390,8 +390,8 @@ function modelRevisionLabel(revision: number) {
   return `Revision ${revision}`;
 }
 
-function formatModelPublishedAt(value?: number | null) {
-  return value == null ? '未记录' : new Date(value).toLocaleString('zh-CN');
+function formatVersionTime(value: number | null | undefined) {
+  return value == null ? '—' : new Date(value).toLocaleString('zh-CN');
 }
 
 function modelCapabilityTypeLabel(type: string) {
@@ -1251,7 +1251,7 @@ const ProductModelPage = () => {
                                 <p className="text-sm font-medium">{modelRevisionLabel(version.modelRevision)}</p>
                                 <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">{version.modelDigest}</p>
                                 <p className="mt-1 text-[11px] text-muted-foreground">
-                                  发布时间：{formatModelPublishedAt(version.publishedAt)}
+                                  创建时间：{formatVersionTime(version.createTime)} · 发布时间：{formatVersionTime(version.publishedAt)}
                                 </p>
                               </div>
                               <Badge variant={version.status === 'PUBLISHED' ? 'secondary' : 'outline'}>
@@ -1638,7 +1638,7 @@ const ProductModelPage = () => {
                       <p className="text-[11px] text-muted-foreground">基线版本</p>
                       <p className="mt-0.5 font-medium">{modelRevisionLabel(diffFromVersion.modelRevision)}</p>
                       <p className="mt-0.5 text-[11px] text-muted-foreground">
-                        发布时间：{formatModelPublishedAt(diffFromVersion.publishedAt)}
+                        创建时间：{formatVersionTime(diffFromVersion.createTime)} · 发布时间：{formatVersionTime(diffFromVersion.publishedAt)}
                       </p>
                     </div>
                     <ArrowRight className="mx-auto size-4 shrink-0 rotate-90 text-muted-foreground sm:mx-0 sm:rotate-0" aria-hidden />
@@ -1646,7 +1646,7 @@ const ProductModelPage = () => {
                       <p className="text-[11px] text-muted-foreground">目标版本</p>
                       <p className="mt-0.5 font-medium">{modelRevisionLabel(diffToVersion.modelRevision)}</p>
                       <p className="mt-0.5 text-[11px] text-muted-foreground">
-                        发布时间：{formatModelPublishedAt(diffToVersion.publishedAt)}
+                        创建时间：{formatVersionTime(diffToVersion.createTime)} · 发布时间：{formatVersionTime(diffToVersion.publishedAt)}
                       </p>
                     </div>
                   </div>
@@ -1707,7 +1707,7 @@ const ProductModelPage = () => {
             </AlertDialogTitle>
             <AlertDialogDescription>
               {confirmAction === 'publish'
-                ? '发布后会生成新的 Revision，当前草稿将被清除，设备运行时会使用这次发布的模型。'
+                ? '发布后会生成新的 Revision，设备运行时会使用这次发布的模型；草稿内容保留，后续修改需重新校验。'
                 : confirmAction === 'remove-capability'
                   ? '该能力会从当前草稿中删除，保存草稿后才会生效；已发布的物模型版本不会受到影响。'
                   : confirmAction === 'discard'

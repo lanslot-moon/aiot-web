@@ -2085,6 +2085,8 @@ function seedThingModel(product: ProductRecord, revisionCount: number, draftStat
       modelRevision: revision,
       modelDigest: definition.modelDigest,
       status: 'PUBLISHED',
+      createTime:
+        (product.updateTime ?? product.createTime) - (revisionCount - revision) * 86_400_000,
       publishedAt:
         (product.updateTime ?? product.createTime) - (revisionCount - revision) * 86_400_000,
       definition,
@@ -3718,6 +3720,7 @@ export const OpenPlatformHandlers = [
           modelRevision: revision,
           modelDigest: definition.modelDigest,
           status: 'PUBLISHED',
+          createTime: Date.now(),
           publishedAt: Date.now(),
           definition,
         },

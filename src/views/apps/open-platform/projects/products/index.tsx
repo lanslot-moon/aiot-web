@@ -1,5 +1,5 @@
 import { Library, PackagePlus, SearchIcon, X } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { usePermission } from '@/context/iam-context/identity';
 import { Link, useParams } from 'react-router';
 import useSWR from 'swr';
@@ -43,15 +43,32 @@ const BCrumb = [
 ];
 
 const STATUS_ALL = 'ALL';
+const DEFAULT_PAGE_SIZE = 20;
 
 const ProjectProductsPage = () => {
   const { projectId = '' } = useParams<{ projectId: string }>();
   const [keyword, setKeyword] = useState('');
   const [status, setStatus] = useState(STATUS_ALL);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const [pageCursors, setPageCursors] = useState<(string | null)[]>([null]);
+  const [pageIndex, setPageIndex] = useState(0);
+  const [pageProjectId, setPageProjectId] = useState(projectId);
+  const activePageIndex = pageProjectId === projectId ? pageIndex : 0;
   const { data: project } = useProjectDetail(projectId);
-  const productsKey = projectId
-    ? '/api/v1/products?pageSize=100'
-    : null;
+  useEffect(() => {
+    if (pageProjectId === projectId) return;
+    setPageProjectId(projectId);
+    setPageCursors([null]);
+    setPageIndex(0);
+    setKeyword('');
+  }, [pageProjectId, projectId]);
+  const productsKey = projectId ? (() => {
+    const params = new URLSearchParams({ pageSize: String(pageSize) });
+    const cursor = pageProjectId === projectId ? pageCursors[pageIndex] : null;
+    if (cursor) params.set('cursor', cursor);
+    if (status !== STATUS_ALL) params.set('lifecycleStatus', status);
+    return `/api/v1/products?${params.toString()}`;
+  })() : null;
   const {
     data,
     error,
@@ -63,7 +80,6 @@ const ProjectProductsPage = () => {
   const filtered = useMemo(() => {
     const q = keyword.trim().toLowerCase();
     return products.filter((product) => {
-      if (status !== STATUS_ALL && product.lifecycleStatus !== status) return false;
       if (!q) return true;
       return [
         product.productName,
@@ -72,7 +88,7 @@ const ProjectProductsPage = () => {
         product.categoryCode,
       ].some((value) => value.toLowerCase().includes(q));
     });
-  }, [keyword, products, status]);
+  }, [keyword, products]);
 
   const counts = useMemo(
     () => ({
@@ -100,7 +116,7 @@ const ProjectProductsPage = () => {
             <div className="flex flex-wrap gap-2">
               {(
                 [
-                  ['全部', counts.all],
+                  ['本页', counts.all],
                   ['已发布', counts.published],
                   ['草稿', counts.draft],
                 ] as const
@@ -161,8 +177,8 @@ const ProjectProductsPage = () => {
               <Input
                 value={keyword}
                 onChange={(event) => setKeyword(event.target.value)}
-                placeholder="搜索产品名称 / ID"
-                aria-label="搜索产品名称或 ID"
+                placeholder="搜索当前页产品名称 / ID"
+                aria-label="搜索当前页产品名称或 ID"
                 className="pr-8 pl-8"
               />
               {keyword ? (
@@ -178,7 +194,11 @@ const ProjectProductsPage = () => {
                 </Button>
               ) : null}
             </div>
-            <Select value={status} onValueChange={(value) => setStatus(value ?? STATUS_ALL)}>
+            <Select value={status} onValueChange={(value) => {
+              setStatus(value ?? STATUS_ALL);
+              setPageCursors([null]);
+              setPageIndex(0);
+            }}>
               <SelectTrigger className="w-full sm:w-40">
                 <SelectValue placeholder="生命周期" />
               </SelectTrigger>
@@ -241,9 +261,9 @@ const ProjectProductsPage = () => {
                 ) : filtered.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={8} className="h-32 text-center text-muted-foreground">
-                      {products.length === 0
+                      {products.length === 0 && status === STATUS_ALL && !keyword.trim()
                         ? '当前项目还没有产品，点击“创建产品”开始。'
-                        : '没有符合条件的产品'}
+                        : '当前筛选条件下没有产品'}
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -327,6 +347,33 @@ const ProjectProductsPage = () => {
                 )}
               </TableBody>
             </Table>
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
+            <span className="text-muted-foreground">第 {activePageIndex + 1} 页 · 本页 {products.length} 条</span>
+            <div className="flex items-center gap-2">
+              <Select value={String(pageSize)} onValueChange={(value) => {
+                setPageSize(Number(value ?? DEFAULT_PAGE_SIZE));
+                setPageCursors([null]);
+                setPageIndex(0);
+              }}>
+                <SelectTrigger className="w-28" aria-label="每页条数">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {[5, 10, 20, 50, 100].map((size) => (
+                    <SelectItem key={size} value={String(size)}>每页 {size} 条</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button type="button" variant="outline" size="sm" disabled={activePageIndex === 0 || isLoading}
+                onClick={() => setPageIndex((current) => current - 1)}>上一页</Button>
+              <Button type="button" variant="outline" size="sm" disabled={!data?.nextCursor || isLoading}
+                onClick={() => {
+                  if (!data?.nextCursor) return;
+                  setPageCursors((current) => [...current.slice(0, pageIndex + 1), data.nextCursor]);
+                  setPageIndex((current) => current + 1);
+                }}>下一页</Button>
+            </div>
           </div>
 
         </div>

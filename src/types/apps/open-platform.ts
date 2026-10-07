@@ -577,8 +577,8 @@ export interface ModelVersionView {
   modelRevision: number;
   modelDigest: string;
   status: 'PUBLISHED' | 'DEPRECATED' | string;
-  /** 发布时间（毫秒时间戳），历史版本保留原发布时间。 */
-  publishedAt?: number | null;
+  createTime: number;
+  publishedAt: number;
 }
 
 export interface ModelCapabilitySummaryView {
