@@ -1215,7 +1215,6 @@ const ProductModelPage = () => {
                           </span>
                         </div>
                         <ThingModelCapabilitySummary definition={published} />
-                        <code className="block break-all text-[11px] text-muted-foreground">{published.modelDigest}</code>
                       </div>
                     ) : (
                       <p className="rounded-lg border border-dashed px-3 py-4 text-center text-xs text-muted-foreground">
@@ -1249,7 +1248,6 @@ const ProductModelPage = () => {
                             <div className="flex flex-wrap items-center justify-between gap-2">
                               <div>
                                 <p className="text-sm font-medium">{modelRevisionLabel(version.modelRevision)}</p>
-                                <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">{version.modelDigest}</p>
                                 <p className="mt-1 text-[11px] text-muted-foreground">
                                   创建时间：{formatVersionTime(version.createTime)} · 发布时间：{formatVersionTime(version.publishedAt)}
                                 </p>
