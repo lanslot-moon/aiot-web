@@ -229,7 +229,7 @@ function ProjectCredentials({ projectId }: { projectId: string }) {
         <>
           <Panel title="最近调用">
             <ErrorNotice error={usage.error} retry={() => usage.mutate()} />
-            {usage.isLoading ? (
+            {usage.error ? null : usage.isLoading ? (
               <Loading />
             ) : (
               <dl className="grid grid-cols-2 gap-3 text-sm">
@@ -246,7 +246,7 @@ function ProjectCredentials({ projectId }: { projectId: string }) {
           </Panel>
           <Panel title="网络访问限制" description="启用后，只允许白名单中的 IP 或 CIDR 来源调用。">
             <ErrorNotice error={network.error} retry={() => network.mutate()} />
-            {network.data && (
+            {network.isLoading ? <Loading /> : network.data && (
               <>
                 <Status value={network.data.networkPolicyEnabled ? 'ACTIVE' : 'DISABLED'} />
                 <p className="text-sm font-mono">

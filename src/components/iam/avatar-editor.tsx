@@ -1,5 +1,5 @@
-import { get, put, segment } from '@/api/iam/client';
-import type { AccountVO, FileDownloadVO } from '@/api/iam/contracts';
+import { put } from '@/api/iam/client';
+import type { AccountVO } from '@/api/iam/contracts';
 import { Camera, Check, Loader2 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -15,7 +15,7 @@ import { IamFileUploader, type FileUploaderHandle } from './file-uploader';
 import { ErrorNotice } from './shared';
 
 export function AvatarEditor({ account: current }: { account: AccountVO }) {
-  const { account, authorization } = useIam();
+  const { account, platformAuthorization: authorization } = useIam();
   const [cropping, setCropping] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const cropResult = useRef<((file: File | null) => void) | null>(null);
@@ -30,7 +30,7 @@ export function AvatarEditor({ account: current }: { account: AccountVO }) {
   const [discard, setDiscard] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const codes = authorization.data?.permissionCodes ?? [];
-  const canUpload = ['account:update', 'file:upload', 'file:view'].every((code) => codes.includes(code));
+  const canUpload = ['account:update', 'file:upload'].every((code) => codes.includes(code));
   const busy = saving;
   useDraftRegistration(open && dirty);
 
@@ -63,15 +63,11 @@ export function AvatarEditor({ account: current }: { account: AccountVO }) {
       const file = await uploader.current?.upload();
       if (!file) return;
       setStage('saving');
-      let avatarUrl = candidate;
-      if (!avatarUrl) {
-        const result = await get<FileDownloadVO>(`/api/v1/public-files/${segment(file.fileId)}/download-url`);
-        if (!result.downloadUrl || !/^https:\/\/[^\s]+$/.test(result.downloadUrl) || result.downloadUrl.length > 1024) {
-          throw new Error('头像地址不可用，请重试保存。');
-        }
-        avatarUrl = result.downloadUrl;
-        setCandidate(avatarUrl);
+      const avatarUrl = file.downloadUrl;
+      if (!avatarUrl || !/^https:\/\/[^\s]+$/.test(avatarUrl) || avatarUrl.length > 1024) {
+        throw new Error('上传返回的头像地址不可用，请更换图片后重新上传。');
       }
+      setCandidate(avatarUrl);
       const updated = await put<AccountVO>('/api/v1/accounts/current/profile', { avatarUrl });
       await account.mutate(updated, { revalidate: false });
       setDirty(false); setOpen(false); toast.success('头像保存成功');
@@ -80,7 +76,7 @@ export function AvatarEditor({ account: current }: { account: AccountVO }) {
   }
   return <>
     <Button type="button" variant="outline" disabled={!canUpload}
-      title={!canUpload ? '需要资料修改和文件上传、读取权限' : undefined}
+      title={!canUpload ? '需要资料修改和文件上传权限' : undefined}
       onClick={() => { setCandidate(null); setStage(null); setSelected(false); setDirty(false); setError(null); setOpen(true); }}>
       <Camera className="size-4" />更换头像
     </Button>

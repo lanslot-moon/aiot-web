@@ -19,6 +19,7 @@ CardTitle,
 } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
+import { RequestLoading } from '@/components/shared/request-feedback';
 import { OpenPlatformApiError, openPlatformGetFetcher, useProjectDetail } from '../../../../../context/open-platform-context/project-resources';
 
 import BreadcrumbComp from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
@@ -108,7 +109,7 @@ const ProjectOverviewPage = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-1 text-sm text-muted-foreground">
-                  {project?.description ? (
+                  {projectLoading && !project ? <RequestLoading label="正在加载项目信息…" /> : project?.description ? (
                     <p className="line-clamp-3 text-foreground/80">{project.description}</p>
                   ) : (
                     <p>暂无描述</p>

@@ -19,6 +19,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { toast } from 'sonner';
 import useSWR, { useSWRConfig } from 'swr';
+import { RequestLoading } from '@/components/shared/request-feedback';
 
 import { ApiErrorAlert } from '@/components/open-platform/api-error-alert';
 import { CopyIdButton } from '@/components/open-platform/copy-id-button';
@@ -41,6 +42,7 @@ AlertDialogHeader,
 AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import { ProductIconPreview } from '@/components/open-platform/product-icon-preview';
 import {
 Card,
 CardContent,
@@ -435,6 +437,7 @@ function ProductEditDialog({
                   <span className="font-medium">Parser Profile</span>
                   <ParserProfileSelect
                     profiles={parserProfiles}
+                    loading={parserProfilesLoading}
                     value={form.profileId}
                     onValueChange={selectParserProfile}
                     disabled={parserProfilesLoading || parserProfiles.length === 0}
@@ -444,6 +447,7 @@ function ProductEditDialog({
                   <span className="font-medium">Profile 版本</span>
                   <ParserProfileVersionSelect
                     versions={publishedParserProfileVersions}
+                    loading={parserProfileVersionsLoading}
                     value={form.profileVersion}
                     placeholder={form.profileId ? '选择已发布版本' : '先选择 Profile'}
                     onValueChange={(value) => updateField('profileVersion', value ?? '')}
@@ -503,7 +507,7 @@ const ProductDetailPage = () => {
     isLoading: productLoading,
     mutate: mutateProduct,
   } = useSWR<ProductDetailView>(productKey, openPlatformGetFetcher);
-  const { data: published } = useSWR<ThingModelDefinition>(
+  const { data: published, isLoading: publishedLoading, error: publishedError } = useSWR<ThingModelDefinition>(
     productId ? productPublishedModelKey(productId) : null,
     openPlatformGetFetcher,
   );
@@ -647,7 +651,7 @@ const ProductDetailPage = () => {
                   返回产品
                 </Button>
                 <div className="flex flex-wrap items-center gap-2">
-                  <Package className="size-5 shrink-0" aria-hidden />
+                  <ProductIconPreview key={product.iconUrl} iconUrl={product.iconUrl} productName={product.productName} />
                   <h1 className="truncate text-lg font-semibold tracking-tight">
                     {product.productName}
                   </h1>
@@ -856,11 +860,11 @@ const ProductDetailPage = () => {
                   <CardDescription>能力定义独立于产品生命周期管理。</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <ModelState
+                  {publishedError ? <ApiErrorAlert message={(publishedError as Error).message} /> : publishedLoading ? <RequestLoading label="正在加载物模型状态…" /> : <ModelState
                     projectId={projectId}
                     productId={product.productId}
                     published={published}
-                  />
+                  />}
                   <Button
                     type="button"
                     variant="outline"

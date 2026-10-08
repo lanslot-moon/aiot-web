@@ -394,6 +394,7 @@ export function FieldsForm({
 }
 export function Action({
   label,
+  submitLabel = label,
   description,
   fields = [],
   initial,
@@ -404,6 +405,7 @@ export function Action({
   children,
 }: {
   label: string;
+  submitLabel?: string;
   description?: string;
   fields?: Field[];
   initial?: Values;
@@ -450,7 +452,7 @@ export function Action({
             onBusyChange={setPending}
             danger={danger}
             initial={initial}
-            label={label}
+            label={submitLabel}
             onSave={run}
             afterSave={() => {
               setOpen(false);
@@ -598,7 +600,7 @@ export function CursorTable<T>({
           </Select>
         </form>
       )}
-      {!allowed ? (
+      {!allowed && !resource.isLoading ? (
         <ErrorNotice
           error={new OpenPlatformApiError('FORBIDDEN', '当前账号没有查看此列表的权限。', 403)}
         />
@@ -611,7 +613,7 @@ export function CursorTable<T>({
         </>
       )}
       <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
-        <span>本页 {resource.data?.items.length ?? 0} 条</span>
+        <span>{resource.isLoading ? '正在加载…' : resource.error ? '列表加载失败' : `本页 ${resource.data?.items.length ?? 0} 条`}</span>
         <div className="flex gap-2">
           <Button
             variant="outline"

@@ -36,7 +36,11 @@ export function useResource<T>(
       ...resource,
       error: new OpenPlatformApiError('FORBIDDEN', '当前账号没有访问此功能的权限。', 403),
     };
-  return resource;
+  return {
+    ...resource,
+    isLoading: resource.isLoading || (!!path && !!session && !!permission && !authorization.data && !authorization.error),
+    error: resource.error ?? (permission ? authorization.error : undefined),
+  };
 }
 
 export const statusOptions = [

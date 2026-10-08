@@ -5,9 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Slider } from '@base-ui/react/slider';
 import { ErrorNotice } from './shared';
 
-/** A circular viewport backed by the crop library's original-image pixel coordinates. */
-export function AvatarCropper({ file, onComplete, onCancel }: {
+/** Crop a square image region, with an optional circular mask for account avatars. */
+export function AvatarCropper({ file, onComplete, onCancel, shape = 'round', label = '头像' }: {
   file: File; onComplete: (file: File) => void; onCancel: () => void;
+  shape?: 'round' | 'rect'; label?: string;
 }) {
   const [source, setSource] = useState('');
   const [crop, setCrop] = useState({ x: 0, y: 0 });
@@ -28,28 +29,30 @@ export function AvatarCropper({ file, onComplete, onCancel }: {
       const image = new Image(); image.src = source;
       await image.decode();
       const canvas = document.createElement('canvas');
-      // Keep the output bounded and discard pixels outside the circular selection.
+      // Bound the output size; square product icons retain all four corners.
       const size = Math.min(512, Math.round(Math.min(area.width, area.height)));
-      if (size < 1) throw new Error('请重新选择头像区域。');
+      if (size < 1) throw new Error(`请重新选择${label}区域。`);
       canvas.width = size; canvas.height = size;
       const context = canvas.getContext('2d');
       if (!context) throw new Error('当前浏览器无法裁剪图片。');
-      context.beginPath(); context.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2); context.clip();
+      if (shape === 'round') {
+        context.beginPath(); context.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2); context.clip();
+      }
       context.drawImage(image, area.x, area.y, area.width, area.height, 0, 0, size, size);
       const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob((value) => value ? resolve(value) : reject(new Error('图片裁剪失败，请重试。')), 'image/png'));
-      const name = `${file.name.replace(/\.[^.]*$/, '').slice(0, 200)}-avatar.png`;
+      const name = `${file.name.replace(/\.[^.]*$/, '').slice(0, 200)}-${shape === 'round' ? 'avatar' : 'icon'}.png`;
       if (active.current) onComplete(new File([blob], name, { type: 'image/png' }));
     } catch (failure) { if (active.current) setError(failure); }
     finally { if (active.current) setBusy(false); }
   }
   return <div className="space-y-4">
-    <div className="relative h-72 overflow-hidden rounded-lg bg-black" aria-label="头像裁剪区域">
-      {source && <Cropper image={source} crop={crop} zoom={zoom} aspect={1} cropShape="round"
+    <div className="relative h-72 overflow-hidden rounded-lg bg-black" aria-label={`${label}裁剪区域`}>
+      {source && <Cropper image={source} crop={crop} zoom={zoom} aspect={1} cropShape={shape}
         showGrid={false} objectFit="cover" onCropChange={setCrop} onZoomChange={setZoom}
         onCropComplete={(_, pixels) => setArea(pixels)} onMediaLoaded={() => setError(null)}
         mediaProps={{ onError: () => setError(new Error('无法读取图片，请选择其他图片。')) }} />}
     </div>
-    <p className="text-sm text-muted-foreground">拖动图片调整位置，缩放以框选头像。</p>
+    <p className="text-sm text-muted-foreground">拖动图片调整位置，缩放以框选{label}。</p>
     <div className="flex items-center gap-4">
       <span className="text-sm">缩放</span>
       <Slider.Root min={1} max={3} step={0.01} value={zoom} disabled={busy}
@@ -57,7 +60,7 @@ export function AvatarCropper({ file, onComplete, onCancel }: {
         <Slider.Control className="relative flex h-5 w-full touch-none items-center select-none">
           <Slider.Track className="cn-slider-track relative h-1 w-full rounded-full bg-muted">
             <Slider.Indicator className="cn-slider-range h-full bg-primary" />
-            <Slider.Thumb getAriaLabel={() => '头像缩放'} className="cn-slider-thumb size-3 border bg-background focus-visible:ring-2" />
+            <Slider.Thumb getAriaLabel={() => `${label}缩放`} className="cn-slider-thumb size-3 border bg-background focus-visible:ring-2" />
           </Slider.Track>
         </Slider.Control>
       </Slider.Root>
@@ -66,7 +69,7 @@ export function AvatarCropper({ file, onComplete, onCancel }: {
     <div className="flex justify-end gap-2">
       <Button type="button" variant="outline" disabled={busy} onClick={onCancel}>取消裁剪</Button>
       <Button type="button" disabled={!area || busy || !!error} onClick={() => void apply()}>
-        {busy && <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />}使用此头像
+        {busy && <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />}使用此{label}
       </Button>
     </div>
   </div>;

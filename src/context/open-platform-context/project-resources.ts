@@ -1,4 +1,4 @@
-import { get, getSession, request } from '@/api/iam/client';
+import { get, getSession, request, OpenPlatformApiError } from '@/api/iam/client';
 import type { ProjectDetailVO, TokenVO } from '@/api/iam/contracts';
 import { createContext, useContext } from 'react';
 import {
@@ -94,5 +94,11 @@ export function useProjectDetail(projectId: string | undefined | null) {
     { shouldRetryOnError: false },
   );
   const project: ProjectView | undefined = resource.data?.project;
-  return { ...resource, data: project };
+  return {
+    ...resource,
+    data: project,
+    isLoading: resource.isLoading || (!!session && !!projectId && !platformAuthorization.data && !platformAuthorization.error),
+    error: resource.error ?? platformAuthorization.error ?? (platformAuthorization.data && !allowed
+      ? new OpenPlatformApiError('FORBIDDEN', '当前账号没有查看项目的权限。', 403) : undefined),
+  };
 }

@@ -127,8 +127,8 @@ const ParserProfilesPage = () => {
 
   return (
     <StyleAwareWrapper
-      lyraClassName="flex min-h-full flex-col gap-px bg-border p-px"
-      defaultClassName="flex min-h-full flex-col gap-4 p-4 lg:p-6"
+      lyraClassName="flex flex-col gap-px bg-border p-px"
+      defaultClassName="flex flex-col gap-4"
     >
       <BreadcrumbComp
         title="协议解析"

@@ -15,7 +15,7 @@ export default function MenusPage() {
       <SettingsNavigation />
       <Panel title="账号菜单目录" description="此页面提供目录查询。实际可见菜单由后端按当前权限和菜单层级筛选。">
         <ErrorNotice error={resource.error} retry={() => resource.mutate()} />
-        {resource.isLoading ? <Loading /> : (
+        {resource.error ? null : resource.isLoading ? <Loading /> : (
           <DataTable
             rows={resource.data ?? []}
             columns={[

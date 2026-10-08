@@ -160,7 +160,7 @@ export default function RolesPage() {
           <AccordionContent className="px-4">
             <div className="max-h-96 overflow-auto">
         <ErrorNotice error={catalog.error} retry={() => catalog.mutate()} />
-        {catalog.isLoading ? (
+        {catalog.error ? null : catalog.isLoading ? (
           <Loading />
         ) : (
           <DataTable

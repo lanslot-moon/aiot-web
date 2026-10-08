@@ -98,6 +98,7 @@ export interface UpdateProjectRequest {
 }
 
 export interface ProductCreateRequest {
+  iconUrl?: string;
   categoryCatalogVersion?: string;
   productName: string;
   /** CUSTOM products intentionally omit categoryCode and start with an empty model draft. */

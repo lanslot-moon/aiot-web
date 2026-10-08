@@ -24,6 +24,7 @@ import { Fragment, useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, useParams } from 'react-router';
 import { toast } from 'sonner';
 import useSWR from 'swr';
+import { RequestLoading, RequestTableState } from '@/components/shared/request-feedback';
 import useSWRInfinite from 'swr/infinite';
 
 import { ApiErrorAlert } from '@/components/open-platform/api-error-alert';
@@ -1192,9 +1193,9 @@ const ProductCredentialsPage = () => {
   const rotationsKey = productId ? `/api/v1/rotation-tasks?productId=${encodeURIComponent(productId)}&pageSize=100` : null;
 
   const { data: product, error: productError, isLoading: productLoading } = useSWR<ProductDetailView>(productKey, openPlatformGetFetcher);
-  const { data: batchesData, error: batchesError, mutate: mutateBatches } = useSWR<CursorResult<CredentialManufacturingBatchView>>(batchesKey, openPlatformGetFetcher);
-  const { data: credentialsData, error: credentialsError, mutate: mutateCredentials } = useSWR<CursorResult<CredentialSummaryView>>(credentialsKey, openPlatformGetFetcher);
-  const { data: exportsData, error: exportsError, mutate: mutateExports } = useSWR<CursorResult<CredentialExportTaskView>>(exportsKey, openPlatformGetFetcher);
+  const { data: batchesData, isLoading: batchesLoading, error: batchesError, mutate: mutateBatches } = useSWR<CursorResult<CredentialManufacturingBatchView>>(batchesKey, openPlatformGetFetcher);
+  const { data: credentialsData, isLoading: credentialsLoading, error: credentialsError, mutate: mutateCredentials } = useSWR<CursorResult<CredentialSummaryView>>(credentialsKey, openPlatformGetFetcher);
+  const { data: exportsData, isLoading: exportsLoading, error: exportsError, mutate: mutateExports } = useSWR<CursorResult<CredentialExportTaskView>>(exportsKey, openPlatformGetFetcher);
   const getPreRegistrationPageKey = (pageIndex: number, previousPageData: CursorResult<CredentialPreRegistrationView> | null) => {
     if (!productId) return null;
     if (pageIndex > 0 && (!previousPageData || !previousPageData.hasMore)) return null;
@@ -1202,8 +1203,8 @@ const ProductCredentialsPage = () => {
     if (previousPageData?.nextCursor) params.set('cursor', previousPageData.nextCursor);
     return `/api/v1/products/${encodeURIComponent(productId)}/pre-registrations?${params.toString()}`;
   };
-  const { data: preRegistrationPages, error: preRegistrationsError, size: preRegistrationPageCount, setSize: setPreRegistrationPageCount, mutate: mutatePreRegistrations } = useSWRInfinite<CursorResult<CredentialPreRegistrationView>>(getPreRegistrationPageKey, openPlatformGetFetcher);
-  const { data: rotationsData, error: rotationsError, mutate: mutateRotations } = useSWR<CursorResult<CredentialRotationTaskView>>(rotationsKey, openPlatformGetFetcher);
+  const { data: preRegistrationPages, isLoading: preRegistrationsLoading, error: preRegistrationsError, size: preRegistrationPageCount, setSize: setPreRegistrationPageCount, mutate: mutatePreRegistrations } = useSWRInfinite<CursorResult<CredentialPreRegistrationView>>(getPreRegistrationPageKey, openPlatformGetFetcher);
+  const { data: rotationsData, isLoading: rotationsLoading, error: rotationsError, mutate: mutateRotations } = useSWR<CursorResult<CredentialRotationTaskView>>(rotationsKey, openPlatformGetFetcher);
 
   useEffect(() => {
     const lastPage = preRegistrationPages?.[preRegistrationPages.length - 1];
@@ -1220,8 +1221,8 @@ const ProductCredentialsPage = () => {
   const productSecret = credentials.find((credential) => credential.kind === 'PRODUCT_SECRET' && credential.credentialStatus === 'ACTIVE');
   const deviceCredentials = credentials.filter((credential) => credential.kind === 'DEVICE_SECRET');
   const distributionBatchIds = batches.map((batch) => batch.batchId).join(',');
-  const distributionsKey = productId ? `/api/v1/credential-distributions?productId=${encodeURIComponent(productId)}&batches=${encodeURIComponent(distributionBatchIds)}` : null;
-  const { data: distributionsData, error: distributionsError, mutate: mutateDistributions } = useSWR<CredentialDistributionView[]>(distributionsKey, async () => {
+  const distributionsKey = productId && batchesData ? `/api/v1/credential-distributions?productId=${encodeURIComponent(productId)}&batches=${encodeURIComponent(distributionBatchIds)}` : null;
+  const { data: distributionsData, isLoading: distributionsLoading, error: distributionsError, mutate: mutateDistributions } = useSWR<CredentialDistributionView[]>(distributionsKey, async () => {
     if (batches.length === 0) return [];
     const distributionLists = await Promise.all(batches.map((batch) => openPlatformGetFetcher<CredentialDistributionView[]>(`/api/v1/credential-distributions/${encodeURIComponent(batch.batchId)}/distributions`)));
     return distributionLists.flat();
@@ -1406,6 +1407,7 @@ const ProductCredentialsPage = () => {
             </Alert>
           ) : null}
 
+          {batchesLoading || credentialsLoading || exportsLoading || preRegistrationsLoading ? <RequestLoading label="正在加载凭证概览…" /> : batchesError || credentialsError || exportsError || preRegistrationsError ? null : <>
           <div className="grid items-stretch gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)]">
             <Card className="h-full overflow-hidden">
               <CardHeader className="border-b bg-muted/10">
@@ -1462,6 +1464,7 @@ const ProductCredentialsPage = () => {
             </CardContent>
           </Card>
 
+          </>}
           <Tabs defaultValue="batches" className="flex-col gap-4">
             <TabsList variant="line" className="w-full gap-3 justify-start overflow-x-auto rounded-none border-b px-0 md:w-1/2">
               <TabsTrigger value="batches" className="min-w-0 flex-1 basis-0 px-3">量产批次</TabsTrigger>
@@ -1474,12 +1477,12 @@ const ProductCredentialsPage = () => {
 
             <TabsContent value="batches" className="space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-3"><div className="flex min-w-0 items-start gap-2"><div className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-md border border-border/60 bg-muted/40 text-muted-foreground"><PackagePlus className="size-3.5" aria-hidden /></div><div className="min-w-0"><h2 className="text-sm font-semibold leading-5">制造批次</h2><p className="mt-1 text-xs leading-4 text-muted-foreground">{productSecretOnly ? '当前认证配置不生成可导出的设备凭证。' : preRegistrationMode ? '批次数量和 Hardware UUID 取自待绑定预注册资格。' : '批次是生成凭证的来源，导出前还需要先创建固定划拨。'}</p></div></div><Button type="button" size="sm" className="gap-1.5" onClick={() => setBatchDialogOpen(true)} disabled={!canCreateBatch}><Plus className="size-3.5" aria-hidden />创建批次</Button></div>
-              {canProvision && preRegistrationMode && supportsDeviceSecret && pendingPreRegistrationCount === 0 ? <div className="rounded-lg border border-dashed bg-muted/20 px-3 py-2 text-xs text-muted-foreground">当前没有可用于制造批次的待绑定预注册资格。请先在“预注册”中导入 Hardware UUID。</div> : null}
+              {!preRegistrationsLoading && !preRegistrationsError && !credentialsLoading && !credentialsError && canProvision && preRegistrationMode && supportsDeviceSecret && pendingPreRegistrationCount === 0 ? <div className="rounded-lg border border-dashed bg-muted/20 px-3 py-2 text-xs text-muted-foreground">当前没有可用于制造批次的待绑定预注册资格。请先在“预注册”中导入 Hardware UUID。</div> : null}
               <div className="overflow-hidden rounded-xl border">
                 <Table>
                   <TableHeader><TableRow><TableHead>批次</TableHead><TableHead>状态</TableHead><TableHead>数量</TableHead><TableHead>失效时间</TableHead><TableHead className="text-right">操作</TableHead></TableRow></TableHeader>
                   <TableBody>
-                    {batches.length === 0 ? <TableRow><TableCell colSpan={5} className="h-32 text-center text-sm text-muted-foreground">还没有量产批次，发布产品后可创建第一批凭证。</TableCell></TableRow> : batches.map((batch) => {
+                    {batchesLoading || batchesError ? <RequestTableState colSpan={5} error={batchesError} loading={batchesLoading} onRetry={() => void mutateBatches()} /> : batches.length === 0 ? <TableRow><TableCell colSpan={5} className="h-32 text-center text-sm text-muted-foreground">还没有量产批次，发布产品后可创建第一批凭证。</TableCell></TableRow> : batches.map((batch) => {
                       const displayStatus = getBatchDisplayStatus(batch);
                       const fullyAllocated = displayStatus === 'FULLY_ALLOCATED';
                       return <TableRow key={batch.batchId} className="transition-colors hover:bg-muted/20">
@@ -1504,7 +1507,7 @@ const ProductCredentialsPage = () => {
                 <Table>
                   <TableHeader><TableRow><TableHead>领取单</TableHead><TableHead>来源批次</TableHead><TableHead>数量</TableHead><TableHead>状态</TableHead><TableHead>冻结时间</TableHead><TableHead>失效时间</TableHead><TableHead className="text-right">操作</TableHead></TableRow></TableHeader>
                   <TableBody>
-                    {sortedDistributions.length === 0 ? <TableRow><TableCell colSpan={7} className="h-32 text-center text-sm text-muted-foreground">还没有领取单，请先在制造批次中划拨一组固定凭证。</TableCell></TableRow> : sortedDistributions.map((distribution) => <TableRow key={distribution.distributionId} className="transition-colors hover:bg-muted/20">
+                    {batchesLoading || distributionsLoading || batchesError || distributionsError ? <RequestTableState colSpan={7} error={batchesError || distributionsError} loading={batchesLoading || distributionsLoading} onRetry={() => void mutateDistributions()} /> : sortedDistributions.length === 0 ? <TableRow><TableCell colSpan={7} className="h-32 text-center text-sm text-muted-foreground">还没有领取单，请先在制造批次中划拨一组固定凭证。</TableCell></TableRow> : sortedDistributions.map((distribution) => <TableRow key={distribution.distributionId} className="transition-colors hover:bg-muted/20">
                       <TableCell><button type="button" className="text-left font-medium underline-offset-4 hover:underline" onClick={() => void openDistributionDetail(distribution)}>{distribution.distributionId}</button><div className="mt-1 text-xs text-muted-foreground">{distribution.requestReference}</div></TableCell>
                       <TableCell><code className="font-mono text-xs">{distribution.batchId}</code></TableCell>
                       <TableCell><span className="font-medium tabular-nums">{formatNumber(distribution.allocatedQuantity)}</span><span className="text-xs text-muted-foreground"> / {formatNumber(distribution.requestedQuantity)}</span></TableCell>
@@ -1523,7 +1526,7 @@ const ProductCredentialsPage = () => {
               <div className="overflow-hidden rounded-xl border">
                 <Table>
                   <TableHeader><TableRow><TableHead>设备身份</TableHead><TableHead>凭证版本</TableHead><TableHead>状态</TableHead><TableHead>指纹</TableHead><TableHead>更新时间</TableHead><TableHead className="text-right">操作</TableHead></TableRow></TableHeader>
-                  <TableBody>{deviceCredentials.length === 0 ? <TableRow><TableCell colSpan={6} className="h-32 text-center text-sm text-muted-foreground">还没有设备级凭证摘要。</TableCell></TableRow> : deviceCredentials.map((credential) => <TableRow key={credential.credentialId} className="transition-colors hover:bg-muted/20">
+                  <TableBody>{credentialsLoading || credentialsError ? <RequestTableState colSpan={6} error={credentialsError} loading={credentialsLoading} onRetry={() => void mutateCredentials()} /> : deviceCredentials.length === 0 ? <TableRow><TableCell colSpan={6} className="h-32 text-center text-sm text-muted-foreground">还没有设备级凭证摘要。</TableCell></TableRow> : deviceCredentials.map((credential) => <TableRow key={credential.credentialId} className="transition-colors hover:bg-muted/20">
                     <TableCell><div className="font-medium">{credential.deviceId || '未绑定设备'}</div><div className="mt-1 font-mono text-xs text-muted-foreground">{maskId(credential.hardwareUuid)}</div></TableCell>
                     <TableCell><span className="font-mono text-xs">v{credential.versionNo}</span><div className="mt-1 text-xs text-muted-foreground">{credential.credentialId}</div></TableCell>
                     <TableCell><div className="flex flex-wrap gap-1.5">{statusBadge(credentialStatusLabel[credential.credentialStatus] ?? credential.credentialStatus, getCredentialTone(credential.credentialStatus))}{statusBadge(accessStateLabel[credential.accessState] ?? credential.accessState, credential.accessState === 'ENABLED' ? 'success' : 'warning')}</div></TableCell>
@@ -1540,7 +1543,7 @@ const ProductCredentialsPage = () => {
               <div className="overflow-hidden rounded-xl border">
                 <Table>
                   <TableHeader><TableRow><TableHead>任务</TableHead><TableHead>集合</TableHead><TableHead>格式</TableHead><TableHead>结果</TableHead><TableHead className="text-right">操作</TableHead></TableRow></TableHeader>
-                  <TableBody>{exports.length === 0 ? <TableRow><TableCell colSpan={5} className="h-32 text-center text-sm text-muted-foreground">还没有导出任务。完成划拨后可创建。</TableCell></TableRow> : exports.map((task) => <TableRow key={task.exportId} className="transition-colors hover:bg-muted/20">
+                  <TableBody>{exportsLoading || exportsError ? <RequestTableState colSpan={5} error={exportsError} loading={exportsLoading} onRetry={() => void mutateExports()} /> : exports.length === 0 ? <TableRow><TableCell colSpan={5} className="h-32 text-center text-sm text-muted-foreground">还没有导出任务。完成划拨后可创建。</TableCell></TableRow> : exports.map((task) => <TableRow key={task.exportId} className="transition-colors hover:bg-muted/20">
                     <TableCell><div className="font-medium">{task.exportId}</div><div className="mt-1 text-xs text-muted-foreground">{formatDate(task.createTime)}</div></TableCell>
                     <TableCell><div className="font-mono text-xs">{task.distributionId}</div><div className="mt-1 text-xs text-muted-foreground">{formatNumber(task.expectedCount)} 台</div></TableCell>
                     <TableCell><Badge variant="outline">{task.format}</Badge></TableCell>
@@ -1556,7 +1559,7 @@ const ProductCredentialsPage = () => {
               <div className="overflow-hidden rounded-xl border">
                 <Table>
                   <TableHeader><TableRow><TableHead>Hardware Identity</TableHead><TableHead>状态</TableHead><TableHead>有效期</TableHead><TableHead>备注</TableHead><TableHead className="text-right">操作</TableHead></TableRow></TableHeader>
-                  <TableBody>{preRegistrations.length === 0 ? <TableRow><TableCell colSpan={5} className="h-32 text-center text-sm text-muted-foreground">当前产品没有预注册资格。</TableCell></TableRow> : preRegistrations.map((item) => <TableRow key={item.preRegistrationId} className="transition-colors hover:bg-muted/20">
+                  <TableBody>{preRegistrationsLoading || preRegistrationsError ? <RequestTableState colSpan={5} error={preRegistrationsError} loading={preRegistrationsLoading} onRetry={() => void mutatePreRegistrations()} /> : preRegistrations.length === 0 ? <TableRow><TableCell colSpan={5} className="h-32 text-center text-sm text-muted-foreground">当前产品没有预注册资格。</TableCell></TableRow> : preRegistrations.map((item) => <TableRow key={item.preRegistrationId} className="transition-colors hover:bg-muted/20">
                     <TableCell><code className="font-mono text-xs">{item.hardwareUuid}</code><div className="mt-1 text-xs text-muted-foreground">代次 {item.registrationGeneration}</div></TableCell>
                     <TableCell>{statusBadge(preRegistrationStatusLabel[item.status] ?? item.status, getPreRegistrationTone(item.status))}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{formatDate(item.expiresAt)}</TableCell>
@@ -1572,7 +1575,7 @@ const ProductCredentialsPage = () => {
               <div className="overflow-hidden rounded-xl border">
                 <Table>
                   <TableHeader><TableRow><TableHead>设备</TableHead><TableHead>任务状态</TableHead><TableHead>当前 / 候选版本</TableHead><TableHead>切换截止</TableHead><TableHead>安全模式</TableHead></TableRow></TableHeader>
-                  <TableBody>{rotations.length === 0 ? <TableRow><TableCell colSpan={5} className="h-32 text-center text-sm text-muted-foreground">还没有轮换任务。</TableCell></TableRow> : rotations.map((task) => <TableRow key={task.taskId} className="transition-colors hover:bg-muted/20">
+                  <TableBody>{rotationsLoading || rotationsError ? <RequestTableState colSpan={5} error={rotationsError} loading={rotationsLoading} onRetry={() => void mutateRotations()} /> : rotations.length === 0 ? <TableRow><TableCell colSpan={5} className="h-32 text-center text-sm text-muted-foreground">还没有轮换任务。</TableCell></TableRow> : rotations.map((task) => <TableRow key={task.taskId} className="transition-colors hover:bg-muted/20">
                     <TableCell><div className="font-medium">{task.deviceId || '未绑定设备'}</div><div className="mt-1 font-mono text-xs text-muted-foreground">{maskId(task.hardwareUuid)}</div></TableCell>
                     <TableCell>{statusBadge(rotationStatusLabel[task.status] ?? task.status, getRotationTone(task.status))}<div className="mt-1 text-xs text-muted-foreground">{task.reasonCode}</div></TableCell>
                     <TableCell className="font-mono text-xs">v{task.currentCredentialVersion} → {task.replacementCredentialVersion ? `v${task.replacementCredentialVersion}` : '待签发'}</TableCell>

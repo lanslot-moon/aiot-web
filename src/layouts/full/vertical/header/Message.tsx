@@ -3,7 +3,6 @@ import { useState } from "react";
 
 
 import SimpleBar from "simplebar-react";
-import "simplebar-react/dist/simplebar.min.css";
 
 import {
   DropdownMenu,

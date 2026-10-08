@@ -1,7 +1,6 @@
 import { useState } from "react";
 import * as NotificationData from "./data";
 import SimpleBar from "simplebar-react";
-import "simplebar-react/dist/simplebar.min.css";
 import { Bell } from 'lucide-react';
 import {
     DropdownMenu,

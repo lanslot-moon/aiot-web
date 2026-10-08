@@ -48,8 +48,8 @@ const ProjectSwitcher = () => {
     { shouldRetryOnError: false },
   );
   const projects = list.data?.items ?? [];
-  const listLoading = list.isLoading;
-  const listError = list.error;
+  const listLoading = list.isLoading || (open && !!session && !authorization.data && !authorization.error);
+  const listError = list.error ?? authorization.error;
   const nextCursor = list.data?.nextCursor;
   const hasMore = list.data?.hasMore;
   const commitSearch = (value: string) => {

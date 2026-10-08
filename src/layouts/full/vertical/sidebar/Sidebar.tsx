@@ -51,7 +51,7 @@ const SidebarLayout = ({ ...props }: React.ComponentProps<typeof Sidebar>) => {
         <Badge className="group-data-[state=collapsed]:hidden" variant="secondary">V.1.0</Badge>
       </SidebarHeader>
 
-      <SidebarContent>
+      <SidebarContent className="overflow-hidden">
         <SimpleBar style={{ height: '100%' }}>
           {projectId && <div className="border-b p-3 group-data-[state=collapsed]:hidden">
               <Link to="/projects" onClick={() => { if (isMobile) setOpenMobile(false); }} className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-muted focus-visible:outline focus-visible:outline-ring"><ArrowLeft className="size-4" />返回全部项目</Link>

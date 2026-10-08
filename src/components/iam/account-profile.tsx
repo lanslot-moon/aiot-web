@@ -49,7 +49,7 @@ export function AccountProfile() {
                   {codes.includes('account:update') && <AvatarEditor account={data} />}
                 </div>
               </div>
-              <Action label="编辑资料" permission="account:update"
+              <Action label="编辑资料" submitLabel="保存修改" permission="account:update"
                 description="显示名称用于个人资料展示，不修改登录用户名。"
                 fields={[{ name: 'displayName', label: '显示名称', maxLength: 64 }]}
                 initial={{ displayName: data.displayName ?? '' }}

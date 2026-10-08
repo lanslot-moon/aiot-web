@@ -1,4 +1,4 @@
-import { Braces, Plus, Trash2 } from 'lucide-react';
+import { Braces, ChevronRight, Plus, Trash2 } from 'lucide-react';
 
 import {
   Accordion,
@@ -88,8 +88,21 @@ function schemaConstraintSummary(schema: unknown) {
     summary.push(`${record.minimum ?? '—'}–${record.maximum ?? '—'}`);
   }
   if (Array.isArray(record.enum)) {
-    summary.push(`枚举 ${record.enum.map((value) => String(value)).join(' / ')}`);
+    summary.push(`枚举 ${record.enum.map((value) => JSON.stringify(value)).join(' / ')}`);
   }
+  if (typeof record.minLength === 'number' || typeof record.maxLength === 'number') {
+    summary.push(`长度 ${record.minLength ?? 0}–${record.maxLength ?? '不限'}`);
+  }
+  if (typeof record.minItems === 'number' || typeof record.maxItems === 'number') {
+    summary.push(`元素数量 ${record.minItems ?? 0}–${record.maxItems ?? '不限'}`);
+  }
+  if (record.additionalProperties === false) summary.push('不允许额外字段');
+  if (record.uniqueItems === true) summary.push('元素不可重复');
+  if (typeof record.pattern === 'string') summary.push(`匹配 ${record.pattern}`);
+  if (typeof record.multipleOf === 'number') summary.push(`${record.multipleOf} 的倍数`);
+  if (typeof record.exclusiveMinimum === 'number') summary.push(`大于 ${record.exclusiveMinimum}`);
+  if (typeof record.exclusiveMaximum === 'number') summary.push(`小于 ${record.exclusiveMaximum}`);
+  if ('const' in record) summary.push(`固定值 ${JSON.stringify(record.const)}`);
 
   return summary.join(' · ') || '无额外约束';
 }
@@ -100,7 +113,7 @@ function schemaShapeSummary(schema: unknown) {
   const record = schemaRecord(schema);
   const properties = schemaProperties(schema);
   if (record?.type === 'object') {
-    return properties.length > 0 ? `${properties.length} 个参数` : '无参数';
+    return properties.length > 0 ? `${properties.length} 个顶层参数` : '无参数';
   }
   return schemaType(schema);
 }
@@ -180,78 +193,51 @@ function CapabilityJsonDialog({
   );
 }
 
-function SchemaParameterList({ schema }: { schema: unknown }) {
+function SchemaNode({ code, schema, required = false }: { code: string; schema: unknown; required?: boolean }) {
+  const record = schemaRecord(schema);
   const properties = schemaProperties(schema);
   const requiredFields = schemaRequiredFields(schema);
+  const hasItems = record != null && 'items' in record;
+  const constraint = schemaConstraintSummary(schema);
+  const header = <>
+    <code className="break-all font-mono text-[11px] font-medium">{code}</code>
+    <code className="font-mono text-[11px] text-muted-foreground">{schemaType(schema)}</code>
+    {required && <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">必选</Badge>}
+    {constraint !== '无额外约束' && <span className="min-w-0 break-words text-[11px] text-muted-foreground">{constraint}</span>}
+    {typeof record?.description === 'string' && <span className="w-full text-[11px] text-muted-foreground">{record.description}</span>}
+  </>;
 
-  if (schema === true) {
-    return (
-      <p className="rounded-md border border-dashed px-3 py-2 text-xs text-muted-foreground">
-        未限定固定参数结构
-      </p>
-    );
+  if (!properties.length && !hasItems) {
+    return <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-2.5 py-2">{header}</div>;
   }
 
-  if (schema === false) {
-    return (
-      <p className="rounded-md border border-dashed px-3 py-2 text-xs text-muted-foreground">
-        不接受此参数结构
-      </p>
-    );
-  }
-
-  if (properties.length === 0) {
-    return (
-      <p className="rounded-md border border-dashed px-3 py-2 text-xs text-muted-foreground">
-        {schemaRecord(schema)?.type === 'object' ? '无固定参数' : '无固定参数结构'}
-      </p>
-    );
-  }
-
-  return (
-    <div className="divide-y rounded-md border bg-background/70">
-      {properties.map(([code, propertySchema]) => {
-        const constraint = schemaConstraintSummary(propertySchema);
-        return (
-          <div
-            key={code}
-            className="flex flex-wrap items-center gap-x-2 gap-y-1 px-2.5 py-2"
-          >
-            <code className="font-mono text-[11px] text-muted-foreground">{code}</code>
-            <code className="font-mono text-[11px]">{schemaType(propertySchema)}</code>
-            {requiredFields.has(code) ? (
-              <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
-                必选
-              </Badge>
-            ) : null}
-            {constraint !== '无额外约束' ? (
-              <span className="text-[11px] text-muted-foreground">{constraint}</span>
-            ) : null}
-          </div>
-        );
-      })}
+  return <details open className="group/schema">
+    <summary className="flex cursor-pointer list-none flex-wrap items-center gap-x-2 gap-y-1 rounded-md px-2.5 py-2 outline-none hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
+      <ChevronRight className="size-3 shrink-0 transition-transform group-open/schema:rotate-90" aria-hidden />
+      {header}
+    </summary>
+    <div className="mb-2 ml-4 min-w-0 border-l pl-2 sm:ml-5">
+      {properties.map(([field, fieldSchema]) => <SchemaNode key={field} code={field} schema={fieldSchema} required={requiredFields.has(field)} />)}
+      {hasItems && <SchemaNode code="数组元素 []" schema={record.items} />}
     </div>
-  );
+  </details>;
 }
 
 function SchemaDefinition({ title, schema }: { title: string; schema: unknown }) {
-  const record = schemaRecord(schema);
-  const isObjectSchema = record?.type === 'object';
+  const properties = schemaProperties(schema);
+  const requiredFields = schemaRequiredFields(schema);
+  const constraint = schemaConstraintSummary(schema);
 
   return (
     <div className="space-y-1.5">
-      <p className="text-[11px] font-medium text-muted-foreground">{title}</p>
-      {isObjectSchema ? (
-        <SchemaParameterList schema={schema} />
-      ) : (
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-md border bg-background/70 px-2.5 py-2 text-xs">
-          <span className="text-muted-foreground">数据类型</span>
-          <code className="font-mono text-[11px]">{schemaType(schema)}</code>
-          <span className="text-[11px] text-muted-foreground">
-            {schemaConstraintSummary(schema)}
-          </span>
-        </div>
-      )}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+        <p className="font-medium">{title}</p>
+        {properties.length > 0 && constraint !== '无额外约束' && <span>{constraint}</span>}
+      </div>
+      <div className="min-w-0 divide-y rounded-md border bg-background/70">
+        {properties.length ? properties.map(([code, propertySchema]) => <SchemaNode key={code} code={code} schema={propertySchema} required={requiredFields.has(code)} />)
+          : <SchemaNode code="数据定义" schema={schema} />}
+      </div>
     </div>
   );
 }

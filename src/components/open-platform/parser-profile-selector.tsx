@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Spinner } from '@/components/ui/spinner';
 
 import {
   Combobox,
@@ -48,6 +49,7 @@ function SearchableOptionSelect({
   }, [selectedOption?.value, selectedOption?.label]);
 
   return (
+    <div className="space-y-2" aria-busy={loading}>
     <Combobox
       items={options}
       value={selectedOption}
@@ -71,7 +73,7 @@ function SearchableOptionSelect({
       />
       <ComboboxContent className="bg-popover before:hidden">
         <ComboboxList>
-          <ComboboxEmpty>{options.length === 0 ? emptyLabel : `没有匹配的${searchPlaceholder.replace('搜索 ', '')}。`}</ComboboxEmpty>
+          <ComboboxEmpty>{loading ? '正在加载选项…' : options.length === 0 ? emptyLabel : `没有匹配的${searchPlaceholder.replace('搜索 ', '')}。`}</ComboboxEmpty>
           <ComboboxCollection>
             {(option: SearchOption) => (
               <ComboboxItem key={option.value} value={option}>
@@ -87,6 +89,10 @@ function SearchableOptionSelect({
         </ComboboxList>
       </ComboboxContent>
     </Combobox>
+    {loading && <p role="status" className="flex items-center gap-2 text-xs text-muted-foreground">
+      <Spinner aria-hidden="true" />正在加载选项…
+    </p>}
+    </div>
   );
 }
 

@@ -7,11 +7,11 @@ function hasControlCharacters(value: string) {
 
 import { request, segment } from '@/api/iam/client';
 import type { FileUploadVO, FileVO } from '@/api/iam/contracts';
-import { CheckCircle2, FileIcon, Loader2, UploadCloud, X } from 'lucide-react';
+import { CheckCircle2, FileIcon, Loader2, RefreshCw, UploadCloud, X } from 'lucide-react';
 import { useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
 import { useDropzone, type Accept } from 'react-dropzone';
 import { toast } from 'sonner';
-import { useIam } from '../../context/iam-context/identity';
+import { permissionAuthorization, useIam } from '../../context/iam-context/identity';
 
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -31,27 +31,31 @@ function sizeLabel(bytes: number) {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 export interface FileUploaderHandle {
-  upload: () => Promise<FileVO | null>;
+  upload: () => Promise<(FileVO & { downloadUrl: string | null }) | null>;
 }
 
 export interface IamFileUploaderProps {
   uploadRef?: Ref<FileUploaderHandle>;
   managed?: boolean;
+  showProgress?: boolean;
+  compact?: boolean;
+  embedded?: boolean;
   externalBusy?: boolean;
   onStageChange?: (stage: 'uploading' | 'confirming') => void;
   storageType?: 'private' | 'public';
   directory?: string;
   accept?: Accept;
   maxSize?: number;
-  onUploaded?: (file: FileVO) => void;
+  onUploaded?: (file: FileVO, downloadUrl: string | null) => void;
   onBusyChange?: (busy: boolean) => void;
   onFileChange?: (file: File | null) => void;
   prepareFile?: (file: File) => Promise<File | null>;
 }
 
 /** Shared upload control; its owning feature saves the confirmed file reference. */
-export function IamFileUploader({ storageType: visibility = 'private', directory = '/uploads', accept, maxSize, onUploaded, onBusyChange, onFileChange, prepareFile, uploadRef, managed = false, externalBusy = false, onStageChange }: IamFileUploaderProps) {
-  const { authorization } = useIam();
+export function IamFileUploader({ storageType: visibility = 'private', directory = '/uploads', accept, maxSize, onUploaded, onBusyChange, onFileChange, prepareFile, uploadRef, managed = false, showProgress = true, compact = false, embedded = false, externalBusy = false, onStageChange }: IamFileUploaderProps) {
+  const identity = useIam();
+  const authorization = permissionAuthorization(identity, 'file:upload');
   const allowed = authorization.data?.permissionCodes.includes('file:upload') ?? false;
   const [preparing, setPreparing] = useState(false);
   const selection = useRef(0);
@@ -65,7 +69,7 @@ export function IamFileUploader({ storageType: visibility = 'private', directory
   useEffect(() => {
     if (result && notified.current !== result.fileId) {
       notified.current = result.fileId;
-      onUploaded?.(result);
+      onUploaded?.(result, receipt.current?.downloadUrl ?? null);
     }
   }, [result, onUploaded]);
   const transferred = useRef(false);
@@ -106,9 +110,9 @@ export function IamFileUploader({ storageType: visibility = 'private', directory
 
   useImperativeHandle(uploadRef, () => ({ upload: run }));
 
-  async function run(): Promise<FileVO | null> {
+  async function run(): Promise<(FileVO & { downloadUrl: string | null }) | null> {
     if (preparing || !file || !allowed || lock.current) return null;
-    if (result) return result;
+    if (result) return { ...result, downloadUrl: receipt.current?.downloadUrl ?? null };
     if (!transferred.current && (!file.name || file.name.length > 255 || /[\\/]/.test(file.name) || hasControlCharacters(file.name) || path.length > 512 || /\\/.test(path) || hasControlCharacters(path) || path.replace(/^\//, '').split('/').some((part) => !part || part === '.' || part === '..'))) {
       setError(new Error('文件名或存储目录无效：目录不能包含空路径段、反斜杠、单独的 . 或 ..，完整路径最多 512 个字符。')); return null;
     }
@@ -151,7 +155,7 @@ export function IamFileUploader({ storageType: visibility = 'private', directory
       if (confirmed.status !== 'UPLOADED') throw new Error('云端尚未确认上传完成，请重试确认。');
       setResult(confirmed); setPhase('success');
       if (!managed) toast.success('文件上传完成');
-      return confirmed;
+      return { ...confirmed, downloadUrl: signed.downloadUrl };
     } catch (failure) {
       if (operation.signal.aborted) { setPhase(transferred.current ? 'confirm-error' : 'cancelled'); }
       else { setError(failure); setPhase(transferred.current ? 'confirm-error' : 'upload-error'); }
@@ -166,28 +170,29 @@ export function IamFileUploader({ storageType: visibility = 'private', directory
     controller.current?.abort(); xhrRef.current?.abort();
   }
   return <div className="space-y-4">
-    <div {...getRootProps()} className={cn('rounded-lg border border-dashed p-6 text-center transition-colors', isDragActive ? 'border-primary bg-muted' : 'border-border bg-background')}>
+    <div {...getRootProps()} className={cn('rounded-lg transition-colors', embedded ? 'flex min-h-9 flex-wrap items-center gap-2' : compact ? 'flex min-h-20 items-center gap-3 border border-dashed px-3 py-2' : 'border border-dashed p-6 text-center', isDragActive ? 'border-primary bg-primary/5 ring-2 ring-primary/30' : !embedded && 'border-border bg-background', compact && file && 'hidden')}>
       <input {...getInputProps({ 'aria-label': '选择本地文件' })} />
-      <UploadCloud className="mx-auto mb-3 size-8 text-muted-foreground" aria-hidden="true" />
-      <p className="text-sm font-medium">{isDragActive ? '松开以选择文件' : '将文件拖到这里，或选择本地文件'}</p>
-      <p className="mt-1 text-xs text-muted-foreground">每次上传一个文件，文件名自动读取</p>
-      <Button type="button" variant="outline" className="mt-4" disabled={externalBusy || preparing || busy || needsConfirmation || !allowed} onClick={open}>{file ? '更换文件' : '选择文件'}</Button>
+      {!embedded && <UploadCloud className={cn('shrink-0 text-muted-foreground', compact ? 'size-7' : 'mx-auto mb-3 size-8')} aria-hidden="true" />}
+      <div className={compact ? 'min-w-0 flex-1' : undefined}>
+        <p className={cn('text-sm', embedded ? 'text-muted-foreground' : 'font-medium')}>{isDragActive ? '松开以选择文件' : embedded ? '拖拽图片到此处，或' : compact ? '拖拽图片到此处' : '将文件拖到这里，或选择本地文件'}</p>
+        {compact && !embedded && <p className="mt-1 text-xs text-muted-foreground">或选择本地文件</p>}
+        {!compact && <p className="mt-1 text-xs text-muted-foreground">每次上传一个文件，文件名自动读取</p>}
+      </div>
+      <Button type="button" variant="outline" size={compact ? 'sm' : 'default'} className={compact ? 'shrink-0' : 'mt-4'} disabled={externalBusy || preparing || busy || needsConfirmation || !allowed} onClick={open}>{file ? '更换文件' : embedded ? '选择图片' : '选择文件'}</Button>
     </div>
     {!allowed && authorization.data && <p className="text-sm text-muted-foreground">当前账号没有上传文件的权限。</p>}
     {file && <>
-      <div className="flex items-start gap-3 rounded-lg border p-3">
+      <div className={cn('flex w-full items-center gap-2 rounded-lg', embedded ? 'border bg-background/70 px-3 py-2' : 'max-w-xl border p-3')}>
         {phase === 'success' ? <CheckCircle2 className="mt-0.5 size-5 shrink-0" /> : <FileIcon className="mt-0.5 size-5 shrink-0 text-muted-foreground" />}
-        <div className="min-w-0 flex-1"><p className="break-all text-sm font-medium">{file.name}</p><p className="mt-1 text-xs text-muted-foreground">{sizeLabel(file.size)}</p></div>
-        <Button type="button" size="icon-sm" variant="ghost" aria-label="移除所选文件" disabled={externalBusy || preparing || busy || needsConfirmation} onClick={() => reset(null)}><X className="size-4" /></Button>
+        <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium" title={file.name}>{file.name}</p><p className="mt-1 text-xs text-muted-foreground">{sizeLabel(file.size)}</p></div>
+        {compact && <Button type="button" size="icon-sm" variant="ghost" className="shrink-0" aria-label="更换图片" title="更换图片" disabled={externalBusy || preparing || busy || needsConfirmation || !allowed} onClick={open}><RefreshCw className="size-4" /></Button>}
+        {!managed && phase !== 'success' && <Button type="button" size="sm" className="shrink-0" disabled={externalBusy || preparing || busy || !allowed} onClick={() => void run()}>{busy && <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />}{needsConfirmation ? '重试云端确认' : phase === 'upload-error' || phase === 'cancelled' ? '重新上传' : '开始上传'}</Button>}
+        {!managed && (phase === 'requesting' || phase === 'uploading') && <Button type="button" size="icon-sm" variant="outline" className="shrink-0" aria-label="取消上传" title="取消上传" onClick={cancel}><X className="size-4" /></Button>}
+        {!(phase === 'requesting' || phase === 'uploading') && <Button type="button" size="icon-sm" variant="ghost" className="shrink-0" aria-label="移除所选文件" disabled={externalBusy || preparing || busy || needsConfirmation} onClick={() => reset(null)}><X className="size-4" /></Button>}
       </div>
-      <p role="status" className="text-sm text-muted-foreground">{managed && phase === 'idle' ? '头像已选好，点击保存头像即可完成上传和保存。' : stages[phase]}</p>
-      {['uploading', 'confirming', 'success'].includes(phase) && <Progress value={progress} aria-label="文件上传进度" />}
+      {showProgress && <p role="status" className="text-sm text-muted-foreground">{managed && phase === 'idle' ? '头像已选好，点击保存头像即可完成上传和保存。' : stages[phase]}</p>}
+      {showProgress && ['uploading', 'confirming', 'success'].includes(phase) && <Progress value={progress} aria-label="文件上传进度" />}
       <ErrorNotice error={error} />
-      {!managed && <div className="flex flex-wrap gap-2">
-        {phase !== 'success' && <Button type="button" disabled={preparing || busy || !allowed} onClick={() => void run()}>{busy && <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />}{needsConfirmation ? '重试云端确认' : phase === 'upload-error' || phase === 'cancelled' ? '重新上传' : '开始上传'}</Button>}
-        {(phase === 'requesting' || phase === 'uploading') && <Button type="button" variant="outline" onClick={cancel}>取消上传</Button>}
-        {phase === 'success' && <Button type="button" variant="outline" onClick={() => reset(null)}>继续上传</Button>}
-      </div>}
 
     </>}
   </div>;

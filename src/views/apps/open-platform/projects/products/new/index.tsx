@@ -20,6 +20,7 @@ ParserProfileSelect,
 ParserProfileVersionSelect,
 } from '@/components/open-platform/parser-profile-selector';
 import { ProductBootstrapModeField } from '@/components/open-platform/product-bootstrap-mode-field';
+import { ProductIconPicker } from '@/components/open-platform/product-icon-picker';
 import { ProjectStatusBadge } from '@/components/open-platform/project-status-badge';
 import { ProjectWorkspaceShell } from '@/components/open-platform/project-workspace-shell';
 import { Button } from '@/components/ui/button';
@@ -165,6 +166,8 @@ const CreateProductPage = () => {
   const [errors, setErrors] = useState<FieldErrors>({});
   const [submitError, setSubmitError] = useState<Error | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [iconUrl, setIconUrl] = useState('');
+  const [iconPending, setIconPending] = useState(false);
 
   const canCreate = project?.status === 'ACTIVE';
   const apiError = submitError as OpenPlatformApiError | null;
@@ -179,6 +182,8 @@ const CreateProductPage = () => {
   const {
     data: selectedCategoryVersions,
     error: selectedCategoryVersionsError,
+    isLoading: selectedCategoryVersionsLoading,
+    mutate: mutateSelectedCategoryVersions,
   } = useSWR<CategoryVersionView[]>(
     selectedCategoryVersionsKey,
     openPlatformGetFetcher,
@@ -266,6 +271,8 @@ const CreateProductPage = () => {
   };
 
   const goToConnectionStep = () => {
+    if (iconPending || (categoryMode === 'STANDARD' && selectedCategoryVersionsLoading)) return;
+    if (categoryMode === 'STANDARD' && selectedCategoryVersionsError) return;
     const nextErrors = validateCurrentProduct();
     setErrors(nextErrors);
     setSubmitError(null);
@@ -294,6 +301,7 @@ const CreateProductPage = () => {
         '/api/v1/products',
         {
           productName: form.productName.trim(),
+          iconUrl: iconUrl || undefined,
           productModel: form.productModel.trim() || undefined,
           nodeType: form.nodeType,
           transport: form.transport,
@@ -460,9 +468,8 @@ const CreateProductPage = () => {
               </div>
 
               <FieldGroup>
-                {step === 1 ? (
-                  <>
-                  <div className="grid gap-5 md:grid-cols-2">
+                <div className={step === 1 ? 'grid min-w-0 gap-5' : 'hidden'}>
+                  <div className="grid min-w-0 gap-5 sm:grid-cols-2">
                   <Field data-invalid={Boolean(errors.productName) || undefined}>
                     <FieldLabel htmlFor="create-product-name">
                       产品名称 <span className="text-destructive">*</span>
@@ -501,8 +508,14 @@ const CreateProductPage = () => {
                     )}
                   </Field>
                   </div>
-
-                  <div className="rounded-lg border bg-muted/10 p-4">
+                  <div className="min-w-0">
+                    <ProductIconPicker value={iconUrl} onChange={setIconUrl} onPendingChange={setIconPending} />
+                  </div>
+                </div>
+                {step === 1 ? (
+                  <>
+                  <div className="grid min-w-0 gap-2 sm:grid-cols-2">
+                  <div className="min-w-0 rounded-lg border bg-muted/10 p-4">
                   <p className="text-sm font-medium">品类来源</p>
                   <p className="mt-1 text-xs text-muted-foreground">
                     标准产品选择平台品类模板；自定义产品不绑定模板，创建后自行定义物模型。
@@ -517,7 +530,7 @@ const CreateProductPage = () => {
                     }}
                     className="mt-4 flex-col gap-3"
                   >
-                    <div className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(16rem,0.9fr)]">
+                    <div className="min-w-0">
                       <TabsList variant="line" className="h-8 w-full justify-start border-b">
                         <TabsTrigger value="STANDARD" className="h-8 px-3 text-xs">
                           标准品类
@@ -529,7 +542,7 @@ const CreateProductPage = () => {
                     </div>
 
                     <TabsContent value="STANDARD" className="mt-0 min-w-0 flex-col">
-                      <div className="grid items-stretch gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(16rem,0.9fr)]">
+                      <div className="min-w-0">
                         <Field data-invalid={Boolean(errors.categoryCode) || undefined}>
                           {categoriesError ? (
                             <ApiErrorAlert
@@ -538,7 +551,10 @@ const CreateProductPage = () => {
                               onRetry={() => void mutateCategories()}
                             />
                           ) : categoriesLoading && !categories ? (
-                            <div className="space-y-3">
+                            <div className="space-y-3" aria-busy="true">
+                              <p role="status" className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <Spinner aria-hidden="true" />正在加载品类…
+                              </p>
                               <Skeleton className="h-9 w-full" />
                               <Skeleton className="h-9 w-full" />
                               <Skeleton className="h-9 w-11/12" />
@@ -560,21 +576,7 @@ const CreateProductPage = () => {
                           ) : null}
                         </Field>
 
-                        <div className="flex h-full min-h-0 min-w-0 flex-col">
-                          <div className="min-h-0 flex-1 [&>div]:h-full">
-                            {selectedCategoryVersionsError ? (
-                              <ApiErrorAlert
-                                code={selectedVersionsApiError?.code}
-                                message={selectedCategoryVersionsError.message}
-                              />
-                            ) : (
-                              <CategoryDetails
-                                category={selectedCategory}
-                                versions={selectedCategoryVersions}
-                              />
-                            )}
-                          </div>
-                        </div>
+
                       </div>
                     </TabsContent>
 
@@ -588,6 +590,30 @@ const CreateProductPage = () => {
                       </div>
                     </TabsContent>
                   </Tabs>
+                  </div>
+                  {categoryMode === 'STANDARD' ? (
+                        <div className="flex h-full min-h-0 min-w-0 flex-col">
+                          <div className="min-h-0 flex-1 [&>div]:h-full">
+                            {selectedCategoryVersionsError ? (
+                              <ApiErrorAlert
+                                code={selectedVersionsApiError?.code}
+                                message={selectedCategoryVersionsError.message}
+                                onRetry={() => void mutateSelectedCategoryVersions()}
+                              />
+                            ) : (
+                              <CategoryDetails
+                                category={selectedCategory}
+                                versions={selectedCategoryVersions}
+                                loading={selectedCategoryVersionsLoading}
+                              />
+                            )}
+                          </div>
+                        </div>
+                  ) : (
+                    <div className="flex items-center justify-center rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+                      自定义产品不绑定品类模板，创建后可在物模型中添加属性、动作和事件。
+                    </div>
+                  )}
                   </div>
                   </>
                 ) : (
@@ -813,7 +839,7 @@ const CreateProductPage = () => {
                     type="button"
                     className="gap-1"
                     onClick={goToConnectionStep}
-                    disabled={submitting || !canCreate}
+                    disabled={submitting || !canCreate || iconPending || (categoryMode === 'STANDARD' && (selectedCategoryVersionsLoading || !!selectedCategoryVersionsError))}
                   >
                     下一步：配置连接
                     <ChevronRight className="size-3.5" aria-hidden />

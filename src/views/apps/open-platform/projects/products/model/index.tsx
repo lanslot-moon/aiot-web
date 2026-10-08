@@ -20,6 +20,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 import useSWR from 'swr';
+import { RequestLoading } from '@/components/shared/request-feedback';
 
 import { ApiErrorAlert } from '@/components/open-platform/api-error-alert';
 import { CopyIdButton } from '@/components/open-platform/copy-id-button';
@@ -544,13 +545,14 @@ const ProductModelPage = () => {
   } = useSWR<ModelDraftView | null>(productId ? modelKey(productId) : null, openPlatformGetFetcher);
   const {
     data: published,
+    error: publishedError,
     isLoading: publishedLoading,
     mutate: mutatePublished,
   } = useSWR<ThingModelDefinition | null>(
     productId ? publishedKey(productId) : null,
     openPlatformGetFetcher,
   );
-  const { data: versions, mutate: mutateVersions } = useSWR<ModelVersionView[]>(
+  const { data: versions, isLoading: versionsLoading, error: versionsError, mutate: mutateVersions } = useSWR<ModelVersionView[]>(
     productId ? versionsKey(productId) : null,
     openPlatformGetFetcher,
   );
@@ -562,7 +564,7 @@ const ProductModelPage = () => {
     () => [...publishedVersions].sort((left, right) => left.modelRevision - right.modelRevision),
     [publishedVersions],
   );
-  const { data: validation, mutate: mutateValidation } = useSWR<SchemaValidationView | null>(
+  const { data: validation, isLoading: validationLoading, error: validationError, mutate: mutateValidation } = useSWR<SchemaValidationView | null>(
     productId ? validationKey(productId) : null,
     openPlatformGetFetcher,
   );
@@ -623,7 +625,7 @@ const ProductModelPage = () => {
   );
   const versionDetailKey =
     viewingRevision != null ? `${modelKey(productId)}/versions/${viewingRevision}` : null;
-  const { data: versionDetail, isLoading: versionDetailLoading } = useSWR<ThingModelDefinition>(
+  const { data: versionDetail, error: versionDetailError, isLoading: versionDetailLoading } = useSWR<ThingModelDefinition>(
     versionDetailKey,
     openPlatformGetFetcher,
   );
@@ -1113,7 +1115,7 @@ const ProductModelPage = () => {
                   ) : null}
                 </CardHeader>
                 <CardContent className="space-y-4 py-4">
-                  {((draftLoading && draft === undefined) ||
+                  {(draftError && !publishedOnly) || publishedError ? <ApiErrorAlert message={((draftError && !publishedOnly ? draftError : publishedError) as Error).message} /> : ((draftLoading && draft === undefined) ||
                     (publishedLoading && published === undefined)) ? (
                     <div className="space-y-3">
                       <Skeleton className="h-14 w-full" />
@@ -1126,7 +1128,7 @@ const ProductModelPage = () => {
                         onRemove={draft && !readOnlyDefinition ? requestCapabilityRemoval : undefined}
                         onAdd={draft && !readOnlyDefinition ? openCapabilityDialog : undefined}
                       />
-                      <ValidationResult result={readOnlyDefinition ? null : validation} />
+                      {!readOnlyDefinition && validationError ? <ApiErrorAlert message={(validationError as Error).message} /> : !readOnlyDefinition && validationLoading ? <RequestLoading label="正在加载校验结果…" /> : <ValidationResult result={readOnlyDefinition ? null : validation} />}
                     </>
                   ) : publishedOnly ? (
                     <div className="flex min-h-64 flex-col items-center justify-center rounded-lg border border-dashed px-5 text-center">
@@ -1197,7 +1199,7 @@ const ProductModelPage = () => {
                     </div>
                   </CardHeader>
                   <CardContent>
-                    {published ? (
+                    {publishedError ? <ApiErrorAlert message={(publishedError as Error).message} /> : publishedLoading ? <RequestLoading label="正在加载已发布物模型…" /> : published ? (
                       <div className="space-y-3 rounded-lg border border-emerald-500/40 bg-emerald-500/[0.05] px-3 py-3 text-sm shadow-sm dark:bg-emerald-500/[0.1]">
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <div className="flex items-center gap-2">
@@ -1241,7 +1243,7 @@ const ProductModelPage = () => {
                     </div>
                   </CardHeader>
                   <CardContent>
-                    {orderedVersions.length > 0 ? (
+                    {versionsError ? <ApiErrorAlert message={(versionsError as Error).message} /> : versionsLoading ? <RequestLoading label="正在加载版本历史…" /> : orderedVersions.length > 0 ? (
                       <div className="space-y-2">
                         {orderedVersions.slice().reverse().map((version) => (
                           <div key={version.modelRevision} className="rounded-lg border px-3 py-2.5">
@@ -1293,8 +1295,8 @@ const ProductModelPage = () => {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  {versionDetailLoading ? (
-                    <Skeleton className="h-48 w-full" />
+                  {versionDetailError ? <ApiErrorAlert message={(versionDetailError as Error).message} /> : versionDetailLoading ? (
+                    <RequestLoading label="正在加载版本定义…" />
                   ) : versionDetail ? (
                     <ThingModelCapabilityTabs definition={versionDetail} />
                   ) : (
@@ -1580,7 +1582,7 @@ const ProductModelPage = () => {
                 )}
               </div>
             ) : (
-              <Skeleton className="h-28 w-full" />
+              <RequestLoading label="正在加载品类合并预览…" />
             )}
           </div>
           <DialogFooter>
@@ -1671,7 +1673,7 @@ const ProductModelPage = () => {
                 </div>
               </div>
             ) : (
-              <Skeleton className="h-36 w-full" />
+              <RequestLoading label="正在比较物模型版本…" />
             )}
           </div>
           <DialogFooter>

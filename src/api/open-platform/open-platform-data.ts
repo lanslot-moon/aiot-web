@@ -4411,6 +4411,7 @@ export const OpenPlatformHandlers = [
         projectId,
         productId: newId('prod'),
         productName,
+        iconUrl: body?.iconUrl?.trim() || null,
         productModel: productModel || null,
         categoryCode,
         categoryName: categoryType === 'CUSTOM' ? '自定义品类' : categoryLabel(category!),

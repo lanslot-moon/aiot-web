@@ -14,7 +14,7 @@ TestTube2,
 Trash2,
 XCircle,
 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { toast } from 'sonner';
 import useSWR from 'swr';
@@ -46,7 +46,7 @@ DialogTitle,
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Skeleton } from '@/components/ui/skeleton';
+import { RequestLoading } from '@/components/shared/request-feedback';
 import { Textarea } from '@/components/ui/textarea';
 import { OpenPlatformApiError, openPlatformDelete, openPlatformGetFetcher, openPlatformPost, openPlatformPut } from '../../../../../context/open-platform-context/project-resources';
 
@@ -139,13 +139,13 @@ const ParserProfileDetailPage = () => {
   const profileListPath = `/projects/${projectId}/parser-profiles`;
   const profileKey = profileId ? `/api/v1/parser-profiles/${profileId}` : null;
   const versionsKey = profileId ? `/api/v1/parser-profiles/${profileId}/versions` : null;
-  const { data: profile, error: profileError, mutate: mutateProfile } = useSWR<ParserProfileView>(profileKey, openPlatformGetFetcher);
-  const { data: versions, error: versionsError, mutate: mutateVersions } = useSWR<ParserProfileVersionView[]>(versionsKey, openPlatformGetFetcher);
+  const { data: profile, isLoading: profileLoading, error: profileError, mutate: mutateProfile } = useSWR<ParserProfileView>(profileKey, openPlatformGetFetcher);
+  const { data: versions, isLoading: versionsLoading, error: versionsError, mutate: mutateVersions } = useSWR<ParserProfileVersionView[]>(versionsKey, openPlatformGetFetcher);
   const [selectedVersion, setSelectedVersion] = useState('');
   const selectedVersionKey = profileId && selectedVersion
     ? `/api/v1/parser-profiles/${profileId}/versions/${encodeURIComponent(selectedVersion)}`
     : null;
-  const { data: versionDetail, error: versionError, mutate: mutateVersion } = useSWR<ParserProfileVersionView>(selectedVersionKey, openPlatformGetFetcher);
+  const { data: versionDetail, isLoading: versionLoading, error: versionError, mutate: mutateVersion } = useSWR<ParserProfileVersionView>(selectedVersionKey, openPlatformGetFetcher);
   const [rows, setRows] = useState<MappingRow[]>([]);
   const [codecText, setCodecText] = useState('');
   const [validation, setValidation] = useState<ParserProfileValidationView | null>(null);
@@ -169,17 +169,18 @@ const ParserProfileDetailPage = () => {
   const apiError = (profileError ?? versionsError ?? versionError) as OpenPlatformApiError | undefined;
   const version = versionDetail;
   const isDraft = version?.versionStatus === 'DRAFT';
-  const loadingVersion = versions === undefined || Boolean(selectedVersion && !version && !versionError);
+  const loadingVersion = versionsLoading || versionLoading || Boolean(versions?.length && !selectedVersion);
   const sortedVersions = useMemo(() => versions ?? [], [versions]);
 
   useEffect(() => {
     if (!selectedVersion && sortedVersions[0]) setSelectedVersion(sortedVersions[0].profileVersion);
-    if (selectedVersion && !sortedVersions.some((item) => item.profileVersion === selectedVersion)) {
+    if (versions && selectedVersion && !sortedVersions.some((item) => item.profileVersion === selectedVersion)) {
       setSelectedVersion(sortedVersions[0]?.profileVersion ?? '');
     }
-  }, [selectedVersion, sortedVersions]);
+  }, [selectedVersion, sortedVersions, versions]);
 
-  useEffect(() => {
+  // Hydrate the editor before painting the fetched version, so empty local rows do not flash.
+  useLayoutEffect(() => {
     if (!version) return;
     setRows(rowsFromMapping(version.mapping));
     setCodecText(prettyJson(version.mapping.codec ?? {}));
@@ -383,7 +384,7 @@ const ParserProfileDetailPage = () => {
 
   if (!profile && profileError) {
     return (
-      <StyleAwareWrapper lyraClassName="flex min-h-full flex-col gap-4 p-4 lg:p-6">
+      <StyleAwareWrapper lyraClassName="flex flex-col gap-px bg-border p-px" defaultClassName="flex flex-col gap-4">
         <ProjectWorkspaceShell activePrimary="parserProfiles">
           <ApiErrorAlert code={apiError?.code} message={apiError?.message} />
         </ProjectWorkspaceShell>
@@ -393,30 +394,26 @@ const ParserProfileDetailPage = () => {
 
   return (
     <StyleAwareWrapper
-      lyraClassName="flex min-h-full flex-col gap-px bg-border p-px"
-      defaultClassName="flex min-h-full flex-col gap-4 p-4 lg:p-6"
+      lyraClassName="flex flex-col gap-px bg-border p-px"
+      defaultClassName="flex flex-col gap-4"
     >
       <BreadcrumbComp title="协议解析详情" items={[{ to: profileListPath, title: '协议解析' }, { title: profile?.profileName ?? '详情' }]} />
       <ProjectWorkspaceShell activePrimary="parserProfiles">
         {apiError ? <ApiErrorAlert code={apiError.code} message={apiError.message} /> : null}
-        {!profile ? <Skeleton className="h-32 w-full" /> : (
-        <>
-          <Card>
-            <CardContent className="flex flex-wrap items-start justify-between gap-4 p-4">
-              <div className="flex min-w-0 items-start gap-3">
-                <Button type="button" variant="ghost" size="icon-sm" nativeButton={false} render={<Link to={profileListPath} />} aria-label="返回 Profile 列表"><ArrowLeft className="size-4" aria-hidden /></Button>
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2"><h1 className="text-xl font-semibold">{profile.profileName}</h1><Badge variant="outline">{profile.protocolCode}</Badge></div>
+        {profileLoading ? <RequestLoading label="正在加载 Profile…" /> : profile ? (
+        <div className="space-y-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
+                <Button type="button" variant="ghost" size="sm" className="-ml-2 mb-1 gap-1 px-2 text-muted-foreground" nativeButton={false} render={<Link to={profileListPath} />}><ArrowLeft className="size-3.5" aria-hidden />返回协议解析</Button>
+                  <div className="flex flex-wrap items-center gap-2"><h1 className="text-lg font-semibold tracking-tight">{profile.profileName}</h1><Badge variant="outline">{profile.protocolCode}</Badge></div>
                   <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground"><span className="font-mono">{profile.profileId}</span><span>·</span><span>当前发布：{profile.currentVersion ? `v${profile.currentVersion}` : '暂无'}</span></div>
-                  <p className="mt-2 text-xs text-muted-foreground">Profile 本身无草稿状态，草稿、已发布和已废弃状态仅属于版本映射。</p>
-                </div>
+                  <p className="mt-2 text-xs text-muted-foreground">版本映射支持草稿编辑、校验和发布。</p>
               </div>
               <div className="flex flex-wrap gap-2">
                 <Button type="button" variant="outline" className="gap-1.5" onClick={() => setEditOpen(true)}><Pencil className="size-4" aria-hidden />编辑信息</Button>
                 <Button type="button" variant="destructive" className="gap-1.5" onClick={() => setConfirmAction('delete')}><Trash2 className="size-4" aria-hidden />删除</Button>
               </div>
-            </CardContent>
-          </Card>
+            </div>
 
           <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
             <div className="min-w-0 space-y-4">
@@ -431,7 +428,7 @@ const ParserProfileDetailPage = () => {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {loadingVersion ? <Skeleton className="h-64 w-full" /> : version ? (
+                  {versionsError || versionError ? <ApiErrorAlert message={((versionsError || versionError) as Error).message} /> : loadingVersion ? <RequestLoading label="正在加载版本映射…" /> : version ? (
                     <>
                       <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/20 px-3 py-2 text-sm"><span className="font-medium">版本 {version.profileVersion}</span><Badge className={statusClass(version.versionStatus)} variant="outline">{statusLabel(version.versionStatus)}</Badge><span className="text-xs text-muted-foreground">发布时间 {formatDate(version.publishedAt)}</span></div>
                       <div className="flex items-center justify-between"><div><h3 className="text-sm font-medium">字段映射</h3><p className="text-xs text-muted-foreground">source key 是厂商报文字段或路径。</p></div><Button type="button" variant="outline" size="sm" className="gap-1.5" disabled={!isDraft} onClick={() => setRows((current) => [...current, { source: '', rule: { code: '', type: 'STRING', sourcePath: '', direction: 'UPLINK' } }])}><Plus className="size-4" aria-hidden />添加映射</Button></div>
@@ -448,7 +445,7 @@ const ParserProfileDetailPage = () => {
                         ))}
                       </div>
                       <div className="grid gap-2"><Label htmlFor="profile-codec">Codec 配置（JSON，可选）</Label><Textarea id="profile-codec" value={codecText} disabled={!isDraft} onChange={(event) => setCodecText(event.target.value)} className="min-h-28 font-mono text-xs" placeholder={'{\n  "textEncoding": "UTF-8"\n}'} /></div>
-                      {validation ? <div className={`rounded-lg border px-3 py-3 text-sm ${validation.valid ? 'border-emerald-500/30 bg-emerald-500/10' : 'border-destructive/30 bg-destructive/10'}`}><div className="flex items-center gap-2 font-medium">{validation.valid ? <CheckCircle2 className="size-4 text-emerald-600" aria-hidden /> : <XCircle className="size-4 text-destructive" aria-hidden />}{validation.valid ? '映射校验通过' : '映射校验未通过'}</div>{validation.details?.length ? <ul className="mt-2 space-y-1 text-xs text-muted-foreground">{validation.details.map((item, index) => <li key={`${item.instanceLocation}-${index}`}>{item.instanceLocation ?? '$'}：{item.message}</li>)}</ul> : null}</div> : null}
+                      {busy === 'validate' ? <RequestLoading label="正在校验映射…" /> : validation ? <div className={`rounded-lg border px-3 py-3 text-sm ${validation.valid ? 'border-emerald-500/30 bg-emerald-500/10' : 'border-destructive/30 bg-destructive/10'}`}><div className="flex items-center gap-2 font-medium">{validation.valid ? <CheckCircle2 className="size-4 text-emerald-600" aria-hidden /> : <XCircle className="size-4 text-destructive" aria-hidden />}{validation.valid ? '映射校验通过' : '映射校验未通过'}</div>{validation.details?.length ? <ul className="mt-2 space-y-1 text-xs text-muted-foreground">{validation.details.map((item, index) => <li key={`${item.instanceLocation}-${index}`}>{item.instanceLocation ?? '$'}：{item.message}</li>)}</ul> : null}</div> : null}
                     </>
                   ) : (
                     <div className="flex min-h-64 flex-col items-center justify-center gap-3 rounded-lg border border-dashed px-4 py-10 text-center">
@@ -467,7 +464,7 @@ const ParserProfileDetailPage = () => {
                 <CardHeader><CardTitle className="flex items-center gap-2"><TestTube2 className="size-4" aria-hidden />报文测试</CardTitle><CardDescription>使用真实报文样例验证映射结果；失败时可选择保存样本。</CardDescription></CardHeader>
                 <CardContent className="grid gap-4 lg:grid-cols-2">
                   <div className="space-y-3"><div className="grid gap-2"><Label>方向<Select value={testDirection} onValueChange={(value) => setTestDirection(value as ParserProfileDirection)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{DIRECTION_OPTIONS.map((direction) => <SelectItem key={direction} value={direction}>{DIRECTION_LABEL[direction]}</SelectItem>)}</SelectContent></Select></Label></div><div className="grid gap-2"><Label htmlFor="profile-test-payload">输入报文（JSON）</Label><Textarea id="profile-test-payload" value={payloadText} onChange={(event) => setPayloadText(event.target.value)} className="min-h-48 font-mono text-xs" /></div><Button type="button" className="gap-1.5" onClick={() => void testMapping()} disabled={!version || busy != null}><TestTube2 className="size-4" aria-hidden />{busy === 'test' ? '测试中…' : '运行测试'}</Button></div>
-                  <div className="rounded-lg border bg-muted/20 p-3">{testResult ? <div className="space-y-3"><div className="flex items-center gap-2">{testResult.success ? <CheckCircle2 className="size-4 text-emerald-600" aria-hidden /> : <XCircle className="size-4 text-destructive" aria-hidden />}<span className="font-medium">{testResult.success ? '解析成功' : '解析存在问题'}</span></div><div><div className="mb-1 text-xs text-muted-foreground">映射结果</div><pre className="max-h-40 overflow-auto rounded-md border bg-background p-2 text-xs">{prettyJson(testResult.mapped)}</pre></div>{testResult.issues.length ? <div><div className="mb-1 text-xs text-muted-foreground">问题</div><ul className="space-y-1 text-xs text-destructive">{testResult.issues.map((issue) => <li key={`${issue.code}-${issue.message}`}>{issue.message}</li>)}</ul></div> : null}</div> : <div className="flex min-h-48 items-center justify-center text-center text-sm text-muted-foreground">运行测试后在这里查看映射结果。</div>}</div>
+                  <div className="rounded-lg border bg-muted/20 p-3">{busy === 'test' ? <RequestLoading label="正在解析报文…" /> : testResult ? <div className="space-y-3"><div className="flex items-center gap-2">{testResult.success ? <CheckCircle2 className="size-4 text-emerald-600" aria-hidden /> : <XCircle className="size-4 text-destructive" aria-hidden />}<span className="font-medium">{testResult.success ? '解析成功' : '解析存在问题'}</span></div><div><div className="mb-1 text-xs text-muted-foreground">映射结果</div><pre className="max-h-40 overflow-auto rounded-md border bg-background p-2 text-xs">{prettyJson(testResult.mapped)}</pre></div>{testResult.issues.length ? <div><div className="mb-1 text-xs text-muted-foreground">问题</div><ul className="space-y-1 text-xs text-destructive">{testResult.issues.map((issue) => <li key={`${issue.code}-${issue.message}`}>{issue.message}</li>)}</ul></div> : null}</div> : <div className="flex min-h-48 items-center justify-center text-center text-sm text-muted-foreground">运行测试后在这里查看映射结果。</div>}</div>
                 </CardContent>
               </Card>
             </div>
@@ -476,21 +473,21 @@ const ParserProfileDetailPage = () => {
               <Card>
                 <CardHeader className="flex flex-row items-start justify-between gap-3"><div><CardTitle className="flex items-center gap-2"><History className="size-4" aria-hidden />版本历史</CardTitle><CardDescription>草稿、已发布和已废弃版本都会保留。</CardDescription></div><Button type="button" size="icon-sm" variant="outline" aria-label="新建版本" onClick={openCreateVersion}><Plus className="size-4" aria-hidden /></Button></CardHeader>
                 <CardContent className="space-y-2">
-                  {sortedVersions.map((item) => <button key={item.profileVersion} type="button" onClick={() => setSelectedVersion(item.profileVersion)} className={`w-full rounded-lg border p-3 text-left transition-colors ${selectedVersion === item.profileVersion ? 'border-primary bg-primary/5' : 'hover:bg-muted/30'}`}><div className="flex items-center justify-between gap-2"><span className="font-medium">v{item.profileVersion}</span><Badge variant="outline" className={statusClass(item.versionStatus)}>{statusLabel(item.versionStatus)}</Badge></div><div className="mt-1 text-xs text-muted-foreground">发布时间：{formatDate(item.publishedAt)}</div><div className="mt-1 truncate font-mono text-[11px] text-muted-foreground">{item.versionDigest || '尚未生成摘要'}</div></button>)}
-                  {!sortedVersions.length ? <div className="rounded-lg border border-dashed px-3 py-8 text-center text-sm text-muted-foreground">还没有版本。</div> : null}
+                  {versionsLoading ? <RequestLoading label="正在加载版本历史…" /> : versionsError ? <ApiErrorAlert message={(versionsError as Error).message} /> : sortedVersions.map((item) => <button key={item.profileVersion} type="button" onClick={() => setSelectedVersion(item.profileVersion)} className={`w-full rounded-lg border p-3 text-left transition-colors ${selectedVersion === item.profileVersion ? 'border-primary bg-primary/5' : 'hover:bg-muted/30'}`}><div className="flex items-center justify-between gap-2"><span className="font-medium">v{item.profileVersion}</span><Badge variant="outline" className={statusClass(item.versionStatus)}>{statusLabel(item.versionStatus)}</Badge></div><div className="mt-1 text-xs text-muted-foreground">发布时间：{formatDate(item.publishedAt)}</div><div className="mt-1 truncate font-mono text-[11px] text-muted-foreground">{item.versionDigest || '尚未生成摘要'}</div></button>)}
+                  {!versionsLoading && !versionsError && !sortedVersions.length ? <div className="rounded-lg border border-dashed px-3 py-8 text-center text-sm text-muted-foreground">还没有版本。</div> : null}
                   <div className="grid grid-cols-2 gap-2 pt-2"><Button type="button" variant="outline" size="sm" className="gap-1.5" disabled={!version} onClick={() => { setRollbackTarget(`${version?.profileVersion ?? ''}-copy`); setRollbackOpen(true); }}><RotateCcw className="size-3.5" aria-hidden />复制为草稿</Button><Button type="button" variant="outline" size="sm" className="gap-1.5" disabled={sortedVersions.length < 2} onClick={() => { setDiffFrom(sortedVersions[1]?.profileVersion ?? ''); setDiffTo(sortedVersions[0]?.profileVersion ?? ''); setDiff(null); setDiffOpen(true); }}><GitCompare className="size-3.5" aria-hidden />版本比较</Button></div>
                 </CardContent>
               </Card>
               <Card><CardHeader><CardTitle>生命周期说明</CardTitle></CardHeader><CardContent className="space-y-2 text-xs text-muted-foreground"><p>草稿可反复保存和校验，发布后映射内容与摘要会锁定。</p><p>同一 Profile 同时只允许一个已发布版本；发布新版本会将旧版本标记为已废弃。</p><p>产品使用自定义报文时，必须绑定这里的已发布版本。</p></CardContent></Card>
             </aside>
           </div>
-        </>
-        )}
+        </div>
+        ) : null}
       </ProjectWorkspaceShell>
 
       <Dialog open={createVersionOpen} onOpenChange={setCreateVersionOpen}><DialogContent className="sm:max-w-md"><DialogHeader><DialogTitle>新建版本草稿</DialogTitle><DialogDescription>版本号由你定义，例如 1.2 或 2026.08。</DialogDescription></DialogHeader><div className="grid gap-2"><Label htmlFor="new-profile-version">版本号</Label><Input id="new-profile-version" value={newVersion} onChange={(event) => setNewVersion(event.target.value)} placeholder="1.2" className="font-mono" /></div><DialogFooter><Button type="button" variant="outline" onClick={() => setCreateVersionOpen(false)}>取消</Button><Button type="button" onClick={() => void createVersion()} disabled={busy != null}>{busy === 'create-version' ? '创建中…' : '创建草稿'}</Button></DialogFooter></DialogContent></Dialog>
       <Dialog open={rollbackOpen} onOpenChange={setRollbackOpen}><DialogContent className="sm:max-w-md"><DialogHeader><DialogTitle>复制为草稿</DialogTitle><DialogDescription>复制当前版本的完整映射，生成一个新的可编辑草稿。</DialogDescription></DialogHeader><div className="grid gap-2"><Label htmlFor="rollback-target">目标版本号</Label><Input id="rollback-target" value={rollbackTarget} onChange={(event) => setRollbackTarget(event.target.value)} className="font-mono" /></div><DialogFooter><Button type="button" variant="outline" onClick={() => setRollbackOpen(false)}>取消</Button><Button type="button" onClick={() => void rollback()} disabled={busy != null}>{busy === 'rollback' ? '复制中…' : '复制草稿'}</Button></DialogFooter></DialogContent></Dialog>
-      <Dialog open={diffOpen} onOpenChange={setDiffOpen}><DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto !max-w-[min(94vw,896px)]"><DialogHeader><DialogTitle className="flex items-center gap-2"><GitCompare className="size-4" aria-hidden />比较 Profile 版本</DialogTitle><DialogDescription>按映射项展示新增、删除和字段级修改。</DialogDescription></DialogHeader><div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]"><Label>基线版本<Select value={diffFrom} onValueChange={(value) => setDiffFrom(value ?? '')}><SelectTrigger><SelectValue placeholder="选择版本" /></SelectTrigger><SelectContent>{sortedVersions.map((item) => <SelectItem key={item.profileVersion} value={item.profileVersion}>v{item.profileVersion} · {statusLabel(item.versionStatus)}</SelectItem>)}</SelectContent></Select></Label><Label>目标版本<Select value={diffTo} onValueChange={(value) => setDiffTo(value ?? '')}><SelectTrigger><SelectValue placeholder="选择版本" /></SelectTrigger><SelectContent>{sortedVersions.map((item) => <SelectItem key={item.profileVersion} value={item.profileVersion}>v{item.profileVersion} · {statusLabel(item.versionStatus)}</SelectItem>)}</SelectContent></Select></Label><Button type="button" className="self-end gap-1.5" onClick={() => void compareVersions()} disabled={busy === 'diff'}><RefreshCw className="size-4" aria-hidden />比较</Button></div>{diff ? <div className="grid gap-3 md:grid-cols-3"><DiffGroup title="新增映射" items={diff.added} tone="emerald" /><DiffGroup title="删除映射" items={diff.removed} tone="red" /><DiffGroup title="修改映射" items={diff.modified} tone="amber" /></div> : <div className="rounded-lg border border-dashed px-4 py-12 text-center text-sm text-muted-foreground">选择两个版本后开始比较。</div>}</DialogContent></Dialog>
+      <Dialog open={diffOpen} onOpenChange={setDiffOpen}><DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto !max-w-[min(94vw,896px)]"><DialogHeader><DialogTitle className="flex items-center gap-2"><GitCompare className="size-4" aria-hidden />比较 Profile 版本</DialogTitle><DialogDescription>按映射项展示新增、删除和字段级修改。</DialogDescription></DialogHeader><div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]"><Label>基线版本<Select value={diffFrom} onValueChange={(value) => setDiffFrom(value ?? '')}><SelectTrigger><SelectValue placeholder="选择版本" /></SelectTrigger><SelectContent>{sortedVersions.map((item) => <SelectItem key={item.profileVersion} value={item.profileVersion}>v{item.profileVersion} · {statusLabel(item.versionStatus)}</SelectItem>)}</SelectContent></Select></Label><Label>目标版本<Select value={diffTo} onValueChange={(value) => setDiffTo(value ?? '')}><SelectTrigger><SelectValue placeholder="选择版本" /></SelectTrigger><SelectContent>{sortedVersions.map((item) => <SelectItem key={item.profileVersion} value={item.profileVersion}>v{item.profileVersion} · {statusLabel(item.versionStatus)}</SelectItem>)}</SelectContent></Select></Label><Button type="button" className="self-end gap-1.5" onClick={() => void compareVersions()} disabled={busy === 'diff'}><RefreshCw className="size-4" aria-hidden />比较</Button></div>{busy === 'diff' ? <RequestLoading label="正在比较版本…" /> : diff ? <div className="grid gap-3 md:grid-cols-3"><DiffGroup title="新增映射" items={diff.added} tone="emerald" /><DiffGroup title="删除映射" items={diff.removed} tone="red" /><DiffGroup title="修改映射" items={diff.modified} tone="amber" /></div> : <div className="rounded-lg border border-dashed px-4 py-12 text-center text-sm text-muted-foreground">选择两个版本后开始比较。</div>}</DialogContent></Dialog>
       <Dialog open={editOpen} onOpenChange={setEditOpen}><DialogContent className="sm:max-w-lg"><DialogHeader><DialogTitle>编辑 Profile 信息</DialogTitle><DialogDescription>元数据变更不会改写任何版本映射。</DialogDescription></DialogHeader><div className="grid gap-4"><Label>Profile 名称<Input value={editName} onChange={(event) => setEditName(event.target.value)} /></Label><Label>协议编码<Input value={editProtocol} onChange={(event) => setEditProtocol(event.target.value)} className="font-mono" /></Label></div><DialogFooter><Button type="button" variant="outline" onClick={() => setEditOpen(false)}>取消</Button><Button type="button" onClick={() => void saveMetadata()} disabled={busy != null}>{busy === 'metadata' ? '保存中…' : '保存'}</Button></DialogFooter></DialogContent></Dialog>
 
       <AlertDialog open={confirmAction != null} onOpenChange={(open) => !open && setConfirmAction(null)}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>{confirmAction === 'publish' ? `确认发布 v${version?.profileVersion}？` : confirmAction === 'deprecate' ? `确认废弃 v${version?.profileVersion}？` : '确认删除 Parser Profile？'}</AlertDialogTitle><AlertDialogDescription>{confirmAction === 'publish' ? '发布后该版本映射不可再编辑，并会成为产品可绑定的版本。' : confirmAction === 'deprecate' ? '废弃后该版本不能再作为新的产品绑定版本，但历史内容仍会保留。' : `将删除“${profile?.profileName}”及其版本入口；已被产品引用时删除会被拒绝。`}</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel disabled={busy != null}>取消</AlertDialogCancel><AlertDialogAction variant={confirmAction === 'delete' ? 'destructive' : 'default'} onClick={() => { if (confirmAction === 'publish') void runPublish(); else if (confirmAction === 'deprecate') void runDeprecate(); else void deleteProfile(); }} disabled={busy != null}>{confirmAction === 'publish' ? '确认发布' : confirmAction === 'deprecate' ? '确认废弃' : '确认删除'}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>

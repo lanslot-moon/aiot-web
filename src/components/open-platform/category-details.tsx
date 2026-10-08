@@ -9,6 +9,8 @@ import {
 } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
 import {
   Card,
   CardContent,
@@ -477,10 +479,12 @@ export function CategoryDetails({
   category,
   versions = [],
   compact = false,
+  loading = false,
 }: {
   category?: CategoryView;
   versions?: CategoryVersionView[];
   compact?: boolean;
+  loading?: boolean;
 }) {
   if (!category) {
     return (
@@ -518,7 +522,20 @@ export function CategoryDetails({
           </Badge>
         </div>
       </CardHeader>
-      <CardContent className="space-y-3 px-4 py-3">
+      <CardContent className="space-y-3 px-4 py-3" aria-busy={loading}>
+        {loading ? (
+          <div className="space-y-3">
+            <p role="status" className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Spinner aria-hidden="true" />
+              正在加载品类能力…
+            </p>
+            <div aria-hidden="true" className="space-y-3">
+              <Skeleton className="h-16 w-full" />
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-24 w-full" />
+            </div>
+          </div>
+        ) : <>
         {category.leaf ? (
           <div className="rounded-lg border bg-muted/20 px-3 py-2.5">
             <div>
@@ -554,6 +571,7 @@ export function CategoryDetails({
             完整能力定义可在“品类”中查看。
           </p>
         ) : null}
+        </>}
       </CardContent>
     </Card>
   );

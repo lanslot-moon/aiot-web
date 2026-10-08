@@ -5,6 +5,7 @@ import useSWR from 'swr';
 
 import { ApiErrorAlert } from '@/components/open-platform/api-error-alert';
 import { CategoryDetails } from '@/components/open-platform/category-details';
+import { Spinner } from '@/components/ui/spinner';
 import { CategoryTree } from '@/components/open-platform/category-tree';
 import { ProjectWorkspaceShell } from '@/components/open-platform/project-workspace-shell';
 import StyleAwareWrapper from '@/components/shared/StyleAwareWrapper';
@@ -159,7 +160,10 @@ const CategoryCatalogPage = () => {
                 />
               ) : (detailLoading || versionsLoading) && categoryCode ? (
                 <Card className="gap-0 py-0">
-                  <CardContent className="space-y-4 py-5">
+                  <CardContent className="space-y-4 py-5" aria-busy="true">
+                    <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Spinner aria-hidden="true" />正在加载品类详情…
+                    </p>
                     <Skeleton className="h-6 w-40" />
                     <Skeleton className="h-4 w-64" />
                     <Skeleton className="h-24 w-full" />
