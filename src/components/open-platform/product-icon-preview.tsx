@@ -1,12 +1,31 @@
-import { Loader2, Package, ZoomIn } from 'lucide-react';
+import { Loader2, Package, Pencil, ZoomIn } from 'lucide-react';
 import { useState } from 'react';
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { cn } from '@/lib/utils';
 
-export function ProductIconPreview({ iconUrl, productName }: { iconUrl?: string | null; productName: string }) {
+export function ProductIconPreview({ iconUrl, productName, onEdit, disabled = false }: {
+  iconUrl?: string | null;
+  productName: string;
+  onEdit?: () => void;
+  disabled?: boolean;
+}) {
   const [failed, setFailed] = useState(false);
   const [previewLoaded, setPreviewLoaded] = useState(false);
   const [previewFailed, setPreviewFailed] = useState(false);
+
+  if (onEdit) {
+    return <button type="button" onClick={onEdit} disabled={disabled}
+      aria-label={`修改${productName}的图标`} title="点击修改产品图标"
+      className="group relative mr-4 flex size-14 shrink-0 cursor-pointer items-center justify-center rounded-lg border bg-muted outline-none transition-shadow enabled:hover:ring-2 enabled:hover:ring-primary/30 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+      {iconUrl && !failed
+        ? <img src={iconUrl} alt={`${productName}的图标`} className="size-full rounded-lg object-contain" onError={() => setFailed(true)} />
+        : <Package className="size-6 text-muted-foreground" aria-hidden />}
+      <span aria-hidden className="absolute bottom-0 left-full ml-1 flex size-3 items-center justify-center text-muted-foreground group-enabled:group-hover:text-foreground group-focus-visible:text-foreground">
+        <Pencil className="size-3" />
+      </span>
+    </button>;
+  }
 
   if (!iconUrl || failed) {
     return <div className="flex size-14 shrink-0 items-center justify-center rounded-lg border bg-muted text-muted-foreground">
@@ -39,7 +58,7 @@ export function ProductIconPreview({ iconUrl, productName }: { iconUrl?: string 
           <Loader2 className="size-5 animate-spin motion-reduce:animate-none" aria-hidden />正在加载图片…
         </div>}
         {previewFailed ? <p role="alert" className="text-sm text-muted-foreground">图片加载失败，请关闭后重新打开预览。</p>
-          : <img src={iconUrl} alt={`${productName}的图标大图`} className={`size-full object-contain ${previewLoaded ? '' : 'opacity-0'}`}
+          : <img src={iconUrl} alt={`${productName}的图标大图`} className={cn('size-full object-contain', !previewLoaded && 'opacity-0')}
               onLoad={() => setPreviewLoaded(true)} onError={() => setPreviewFailed(true)} />}
       </div>
     </DialogContent>

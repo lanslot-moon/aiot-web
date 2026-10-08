@@ -182,13 +182,17 @@ export function IamFileUploader({ storageType: visibility = 'private', directory
     </div>
     {!allowed && authorization.data && <p className="text-sm text-muted-foreground">当前账号没有上传文件的权限。</p>}
     {file && <>
-      <div className={cn('flex w-full items-center gap-2 rounded-lg', embedded ? 'border bg-background/70 px-3 py-2' : 'max-w-xl border p-3')}>
+      <div className={cn('flex w-full min-w-0 flex-wrap items-center gap-3 rounded-lg', embedded ? 'border bg-background/70 px-3 py-2' : 'max-w-xl border p-3')}>
+        <div className="flex min-w-0 flex-1 basis-40 items-center gap-2">
         {phase === 'success' ? <CheckCircle2 className="mt-0.5 size-5 shrink-0" /> : <FileIcon className="mt-0.5 size-5 shrink-0 text-muted-foreground" />}
-        <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium" title={file.name}>{file.name}</p><p className="mt-1 text-xs text-muted-foreground">{sizeLabel(file.size)}</p></div>
+        <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium" title={file.name}>{file.name}</p><p className="mt-1 whitespace-nowrap text-xs text-muted-foreground">{sizeLabel(file.size)}</p></div>
+        </div>
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
         {compact && <Button type="button" size="icon-sm" variant="ghost" className="shrink-0" aria-label="更换图片" title="更换图片" disabled={externalBusy || preparing || busy || needsConfirmation || !allowed} onClick={open}><RefreshCw className="size-4" /></Button>}
         {!managed && phase !== 'success' && <Button type="button" size="sm" className="shrink-0" disabled={externalBusy || preparing || busy || !allowed} onClick={() => void run()}>{busy && <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />}{needsConfirmation ? '重试云端确认' : phase === 'upload-error' || phase === 'cancelled' ? '重新上传' : '开始上传'}</Button>}
         {!managed && (phase === 'requesting' || phase === 'uploading') && <Button type="button" size="icon-sm" variant="outline" className="shrink-0" aria-label="取消上传" title="取消上传" onClick={cancel}><X className="size-4" /></Button>}
         {!(phase === 'requesting' || phase === 'uploading') && <Button type="button" size="icon-sm" variant="ghost" className="shrink-0" aria-label="移除所选文件" disabled={externalBusy || preparing || busy || needsConfirmation} onClick={() => reset(null)}><X className="size-4" /></Button>}
+        </div>
       </div>
       {showProgress && <p role="status" className="text-sm text-muted-foreground">{managed && phase === 'idle' ? '头像已选好，点击保存头像即可完成上传和保存。' : stages[phase]}</p>}
       {showProgress && ['uploading', 'confirming', 'success'].includes(phase) && <Progress value={progress} aria-label="文件上传进度" />}

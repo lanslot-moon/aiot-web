@@ -43,6 +43,7 @@ AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { ProductIconPreview } from '@/components/open-platform/product-icon-preview';
+import { ProductIconEditor } from '@/components/open-platform/product-icon-editor';
 import {
 Card,
 CardContent,
@@ -512,6 +513,7 @@ const ProductDetailPage = () => {
     openPlatformGetFetcher,
   );
   const [editOpen, setEditOpen] = useState(false);
+  const [iconEditOpen, setIconEditOpen] = useState(false);
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [actionError, setActionError] = useState<OpenPlatformApiError | null>(null);
   const [confirmAction, setConfirmAction] = useState<ProductLifecycleAction | null>(null);
@@ -543,6 +545,20 @@ const ProductDetailPage = () => {
       toast.success('产品配置已保存。');
     } catch (error) {
       setActionError(error as OpenPlatformApiError);
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
+  const saveProductIcon = async (iconUrl: string) => {
+    if (!productKey || product?.lifecycleStatus !== 'DRAFT' || busyAction != null) {
+      throw new Error('当前产品暂时无法修改图标，请刷新后重试。');
+    }
+    setBusyAction('save-icon');
+    try {
+      await openPlatformPut<boolean>(productKey, { iconUrl } satisfies ProductUpdateRequest);
+      await refreshProduct();
+      toast.success('产品图标已更新。');
     } finally {
       setBusyAction(null);
     }
@@ -651,7 +667,9 @@ const ProductDetailPage = () => {
                   返回产品
                 </Button>
                 <div className="flex flex-wrap items-center gap-2">
-                  <ProductIconPreview key={product.iconUrl} iconUrl={product.iconUrl} productName={product.productName} />
+                  <ProductIconPreview key={product.iconUrl} iconUrl={product.iconUrl} productName={product.productName}
+                    onEdit={product.lifecycleStatus === 'DRAFT' ? () => setIconEditOpen(true) : undefined}
+                    disabled={busyAction != null} />
                   <h1 className="truncate text-lg font-semibold tracking-tight">
                     {product.productName}
                   </h1>
@@ -982,6 +1000,11 @@ const ProductDetailPage = () => {
           </div>
         ) : null}
       </ProjectWorkspaceShell>
+
+      {product && iconEditOpen && product.lifecycleStatus === 'DRAFT' && <ProductIconEditor
+        iconUrl={product.iconUrl} productName={product.productName}
+        onClose={() => setIconEditOpen(false)} onSave={saveProductIcon}
+      />}
 
       {product ? (
         <ProductEditDialog
