@@ -169,7 +169,7 @@ export function IamFileUploader({ storageType: visibility = 'private', directory
     if (phase === 'confirming') return;
     controller.current?.abort(); xhrRef.current?.abort();
   }
-  return <div className="space-y-4">
+  return <div className="min-w-0 space-y-4">
     <div {...getRootProps()} className={cn('rounded-lg transition-colors', embedded ? 'flex min-h-9 flex-wrap items-center gap-2' : compact ? 'flex min-h-20 items-center gap-3 border border-dashed px-3 py-2' : 'border border-dashed p-6 text-center', isDragActive ? 'border-primary bg-primary/5 ring-2 ring-primary/30' : !embedded && 'border-border bg-background', compact && file && 'hidden')}>
       <input {...getInputProps({ 'aria-label': '选择本地文件' })} />
       {!embedded && <UploadCloud className={cn('shrink-0 text-muted-foreground', compact ? 'size-7' : 'mx-auto mb-3 size-8')} aria-hidden="true" />}

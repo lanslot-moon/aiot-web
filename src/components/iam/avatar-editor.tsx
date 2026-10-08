@@ -81,14 +81,14 @@ export function AvatarEditor({ account: current }: { account: AccountVO }) {
       <Camera className="size-4" />更换头像
     </Button>
     <Dialog open={open} onOpenChange={(next) => { if (!next) close(); }}>
-      <DialogContent className="max-h-[85dvh] overflow-y-auto">
+      <DialogContent className="max-h-[85dvh] grid-cols-1 overflow-y-auto sm:max-w-lg">
         <DialogHeader><DialogTitle>更换头像</DialogTitle><DialogDescription>选择 JPG、PNG 或 WebP 图片，最大 5 MB。框选后点击保存头像，将自动完成上传、确认和保存。</DialogDescription></DialogHeader>
         {!cropping && <Avatar className="mx-auto size-20!">
           <AvatarImage src={preview ?? candidate ?? current.avatarUrl ?? undefined} alt="头像预览" />
           <AvatarFallback>{(current.displayName || current.username).slice(0, 2).toUpperCase()}</AvatarFallback>
         </Avatar>}
         {cropping && <AvatarCropper key={cropping.name + cropping.lastModified} file={cropping} onComplete={finishCrop} onCancel={() => finishCrop(null)} />}
-        <div hidden={!!cropping}>
+        <div className="min-w-0" hidden={!!cropping}>
         <IamFileUploader storageType="public" directory="/avatars"
           accept={{ 'image/jpeg': ['.jpg', '.jpeg'], 'image/png': ['.png'], 'image/webp': ['.webp'] }}
           maxSize={5 * 1024 * 1024} prepareFile={prepareFile} uploadRef={uploader} managed externalBusy={busy} onStageChange={setStage} onFileChange={fileChanged} />
