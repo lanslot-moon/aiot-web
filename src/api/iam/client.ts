@@ -59,7 +59,7 @@ const errorCopy: Record<string, string> = {
   NOTIFICATION_PROVIDER_UNAVAILABLE: '邮件或短信服务尚未配置，暂时无法发送验证码。',
   ROUTE_NOT_ENABLED: '网关尚未开放此接口，请检查路由配置。',
 };
-export async function parseResponse<T>(response: Response): Promise<T> {
+export async function parseResponse<T>(response: Response, successCode: '200' | 'OK' = '200'): Promise<T> {
   let payload: {
     code?: string;
     message?: string;
@@ -75,7 +75,7 @@ export async function parseResponse<T>(response: Response): Promise<T> {
       response.status,
     );
   }
-  if (!response.ok || payload.code !== '200') {
+  if (!response.ok || payload.code !== successCode) {
     const code = payload.code ?? String(response.status);
     throw new OpenPlatformApiError(
       code,
@@ -167,7 +167,7 @@ export async function request<T>(
   path: string,
   method = 'GET',
   body?: unknown,
-  options: { anonymous?: boolean; signal?: AbortSignal; projectId?: string } = {},
+  options: { anonymous?: boolean; signal?: AbortSignal; projectId?: string; successCode?: '200' | 'OK' } = {},
 ): Promise<T> {
   if (!path.startsWith('/api/v1/')) throw new Error('Only gateway API paths are accepted');
   // 项目协作与凭证接口同时传递路径项目和候选项目头，供网关与 IAM 核对。
@@ -202,7 +202,7 @@ export async function request<T>(
       response = await send();
     }
     if (response.status === 401 && !options.anonymous) setSession(null);
-    return await parseResponse<T>(response);
+    return await parseResponse<T>(response, options.successCode);
   } catch (error) {
     if (
       error instanceof OpenPlatformApiError ||

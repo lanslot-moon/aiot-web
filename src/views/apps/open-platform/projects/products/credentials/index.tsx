@@ -2,8 +2,6 @@ import {
 ArrowLeft,
 Ban,
 Boxes,
-Check,
-ChevronRight,
 CircleAlert,
 CloudDownload,
 Copy,
@@ -36,31 +34,34 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { OpenPlatformApiError, openPlatformDelete, openPlatformGetFetcher, openPlatformPost } from '../../../../../../context/open-platform-context/project-resources';
 
 import BreadcrumbComp from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
 import { cn } from '@/lib/utils';
 import type {
-CredentialDistributionView,
+CredentialDistributionView as DistributionView,
 CredentialExportTaskView,
 CredentialManufacturingBatchView,
 CredentialManufacturingItemView,
 CredentialPreRegistrationView,
-CredentialRotationTaskView,
+CredentialRotationTaskView as RotationView,
 CredentialSecretDeliveryView,
 CredentialSummaryView,
 CursorResult,
 ProductDetailView,
 } from '@/types/apps/open-platform';
+
+type CredentialRotationTaskView = Omit<RotationView, 'switchDeadline'> & { claimDeadline: number };
+
+type CredentialDistributionView = Omit<DistributionView, 'requestReference'> & { distributionRequestId: string };
 
 const PRODUCT_TAB_CLASS = 'h-8 gap-1.5';
 
@@ -72,6 +73,11 @@ function formatDate(value: number | null | undefined) {
 function formatDateShort(value: number | null | undefined) {
   if (!value) return '—';
   return new Date(value).toLocaleDateString('zh-CN');
+}
+
+function formatDateTimeInput(value: number) {
+  const date = new Date(value);
+  return new Date(value - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
 }
 
 function formatNumber(value: number) {
@@ -98,7 +104,7 @@ const accessStateLabel: Record<string, string> = {
 
 const batchStatusLabel: Record<string, string> = {
   ISSUING: '签发中',
-  AVAILABLE: '可划拨',
+  AVAILABLE: '已生成',
   PARTIALLY_AVAILABLE: '部分可用',
   FULLY_ALLOCATED: '已全部划拨',
   EXPIRED: '已过期',
@@ -134,7 +140,7 @@ const rotationStatusLabel: Record<string, string> = {
 
 const distributionStatusLabel: Record<string, string> = {
   CREATING: '创建中',
-  FROZEN: '已冻结',
+  FROZEN: '可导出',
   CANCELLED: '已取消',
   EXPIRED: '已过期',
 };
@@ -232,8 +238,8 @@ function OneTimeSecretDialog({
   };
 
   return (
-    <Dialog open={delivery != null} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+    <Dialog open={delivery != null} disablePointerDismissal onOpenChange={(next, details) => { if (details.reason === 'escape-key') { details.cancel(); return; } onOpenChange(next); }}>
+      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-lg" showCloseButton={false}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ShieldAlert className="size-4 text-amber-500" aria-hidden />
@@ -248,7 +254,7 @@ function OneTimeSecretDialog({
             <Alert className="rounded-xl border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-100">
               <CircleAlert className="size-4" aria-hidden />
               <AlertDescription>
-                请在 {formatDate(delivery.deliveryExpiresAt)} 前完成保存；不要把明文粘贴到工单、日志或聊天工具。
+                请在关闭窗口前完成保存；不要把明文粘贴到工单、日志或聊天工具。
               </AlertDescription>
             </Alert>
             <div className="rounded-xl border bg-muted/30 p-4">
@@ -262,7 +268,7 @@ function OneTimeSecretDialog({
                 </Button>
               </div>
               <p className="mt-2 text-xs text-muted-foreground">
-                凭证指纹：<code className="font-mono">{delivery.credential.fingerprint}</code>
+                凭证 ID：<code className="break-all font-mono">{delivery.credential.credentialId}</code>
               </p>
             </div>
           </div>
@@ -288,15 +294,14 @@ function IssueCredentialDialog({
   onOpenChange: (open: boolean) => void;
   onDelivered: (delivery: CredentialSecretDeliveryView) => void;
 }) {
-  const [deviceId, setDeviceId] = useState('');
   const [hardwareUuid, setHardwareUuid] = useState('');
   const [expiresAt, setExpiresAt] = useState('');
   const [busy, setBusy] = useState(false);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (kind === 'DEVICE_SECRET' && !deviceId.trim() && !hardwareUuid.trim()) {
-      toast.error('设备凭证至少需要绑定设备 ID 或 Hardware Identity。');
+    if (kind === 'DEVICE_SECRET' && !hardwareUuid.trim()) {
+      toast.error('请填写设备出厂硬件身份。');
       return;
     }
     setBusy(true);
@@ -304,16 +309,15 @@ function IssueCredentialDialog({
       const delivery = await openPlatformPost<CredentialSecretDeliveryView>('/api/v1/credentials', {
         productId,
         kind,
-        deviceId: kind === 'DEVICE_SECRET' ? deviceId.trim() || undefined : undefined,
         hardwareUuid: kind === 'DEVICE_SECRET' ? hardwareUuid.trim() || undefined : undefined,
         expiresAt: expiresAt ? new Date(expiresAt).getTime() : null,
       });
       toast.success(kind === 'PRODUCT_SECRET' ? 'Product Secret 已签发，请立即保存。' : 'Device Secret 已签发，请立即保存。');
-      setDeviceId('');
       setHardwareUuid('');
       setExpiresAt('');
       onOpenChange(false);
-      onDelivered(delivery);
+      if (delivery.secret) onDelivered(delivery);
+      else toast.info('凭证已存在；重复签发不会再次交付明文。');
     } catch (error) {
       toast.error(error instanceof OpenPlatformApiError ? error.message : '凭证签发失败，请稍后重试。');
     } finally {
@@ -323,7 +327,7 @@ function IssueCredentialDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => !busy && onOpenChange(next)}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{kind === 'PRODUCT_SECRET' ? '签发 Product Secret' : '手动签发 Device Secret'}</DialogTitle>
           <DialogDescription>
@@ -336,12 +340,8 @@ function IssueCredentialDialog({
           {kind === 'DEVICE_SECRET' ? (
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="credential-device-id">设备 ID（可选）</Label>
-                <Input id="credential-device-id" value={deviceId} onChange={(event) => setDeviceId(event.target.value)} placeholder="例如：gateway-0003" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="credential-hardware-uuid">Hardware Identity（可选）</Label>
-                <Input id="credential-hardware-uuid" value={hardwareUuid} onChange={(event) => setHardwareUuid(event.target.value)} placeholder="例如：GW-HW-202608-0003" />
+                <Label htmlFor="credential-hardware-uuid">Hardware Identity</Label>
+                <Input required id="credential-hardware-uuid" value={hardwareUuid} onChange={(event) => setHardwareUuid(event.target.value)} placeholder="例如：GW-HW-202608-0003" />
               </div>
             </div>
           ) : null}
@@ -388,6 +388,8 @@ function CredentialActionDialog({
     setBusy(true);
     try {
       await openPlatformPost(`/api/v1/credentials/${encodeURIComponent(target.credential.credentialId)}/${actionPath}`, {
+        reasonCode: `MANUAL_${target.action}`,
+        reason: `管理台手动${actionLabel}`,
         expectedVersion: target.credential.securityVersion,
       });
       toast.success(`凭证已${actionLabel}。`);
@@ -434,7 +436,8 @@ function CreateRotationDialog({
   onOpenChange: (open: boolean) => void;
   onCreated: () => Promise<unknown>;
 }) {
-  const [deadline, setDeadline] = useState(() => new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16));
+  const [deadline, setDeadline] = useState(() => formatDateTimeInput(Date.now() + 7 * 24 * 60 * 60 * 1000));
+  const [forceRevokeAt, setForceRevokeAt] = useState(() => formatDateTimeInput(Date.now() + 8 * 24 * 60 * 60 * 1000));
   const [gracePeriod, setGracePeriod] = useState('86400');
   const [enforcementMode, setEnforcementMode] = useState<'NORMAL' | 'SECURITY_ENFORCED'>('NORMAL');
   const [busy, setBusy] = useState(false);
@@ -442,21 +445,23 @@ function CreateRotationDialog({
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!credential) return;
-    const switchDeadline = new Date(deadline).getTime();
+    const claimDeadline = new Date(deadline).getTime();
     const gracePeriodSeconds = Number(gracePeriod);
-    if (!Number.isFinite(switchDeadline) || switchDeadline <= Date.now()) {
-      toast.error('切换截止时间必须晚于当前时间。');
+    if (!Number.isFinite(claimDeadline) || claimDeadline <= Date.now()) {
+      toast.error('领取截止时间必须晚于当前时间。');
       return;
     }
     if (!Number.isInteger(gracePeriodSeconds) || gracePeriodSeconds < 0) {
       toast.error('宽限期需要填写不小于 0 的整数秒数。');
       return;
     }
+    if (enforcementMode === 'SECURITY_ENFORCED' && (!Number.isFinite(new Date(forceRevokeAt).getTime()) || new Date(forceRevokeAt).getTime() <= claimDeadline)) { toast.error('强制吊销时间必须晚于领取截止时间。'); return; }
     setBusy(true);
     try {
       await openPlatformPost('/api/v1/rotation-tasks', {
         credentialId: credential.credentialId,
-        switchDeadline,
+        claimDeadline,
+        forceRevokeAt: enforcementMode === 'SECURITY_ENFORCED' ? new Date(forceRevokeAt).getTime() : null,
         gracePeriodSeconds,
         enforcementMode,
         reasonCode: 'MANUAL_ROTATION',
@@ -473,7 +478,7 @@ function CreateRotationDialog({
 
   return (
     <Dialog open={credential != null} onOpenChange={(next) => !busy && onOpenChange(next)}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>发起 Device Secret 轮换</DialogTitle>
           <DialogDescription>先签发候选版本，再等待设备领取和切换；旧凭证会在宽限期结束后退役。</DialogDescription>
@@ -485,10 +490,11 @@ function CreateRotationDialog({
               <div className="mt-2 flex items-center justify-between gap-3"><span className="text-muted-foreground">当前版本</span><span className="font-mono">v{credential.versionNo}</span></div>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2"><Label htmlFor="rotation-deadline">切换截止时间</Label><Input id="rotation-deadline" type="datetime-local" value={deadline} onChange={(event) => setDeadline(event.target.value)} /></div>
+              <div className="space-y-2"><Label htmlFor="rotation-deadline">领取截止时间</Label><Input id="rotation-deadline" type="datetime-local" value={deadline} onChange={(event) => setDeadline(event.target.value)} /></div>
               <div className="space-y-2"><Label htmlFor="rotation-grace-period">宽限期（秒）</Label><Input id="rotation-grace-period" type="number" min={0} value={gracePeriod} onChange={(event) => setGracePeriod(event.target.value)} /></div>
             </div>
-            <div className="space-y-2"><Label>执行模式</Label><Select value={enforcementMode} onValueChange={(value) => setEnforcementMode(value as 'NORMAL' | 'SECURITY_ENFORCED')}><SelectTrigger className="w-full"><SelectValue placeholder="选择执行模式" /></SelectTrigger><SelectContent><SelectItem value="NORMAL">普通轮换（保留宽限期）</SelectItem><SelectItem value="SECURITY_ENFORCED">强制轮换（到期阻断旧凭证）</SelectItem></SelectContent></Select></div>
+            <div className="space-y-2"><Label>执行模式</Label><Select value={enforcementMode} onValueChange={(value) => setEnforcementMode(value as 'NORMAL' | 'SECURITY_ENFORCED')}><SelectTrigger aria-label="轮换执行模式" className="w-full"><SelectValue placeholder="选择执行模式" /></SelectTrigger><SelectContent><SelectItem value="NORMAL">普通轮换（保留宽限期）</SelectItem><SelectItem value="SECURITY_ENFORCED">强制轮换（到期阻断旧凭证）</SelectItem></SelectContent></Select></div>
+            {enforcementMode === 'SECURITY_ENFORCED' ? <div className="space-y-2"><Label htmlFor="rotation-force-revoke">强制吊销时间</Label><Input id="rotation-force-revoke" type="datetime-local" value={forceRevokeAt} onChange={(event) => setForceRevokeAt(event.target.value)} /></div> : null}
             <DialogFooter><Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>取消</Button><Button type="submit" disabled={busy} className="gap-1.5">{busy ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <RotateCcw className="size-4" aria-hidden />}创建轮换任务</Button></DialogFooter>
           </form>
         ) : null}
@@ -501,15 +507,11 @@ function CreateBatchDialog({
   open,
   onOpenChange,
   productId,
-  preRegistrationMode,
-  pendingPreRegistrationCount,
   onCreated,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   productId: string;
-  preRegistrationMode: boolean;
-  pendingPreRegistrationCount: number;
   onCreated: () => Promise<unknown>;
 }) {
   const [quantity, setQuantity] = useState('100');
@@ -517,19 +519,12 @@ function CreateBatchDialog({
   const [expiresAt, setExpiresAt] = useState('');
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    if (open && preRegistrationMode) setQuantity(String(pendingPreRegistrationCount));
-  }, [open, pendingPreRegistrationCount, preRegistrationMode]);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const parsedQuantity = Number(quantity);
     if (!Number.isInteger(parsedQuantity) || parsedQuantity < 1 || parsedQuantity > 10000) {
       toast.error('数量需要填写 1 到 10000 之间的整数。');
-      return;
-    }
-    if (preRegistrationMode && parsedQuantity !== pendingPreRegistrationCount) {
-      toast.error(`严格接入产品的批次数量必须等于当前待绑定预注册数量（${pendingPreRegistrationCount}）。`);
       return;
     }
     if (!grantReference.trim()) {
@@ -541,7 +536,7 @@ function CreateBatchDialog({
       await openPlatformPost('/api/v1/credential-batches', {
         productId,
         quantity: parsedQuantity,
-        grantReference: grantReference.trim(),
+        batchRequestId: grantReference.trim(),
         expiresAt: expiresAt ? new Date(expiresAt).getTime() : null,
       });
       toast.success('量产批次已创建，正在准备可划拨凭证。');
@@ -558,23 +553,17 @@ function CreateBatchDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => !busy && onOpenChange(next)}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>创建量产批次</DialogTitle>
-          <DialogDescription>{preRegistrationMode ? '严格接入产品会按当前待绑定预注册资格创建设备凭证，批次数量和硬件 UUID 由预注册列表决定。' : '先生成固定数量的设备凭证，再按产线或渠道划拨。批次创建后不会直接把 Secret 显示在页面上。'}</DialogDescription>
+          <DialogDescription>生成指定数量的设备凭证，随后可按产线或订单创建领取单。</DialogDescription>
         </DialogHeader>
         <form className="space-y-4" onSubmit={(event) => void submit(event)}>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="credential-batch-quantity">凭证数量</Label>
-              {preRegistrationMode ? (
-                <div id="credential-batch-quantity" className="flex h-9 items-center rounded-md border bg-muted/30 px-3 text-sm font-medium tabular-nums">
-                  {formatNumber(pendingPreRegistrationCount)}
-                </div>
-              ) : (
-                <Input id="credential-batch-quantity" type="number" min={1} max={10000} value={quantity} onChange={(event) => setQuantity(event.target.value)} />
-              )}
-              <p className="text-xs text-muted-foreground">{preRegistrationMode ? '数量固定为当前待绑定预注册资格数量。' : '单批最多 10000 个设备凭证。'}</p>
+              <Input id="credential-batch-quantity" type="number" min={1} max={10000} value={quantity} onChange={(event) => setQuantity(event.target.value)} />
+              <p className="text-xs text-muted-foreground">单批最多 10000 个设备凭证。</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="credential-batch-expires">失效时间（可选）</Label>
@@ -584,7 +573,7 @@ function CreateBatchDialog({
           </div>
           <div className="space-y-2">
             <Label htmlFor="credential-batch-reference">批次引用</Label>
-            <Input id="credential-batch-reference" value={grantReference} onChange={(event) => setGrantReference(event.target.value)} placeholder="例如：上海一期网关产线" />
+            <Input required id="credential-batch-reference" value={grantReference} onChange={(event) => setGrantReference(event.target.value)} placeholder="例如：上海一期网关产线" />
             <p className="text-xs text-muted-foreground">建议使用客户、产线或订单号，后续导出和审计都会显示。</p>
           </div>
           <DialogFooter>
@@ -602,14 +591,10 @@ function CreateBatchDialog({
 
 function ManufacturingBatchDetailDialog({
   batch,
-  preRegistrationMode,
-  pendingPreRegistrationCount,
   onOpenChange,
   onBatchUpdated,
 }: {
   batch: CredentialManufacturingBatchView | null;
-  preRegistrationMode: boolean;
-  pendingPreRegistrationCount: number;
   onOpenChange: (open: boolean) => void;
   onBatchUpdated: () => Promise<unknown>;
 }) {
@@ -623,10 +608,11 @@ function ManufacturingBatchDetailDialog({
   const [hardwareUuidPrefix, setHardwareUuidPrefix] = useState('');
   const [credentialIdFilter, setCredentialIdFilter] = useState('');
   const itemDetailRef = useRef<HTMLDivElement | null>(null);
+  const itemRequest = useRef(0);
 
   const batchId = batch?.batchId ?? '';
   const batchKey = batch ? `/api/v1/credential-batches/${encodeURIComponent(batch.batchId)}` : null;
-  const { data: batchDetail, error: batchError, isLoading: batchLoading, mutate: mutateBatch } = useSWR<CredentialManufacturingBatchView>(batchKey, openPlatformGetFetcher);
+  const { data: batchDetail, error: batchError, isLoading: batchLoading, mutate: mutateBatch } = useSWR<CredentialManufacturingBatchView>(batchKey, openPlatformGetFetcher, { refreshInterval: (data) => data?.status === 'ISSUING' ? 5000 : 0 });
 
   const getItemPageKey = (pageIndex: number, previousPageData: CursorResult<CredentialManufacturingItemView> | null) => {
     if (!batch) return null;
@@ -654,6 +640,12 @@ function ManufacturingBatchDetailDialog({
   const detail = batchDetail ?? batch;
 
   useEffect(() => {
+    if (batchDetail?.status && batchDetail.status !== 'ISSUING') void mutateItems();
+  }, [batchDetail?.status, mutateItems]);
+
+  useEffect(() => {
+    itemRequest.current += 1;
+    setItemDetailLoading(false);
     setSelectedItemId(null);
     setItemDetail(null);
     setPendingVoid(null);
@@ -667,16 +659,17 @@ function ManufacturingBatchDetailDialog({
   }, [itemDetail, itemDetailLoading, selectedItemId]);
 
   const openItemDetail = async (item: CredentialManufacturingItemView) => {
+    const requestId = ++itemRequest.current;
     setSelectedItemId(item.itemId);
     setItemDetail(null);
     setItemDetailLoading(true);
     try {
       const result = await openPlatformGetFetcher<CredentialManufacturingItemView>(`/api/v1/credential-batches/${encodeURIComponent(item.batchId)}/items/${encodeURIComponent(item.itemId)}`);
-      setItemDetail(result);
+      if (requestId === itemRequest.current) setItemDetail(result);
     } catch (error) {
-      toast.error(error instanceof OpenPlatformApiError ? error.message : '制造项详情加载失败，请稍后重试。');
+      if (requestId === itemRequest.current) toast.error(error instanceof OpenPlatformApiError ? error.message : '制造项详情加载失败，请稍后重试。');
     } finally {
-      setItemDetailLoading(false);
+      if (requestId === itemRequest.current) setItemDetailLoading(false);
     }
   };
 
@@ -718,12 +711,7 @@ function ManufacturingBatchDetailDialog({
             </div>
             {statusBadge(manufacturingItemStatusLabel[itemDetail.status] ?? itemDetail.status, getManufacturingItemTone(itemDetail.status))}
           </div>
-          {preRegistrationMode ? (
-            <Alert className="rounded-xl border-primary/20 bg-primary/5">
-              <ShieldCheck className="size-4 text-primary" aria-hidden />
-              <AlertDescription>制造项中的 Hardware UUID 会直接取自这 {formatNumber(pendingPreRegistrationCount)} 条待绑定预注册资格，不会重新生成或允许手动输入。</AlertDescription>
-            </Alert>
-          ) : null}
+
           <div className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
             <div><p className="text-xs text-muted-foreground">制造项 ID</p><code className="mt-1 block break-all font-mono text-xs">{itemDetail.itemId}</code></div>
             <div><p className="text-xs text-muted-foreground">硬件身份</p><code className="mt-1 block break-all font-mono text-xs">{itemDetail.hardwareUuid}</code></div>
@@ -741,12 +729,12 @@ function ManufacturingBatchDetailDialog({
 
   return (
     <>
-      <Dialog open={batch != null} onOpenChange={(next) => !voidBusy && onOpenChange(next)}>
-        <DialogContent className="w-[calc(100vw-2rem)] max-w-none max-h-[calc(100dvh-2rem)] overflow-x-hidden overflow-y-auto sm:!max-w-6xl">
-          <DialogHeader className="min-w-0">
-            <DialogTitle>制造批次详情</DialogTitle>
-            <DialogDescription>查看批次生成的制造项及其当前状态。列表不会展示 Device Secret 明文。</DialogDescription>
-          </DialogHeader>
+      <Sheet open={batch != null} onOpenChange={(next) => !voidBusy && onOpenChange(next)}>
+        <SheetContent className="!w-full sm:!w-[90vw] sm:!max-w-6xl overflow-y-auto px-4 pb-4">
+          <SheetHeader className="min-w-0">
+            <SheetTitle>制造批次详情</SheetTitle>
+            <SheetDescription>查看批次生成的制造项及其当前状态。列表不会展示 Device Secret 明文。</SheetDescription>
+          </SheetHeader>
           {batch ? (
             <div className="min-w-0 space-y-4">
               {batchError ? <Alert className="rounded-xl border-destructive/30 bg-destructive/5 text-destructive"><CircleAlert className="size-4" aria-hidden /><AlertDescription>{batchError instanceof Error ? batchError.message : '批次详情加载失败，请刷新重试。'}</AlertDescription></Alert> : null}
@@ -805,9 +793,9 @@ function ManufacturingBatchDetailDialog({
 
             </div>
           ) : null}
-          <DialogFooter><Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={voidBusy}>关闭</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
+          <SheetFooter><Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={voidBusy}>关闭</Button></SheetFooter>
+        </SheetContent>
+      </Sheet>
 
       <AlertDialog open={pendingVoid != null} onOpenChange={(open) => { if (!open && !voidBusy) { setPendingVoid(null); setVoidReason(''); } }}>
         <AlertDialogContent>
@@ -821,14 +809,23 @@ function ManufacturingBatchDetailDialog({
 }
 
 function AllocateDialog({
-  batch,
+  batch: initialBatch,
+  batches,
+  open,
   onOpenChange,
   onCreated,
 }: {
   batch: CredentialManufacturingBatchView | null;
+  batches: CredentialManufacturingBatchView[];
+  open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreated: () => Promise<unknown>;
 }) {
+  const [selectedBatchId, setSelectedBatchId] = useState('');
+  const batch = batches.find((item) => item.batchId === selectedBatchId) ?? null;
+  useEffect(() => {
+    if (open) { setSelectedBatchId(initialBatch?.batchId ?? ''); setQuantity(''); setReference(''); }
+  }, [open, initialBatch]);
   const [quantity, setQuantity] = useState('');
   const [reference, setReference] = useState('');
   const [busy, setBusy] = useState(false);
@@ -838,11 +835,11 @@ function AllocateDialog({
     if (!batch) return;
     const parsedQuantity = Number(quantity);
     if (!Number.isInteger(parsedQuantity) || parsedQuantity < 1 || parsedQuantity > batch.availableCount) {
-      toast.error(`划拨数量需要在 1 到 ${formatNumber(batch.availableCount)} 之间。`);
+      toast.error(`领取数量需要在 1 到 ${formatNumber(batch.availableCount)} 之间。`);
       return;
     }
     if (!reference.trim()) {
-      toast.error('请填写本次划拨引用。');
+      toast.error('请填写领取单引用。');
       return;
     }
     setBusy(true);
@@ -850,27 +847,28 @@ function AllocateDialog({
       await openPlatformPost('/api/v1/credential-distributions', {
         batchId: batch.batchId,
         quantity: parsedQuantity,
-        requestReference: reference.trim(),
+        distributionRequestId: reference.trim(),
       });
-      toast.success('凭证集合已冻结，可以创建导出任务。');
+      toast.success('领取单已创建，可继续导出。');
       setQuantity('');
       setReference('');
       onOpenChange(false);
       await onCreated();
     } catch (error) {
-      toast.error(error instanceof OpenPlatformApiError ? error.message : '凭证划拨失败，请稍后重试。');
+      toast.error(error instanceof OpenPlatformApiError ? error.message : '创建领取单失败，请稍后重试。');
     } finally {
       setBusy(false);
     }
   };
 
   return (
-    <Dialog open={batch != null} onOpenChange={(next) => !busy && onOpenChange(next)}>
-      <DialogContent className="sm:max-w-lg">
+    <Dialog open={open} onOpenChange={(next) => !busy && onOpenChange(next)}>
+      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>划拨固定凭证集合</DialogTitle>
-          <DialogDescription>划拨后成员集合会被冻结，后续导出只针对这组固定设备，避免重复领取或误导出。</DialogDescription>
+          <DialogTitle>创建领取单</DialogTitle>
+          <DialogDescription>从选定批次领取凭证。创建后成员固定，可导出交付。</DialogDescription>
         </DialogHeader>
+        <div className="space-y-2"><Label>来源批次</Label><Select value={selectedBatchId} onValueChange={(value) => { setSelectedBatchId(value ?? ''); setQuantity(''); }}><SelectTrigger className="w-full" aria-label="选择来源批次"><SelectValue placeholder="请选择制造批次" /></SelectTrigger><SelectContent>{batches.filter((item) => item.availableCount > 0).map((item) => <SelectItem key={item.batchId} value={item.batchId}>{item.batchId} · 可绑定 {formatNumber(item.availableCount)}</SelectItem>)}</SelectContent></Select></div>
         {batch ? (
           <form className="space-y-4" onSubmit={(event) => void submit(event)}>
             <div className="rounded-xl border bg-muted/20 p-3 text-sm">
@@ -879,27 +877,28 @@ function AllocateDialog({
                 <code className="font-mono text-xs">{batch.batchId}</code>
               </div>
               <div className="mt-2 flex items-center justify-between gap-3">
-                <span className="text-muted-foreground">剩余可划拨</span>
+                <span className="text-muted-foreground">可绑定制造项（含已划拨）</span>
                 <span className="font-semibold tabular-nums">{formatNumber(batch.availableCount)}</span>
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="distribution-quantity">本次划拨数量</Label>
-              <Input id="distribution-quantity" type="number" min={1} max={batch.availableCount} value={quantity} onChange={(event) => setQuantity(event.target.value)} placeholder={`最多 ${batch.availableCount}`} />
+              <Label htmlFor="distribution-quantity">领取数量</Label>
+              <Input required id="distribution-quantity" type="number" min={1} max={batch.availableCount} value={quantity} onChange={(event) => setQuantity(event.target.value)} placeholder="输入本次领取数量" />
             </div>
+            <p className="text-xs text-muted-foreground">已划拨成员不能重复领取，服务会核对实际剩余数量。</p>
             <div className="space-y-2">
-              <Label htmlFor="distribution-reference">业务引用</Label>
-              <Input id="distribution-reference" value={reference} onChange={(event) => setReference(event.target.value)} placeholder="例如：上海一期 / 产线 A" />
+              <Label htmlFor="distribution-reference">领取单引用</Label>
+              <Input required id="distribution-reference" value={reference} onChange={(event) => setReference(event.target.value)} placeholder="例如：上海一期 / 产线 A" />
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>取消</Button>
               <Button type="submit" disabled={busy} className="gap-1.5">
                 {busy ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <PackageCheck className="size-4" aria-hidden />}
-                冻结划拨
+                确认领取
               </Button>
             </DialogFooter>
           </form>
-        ) : null}
+        ) : <p className="text-sm text-muted-foreground">选择来源批次后，填写本次领取数量和领取单引用。</p>}
       </DialogContent>
     </Dialog>
   );
@@ -935,21 +934,21 @@ function ExportDialog({
 
   return (
     <Dialog open={distribution != null} onOpenChange={(next) => !busy && onOpenChange(next)}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-md">
         <DialogHeader>
           <DialogTitle>创建凭证导出任务</DialogTitle>
-          <DialogDescription>导出对象是已冻结的划拨集合，不会导出未划拨或其他批次的凭证。</DialogDescription>
+          <DialogDescription>仅导出当前领取单中的设备凭证。</DialogDescription>
         </DialogHeader>
         {distribution ? (
           <form className="space-y-4" onSubmit={(event) => void submit(event)}>
             <div className="rounded-xl border bg-muted/20 p-3 text-sm">
               <div className="flex items-center justify-between gap-3"><span className="text-muted-foreground">固定集合</span><span className="font-semibold tabular-nums">{formatNumber(distribution.allocatedQuantity)} 台</span></div>
-              <div className="mt-2 flex items-center justify-between gap-3"><span className="text-muted-foreground">划拨引用</span><span>{distribution.requestReference}</span></div>
+              <div className="mt-2 flex items-center justify-between gap-3"><span className="text-muted-foreground">领取单引用</span><span>{distribution.distributionRequestId}</span></div>
             </div>
             <div className="space-y-2">
               <Label>导出格式</Label>
               <Select value={format} onValueChange={(value) => setFormat(value as 'EXCEL' | 'JSON')}>
-                <SelectTrigger className="w-full"><SelectValue placeholder="选择格式" /></SelectTrigger>
+                <SelectTrigger aria-label="导出格式" className="w-full"><SelectValue placeholder="选择格式" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="EXCEL">Excel（适合产线交付）</SelectItem>
                   <SelectItem value="JSON">JSON（适合自动化流程）</SelectItem>
@@ -958,7 +957,7 @@ function ExportDialog({
             </div>
             <Alert className="rounded-xl border-primary/20 bg-primary/5">
               <ShieldCheck className="size-4 text-primary" aria-hidden />
-              <AlertDescription>生成文件后仍需再次点击下载，下载链接会限时失效。</AlertDescription>
+              <AlertDescription>文件生成后，在“导出记录”中下载。</AlertDescription>
             </Alert>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>取消</Button>
@@ -975,27 +974,30 @@ function ExportDialog({
 }
 
 function DistributionDetailDialog({
-  distribution,
-  loading,
+  distribution: selectedDistribution,
   canExport,
   onOpenChange,
   onExport,
 }: {
   distribution: CredentialDistributionView | null;
-  loading: boolean;
   canExport: boolean;
   onOpenChange: (open: boolean) => void;
   onExport: (distribution: CredentialDistributionView) => void;
 }) {
-  const open = distribution != null || loading;
+  const key = selectedDistribution ? `/api/v1/credential-distributions/${encodeURIComponent(selectedDistribution.distributionId)}` : null;
+  const { data, isLoading: loading, error, mutate } = useSWR<CredentialDistributionView>(key, openPlatformGetFetcher);
+  const distribution = data ?? selectedDistribution;
+  const open = selectedDistribution != null;
 
   return (
-    <Dialog open={open} onOpenChange={(next) => !next && !loading && onOpenChange(false)}>
-      <DialogContent className="sm:max-w-lg">
+    <Dialog open={open} onOpenChange={(next) => !next && onOpenChange(false)}>
+      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>领取单详情</DialogTitle>
-          <DialogDescription>领取单对应一组已经冻结的凭证成员，后续导出和审计都会以这组固定集合为准。</DialogDescription>
+          <DialogDescription>成员固定，导出文件仅包含本单凭证。</DialogDescription>
         </DialogHeader>
+        {error ? <ApiErrorAlert message={error.message} /> : null}
+        {error ? <Button type="button" variant="outline" onClick={() => void mutate()}>重新加载</Button> : null}
         {loading ? (
           <div className="flex min-h-32 items-center justify-center rounded-xl border bg-muted/20 text-sm text-muted-foreground">
             <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />正在加载领取单详情…
@@ -1007,20 +1009,20 @@ function DistributionDetailDialog({
               <div><p className="text-xs text-muted-foreground">领取数量</p><p className="mt-1 font-semibold tabular-nums">{formatNumber(distribution.allocatedQuantity)} 台</p></div>
               <div><p className="text-xs text-muted-foreground">领取单 ID</p><code className="mt-1 block break-all font-mono text-xs">{distribution.distributionId}</code></div>
               <div><p className="text-xs text-muted-foreground">来源批次</p><code className="mt-1 block break-all font-mono text-xs">{distribution.batchId}</code></div>
-              <div><p className="text-xs text-muted-foreground">业务引用</p><p className="mt-1 break-all text-sm">{distribution.requestReference}</p></div>
-              <div><p className="text-xs text-muted-foreground">冻结时间</p><p className="mt-1 text-sm">{distribution.frozenAt ? formatDate(distribution.frozenAt) : '尚未冻结'}</p></div>
+              <div><p className="text-xs text-muted-foreground">领取单引用</p><p className="mt-1 break-all text-sm">{distribution.distributionRequestId}</p></div>
+              <div><p className="text-xs text-muted-foreground">领取时间</p><p className="mt-1 text-sm">{distribution.frozenAt ? formatDate(distribution.frozenAt) : '尚未领取'}</p></div>
               <div><p className="text-xs text-muted-foreground">失效时间</p><p className="mt-1 text-sm">{formatDate(distribution.expiresAt)}</p></div>
               <div><p className="text-xs text-muted-foreground">更新时间</p><p className="mt-1 text-sm">{formatDate(distribution.updateTime)}</p></div>
             </div>
-            <div className="rounded-xl border bg-muted/20 p-3">
-              <p className="text-xs font-medium text-foreground">固定集合摘要</p>
-              <code className="mt-2 block break-all font-mono text-xs text-muted-foreground">{distribution.allocationHash}</code>
-            </div>
+            <details className="rounded-lg border p-3 text-xs">
+              <summary className="cursor-pointer text-muted-foreground focus-visible:outline focus-visible:outline-ring">集合校验信息</summary>
+              <code className="mt-2 block break-all font-mono text-muted-foreground">{distribution.allocationHash}</code>
+            </details>
           </div>
         ) : null}
         <DialogFooter>
-          {distribution?.status === 'FROZEN' && canExport ? <Button type="button" onClick={() => { onExport(distribution); onOpenChange(false); }} className="gap-1.5"><CloudDownload className="size-4" aria-hidden />创建导出任务</Button> : null}
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>关闭</Button>
+          {data?.status === 'FROZEN' && canExport && !error ? <Button type="button" onClick={() => { onExport(data); onOpenChange(false); }} className="gap-1.5"><CloudDownload className="size-4" aria-hidden />创建导出任务</Button> : null}
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>关闭</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -1041,6 +1043,8 @@ function PreRegistrationDialog({
   const [hardwareUuids, setHardwareUuids] = useState('');
   const [note, setNote] = useState('');
   const [expiresAt, setExpiresAt] = useState('');
+  const [importErrors, setImportErrors] = useState<string[]>([]);
+  const hardwareValues = Array.from(new Set(hardwareUuids.split(/\s|,|，/).map((item) => item.trim()).filter(Boolean)));
   const [busy, setBusy] = useState(false);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
@@ -1050,18 +1054,27 @@ function PreRegistrationDialog({
       toast.error('请至少填写一个 Hardware Identity。');
       return;
     }
-    if (!expiresAt) {
-      toast.error('请设置预注册资格有效期。');
+    if (values.length > 500) { toast.error('单次最多导入 500 个硬件身份，请分批导入。'); return; }
+    if (!expiresAt || !Number.isFinite(new Date(expiresAt).getTime()) || new Date(expiresAt).getTime() <= Date.now()) {
+      toast.error('资格有效期必须晚于当前时间。');
       return;
     }
     setBusy(true);
     try {
-      const result = await openPlatformPost<{ inserted: number; duplicate: number }>('/api/v1/products/' + encodeURIComponent(productId) + '/pre-registrations', {
+      const result = await openPlatformPost<{ inserted: number; duplicate: number; invalid: number; invalidItems: { index: number; message: string }[] }>('/api/v1/products/' + encodeURIComponent(productId) + '/pre-registrations', {
         hardwareUuids: values,
         note: note.trim() || undefined,
         expiresAt: new Date(expiresAt).getTime(),
       });
-      toast.success(`已导入 ${result.inserted} 个资格${result.duplicate ? `，${result.duplicate} 个重复` : ''}。`);
+      const summary = `新增 ${result.inserted} 个，重复 ${result.duplicate} 个，无效 ${result.invalid} 个。`;
+      if (result.invalid > 0) toast.warning(summary); else toast.success(summary);
+      if (result.invalid > 0) {
+        setImportErrors(result.invalidItems.map((item) => `${values[item.index]}：${item.message}`));
+        setHardwareUuids(result.invalidItems.map((item) => values[item.index]).join('\n'));
+        await onCreated();
+        return;
+      }
+      setImportErrors([]);
       setHardwareUuids('');
       setNote('');
       setExpiresAt('');
@@ -1076,16 +1089,17 @@ function PreRegistrationDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => !busy && onOpenChange(next)}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>导入预注册资格</DialogTitle>
+          <DialogTitle>添加预注册 UUID</DialogTitle>
           <DialogDescription>适用于一型一密预注册：先导入出厂 Hardware Identity，设备首次绑定时再领取设备凭证。</DialogDescription>
         </DialogHeader>
         <form className="space-y-4" onSubmit={(event) => void submit(event)}>
+          {importErrors.length > 0 ? <Alert variant="destructive"><AlertDescription><p>部分资格未导入，已保留待修改的硬件身份。</p><ul className="mt-2 max-h-32 overflow-y-auto">{importErrors.map((message, index) => <li key={index}>{message}</li>)}</ul></AlertDescription></Alert> : null}
           <div className="space-y-2">
             <Label htmlFor="pre-registration-hardware">Hardware Identity</Label>
             <textarea id="pre-registration-hardware" className="flex min-h-28 w-full resize-y rounded-lg border bg-background px-3 py-2 font-mono text-sm outline-none transition-[border-color,box-shadow] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30" value={hardwareUuids} onChange={(event) => setHardwareUuids(event.target.value)} placeholder={'一行一个，例如：\nGW-HW-202608-0101\nGW-HW-202608-0102'} />
-            <p className="text-xs text-muted-foreground">支持换行、空格或逗号分隔，单次最多 500 个。</p>
+            <p className="text-xs text-muted-foreground">已识别 {hardwareValues.length} 个不同的硬件身份，单次最多 500 个。</p>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
@@ -1099,7 +1113,7 @@ function PreRegistrationDialog({
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>取消</Button>
-            <Button type="submit" disabled={busy} className="gap-1.5">
+            <Button type="submit" disabled={busy || hardwareValues.length === 0 || hardwareValues.length > 500 || !expiresAt} className="gap-1.5">
               {busy ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Upload className="size-4" aria-hidden />}
               导入资格
             </Button>
@@ -1131,7 +1145,8 @@ function ResetProductSecretDialog({
       });
       toast.success('新产品密钥已签发，请立即保存。');
       onOpenChange(false);
-      onDelivered(delivery);
+      if (delivery.secret) onDelivered(delivery);
+      else toast.info('凭证已存在；重复签发不会再次交付明文。');
     } catch (error) {
       toast.error(error instanceof OpenPlatformApiError ? error.message : '重置失败，请稍后重试。');
     } finally {
@@ -1163,7 +1178,7 @@ function CredentialsPageSkeleton() {
   return (
     <div className="space-y-4">
       <Skeleton className="h-12 w-full" />
-      <div className="grid gap-4 lg:grid-cols-2"><Skeleton className="h-44 w-full" /><Skeleton className="h-44 w-full" /></div>
+      <Skeleton className="h-9 w-full" />
       <Skeleton className="h-96 w-full" />
     </div>
   );
@@ -1171,12 +1186,14 @@ function CredentialsPageSkeleton() {
 
 const ProductCredentialsPage = () => {
   const { projectId = '', productId = '' } = useParams<{ projectId: string; productId: string }>();
+  const [activeTab, setActiveTab] = useState('');
+  const [allocationOpen, setAllocationOpen] = useState(false);
+  const [distributionBatchFilter, setDistributionBatchFilter] = useState('ALL');
   const [batchDialogOpen, setBatchDialogOpen] = useState(false);
   const [manufacturingBatch, setManufacturingBatch] = useState<CredentialManufacturingBatchView | null>(null);
   const [allocateBatch, setAllocateBatch] = useState<CredentialManufacturingBatchView | null>(null);
   const [exportDistribution, setExportDistribution] = useState<CredentialDistributionView | null>(null);
   const [distributionDetail, setDistributionDetail] = useState<CredentialDistributionView | null>(null);
-  const [distributionDetailLoading, setDistributionDetailLoading] = useState(false);
   const [preRegistrationDialogOpen, setPreRegistrationDialogOpen] = useState(false);
   const [resetCredential, setResetCredential] = useState<CredentialSummaryView | null>(null);
   const [issueCredentialKind, setIssueCredentialKind] = useState<'PRODUCT_SECRET' | 'DEVICE_SECRET' | null>(null);
@@ -1187,19 +1204,26 @@ const ProductCredentialsPage = () => {
   const [busyAction, setBusyAction] = useState(false);
 
   const productKey = productId ? `/api/v1/products/${encodeURIComponent(productId)}` : null;
-  const batchesKey = productId ? `/api/v1/credential-batches?productId=${encodeURIComponent(productId)}&pageSize=100` : null;
-  const credentialsKey = productId ? `/api/v1/credentials?productId=${encodeURIComponent(productId)}&pageSize=100` : null;
-  const exportsKey = productId ? `/api/v1/credential-exports?productId=${encodeURIComponent(productId)}&pageSize=100` : null;
-  const rotationsKey = productId ? `/api/v1/rotation-tasks?productId=${encodeURIComponent(productId)}&pageSize=100` : null;
-
   const { data: product, error: productError, isLoading: productLoading } = useSWR<ProductDetailView>(productKey, openPlatformGetFetcher);
-  const { data: batchesData, isLoading: batchesLoading, error: batchesError, mutate: mutateBatches } = useSWR<CursorResult<CredentialManufacturingBatchView>>(batchesKey, openPlatformGetFetcher);
+  const supportsProductSecret = product?.authMode === 'PRODUCT_SECRET';
+  const supportsDeviceSecret = product?.authMode === 'DEVICE_SECRET';
+  const preRegistrationMode = supportsProductSecret && product?.bootstrapMode === 'STRICT';
+  const visibleTab = (!supportsDeviceSecret && ['batches', 'distributions', 'exports'].includes(activeTab))
+    || (!preRegistrationMode && activeTab === 'pre-registrations') || !activeTab
+    ? (supportsDeviceSecret ? 'batches' : preRegistrationMode ? 'pre-registrations' : 'credentials')
+    : activeTab;
+  const batchesKey = productId && supportsDeviceSecret ? `/api/v1/credential-batches?productId=${encodeURIComponent(productId)}&limit=100` : null;
+  const credentialsKey = productId ? `/api/v1/credentials?productId=${encodeURIComponent(productId)}&limit=100` : null;
+  const exportsKey = productId && supportsDeviceSecret ? `/api/v1/credential-exports?productId=${encodeURIComponent(productId)}&limit=100` : null;
+  const rotationsKey = productId ? `/api/v1/rotation-tasks?productId=${encodeURIComponent(productId)}&limit=100` : null;
+
+  const { data: batchesData, isLoading: batchesLoading, error: batchesError, mutate: mutateBatches } = useSWR<CursorResult<CredentialManufacturingBatchView>>(batchesKey, openPlatformGetFetcher, { refreshInterval: (data) => data?.items.some((item) => item.status === 'ISSUING') ? 5000 : 0 });
   const { data: credentialsData, isLoading: credentialsLoading, error: credentialsError, mutate: mutateCredentials } = useSWR<CursorResult<CredentialSummaryView>>(credentialsKey, openPlatformGetFetcher);
-  const { data: exportsData, isLoading: exportsLoading, error: exportsError, mutate: mutateExports } = useSWR<CursorResult<CredentialExportTaskView>>(exportsKey, openPlatformGetFetcher);
+  const { data: exportsData, isLoading: exportsLoading, error: exportsError, mutate: mutateExports } = useSWR<CursorResult<CredentialExportTaskView>>(exportsKey, openPlatformGetFetcher, { refreshInterval: (data) => data?.items.some((item) => ['PENDING', 'RUNNING'].includes(item.status)) ? 5000 : 0 });
   const getPreRegistrationPageKey = (pageIndex: number, previousPageData: CursorResult<CredentialPreRegistrationView> | null) => {
-    if (!productId) return null;
+    if (!productId || !preRegistrationMode) return null;
     if (pageIndex > 0 && (!previousPageData || !previousPageData.hasMore)) return null;
-    const params = new URLSearchParams({ pageSize: '100' });
+    const params = new URLSearchParams({ limit: '100' });
     if (previousPageData?.nextCursor) params.set('cursor', previousPageData.nextCursor);
     return `/api/v1/products/${encodeURIComponent(productId)}/pre-registrations?${params.toString()}`;
   };
@@ -1215,6 +1239,10 @@ const ProductCredentialsPage = () => {
 
   const batches = batchesData?.items ?? [];
   const credentials = credentialsData?.items ?? [];
+  const manufacturingState = batches.map((batch) => `${batch.batchId}:${batch.status}`).join(',');
+  useEffect(() => {
+    if (manufacturingState) void mutateCredentials();
+  }, [manufacturingState, mutateCredentials]);
   const exports = exportsData?.items ?? [];
   const preRegistrations = preRegistrationPages?.flatMap((page) => page.items) ?? [];
   const rotations = rotationsData?.items ?? [];
@@ -1228,27 +1256,12 @@ const ProductCredentialsPage = () => {
     return distributionLists.flat();
   });
   const distributions = distributionsData ?? [];
-  const sortedDistributions = [...distributions].sort((left, right) => right.createTime - left.createTime);
-  const availableCount = batches.reduce((sum, batch) => sum + batch.availableCount, 0);
-  const allocatedCount = batches.reduce((sum, batch) => sum + batch.allocatedQuantity, 0);
+  const sortedDistributions = distributions.filter((item) => distributionBatchFilter === 'ALL' || item.batchId === distributionBatchFilter).sort((left, right) => right.createTime - left.createTime);
+  const allocatedCount = distributions.reduce((sum, distribution) => sum + distribution.allocatedQuantity, 0);
   const activeExports = exports.filter((item) => ['PENDING', 'RUNNING'].includes(item.status)).length;
-  const allocationTotal = allocatedCount + availableCount;
-  const allocationPercent = allocationTotal ? Math.round((allocatedCount / allocationTotal) * 100) : 0;
-  const canProvision = product != null && ['PUBLISHED', 'DISABLED'].includes(product.lifecycleStatus);
-  const supportsProductSecret = product?.authModes.includes('PRODUCT_SECRET') ?? false;
-  const supportsDeviceSecret = product?.authModes.includes('DEVICE_SECRET') ?? false;
-  const preRegistrationMode = product?.bootstrapMode === 'STRICT';
-  const pendingPreRegistrationCount = preRegistrations.filter(
-    (item) => item.productId === productId
-      && item.status === 'PENDING'
-      && item.expiresAt > Date.now()
-      && !deviceCredentials.some(
-        (credential) => credential.hardwareUuid === item.hardwareUuid
-          && ['ACTIVE', 'RETIRING'].includes(credential.credentialStatus),
-      ),
-  ).length;
+  const canProvision = product?.lifecycleStatus === 'PUBLISHED';
   const manufacturingFlowEnabled = canProvision && supportsDeviceSecret;
-  const canCreateBatch = manufacturingFlowEnabled && (!preRegistrationMode || pendingPreRegistrationCount > 0);
+  const canCreateBatch = manufacturingFlowEnabled;
   const canImportPreRegistrations = canProvision && preRegistrationMode && supportsProductSecret;
   const productSecretOnly = supportsProductSecret && !supportsDeviceSecret;
   const hasErrors = productError || batchesError || credentialsError || exportsError || preRegistrationsError || rotationsError || distributionsError;
@@ -1261,7 +1274,7 @@ const ProductCredentialsPage = () => {
     if (!pendingRemoval) return;
     setBusyAction(true);
     try {
-      await openPlatformDelete(`/api/v1/pre-registrations/${encodeURIComponent(pendingRemoval.preRegistrationId)}`, {});
+      await openPlatformDelete(`/api/v1/pre-registrations/${encodeURIComponent(pendingRemoval.preRegistrationId)}`, { reasonCode: 'MANUAL_REMOVE', reason: '管理台移除预注册资格', expectedVersion: pendingRemoval.version });
       toast.success('预注册资格已移除。');
       setPendingRemoval(null);
       await mutatePreRegistrations();
@@ -1278,7 +1291,7 @@ const ProductCredentialsPage = () => {
       return;
     }
     try {
-      const result = await openPlatformPost<{ downloadUrl: string; expiresAt: number }>(`/api/v1/credential-exports/${encodeURIComponent(task.exportId)}/download-grants`, {});
+      const result = await openPlatformPost<{ downloadUrl: string; expiresAt: number }>(`/api/v1/credential-exports/${encodeURIComponent(task.exportId)}/download-link`, {});
       toast.success(`下载链接已签发，将于 ${formatDate(result.expiresAt)} 失效。`);
       window.open(result.downloadUrl, '_blank', 'noopener,noreferrer');
     } catch (error) {
@@ -1286,42 +1299,17 @@ const ProductCredentialsPage = () => {
     }
   };
 
-  const openExportForBatch = async (batch: CredentialManufacturingBatchView) => {
-    if (!manufacturingFlowEnabled) {
-      toast.info('当前产品未启用设备密钥，不支持导出设备凭证。');
-      return;
-    }
-    try {
-      const batchDistributions = await openPlatformGetFetcher<CredentialDistributionView[]>(`/api/v1/credential-distributions/${encodeURIComponent(batch.batchId)}/distributions`);
-      const frozen = batchDistributions.find((item) => item.status === 'FROZEN');
-      if (!frozen) {
-        toast.info('这个批次还没有冻结的划拨集合，请先完成划拨。');
-        return;
-      }
-      setExportDistribution(frozen);
-    } catch (error) {
-      toast.error(error instanceof OpenPlatformApiError ? error.message : '划拨集合加载失败。');
-    }
+  const openExportForBatch = (batch: CredentialManufacturingBatchView) => {
+    setDistributionBatchFilter(batch.batchId);
+    setActiveTab('distributions');
   };
 
-  const openDistributionDetail = async (distribution: CredentialDistributionView) => {
-    setDistributionDetail(null);
-    setDistributionDetailLoading(true);
-    try {
-      const detail = await openPlatformGetFetcher<CredentialDistributionView>(`/api/v1/credential-distributions/${encodeURIComponent(distribution.distributionId)}`);
-      setDistributionDetail(detail);
-    } catch (error) {
-      toast.error(error instanceof OpenPlatformApiError ? error.message : '领取单详情加载失败。');
-    } finally {
-      setDistributionDetailLoading(false);
-    }
-  };
+  const openDistributionDetail = (distribution: CredentialDistributionView) => setDistributionDetail(distribution);
 
   const breadcrumbItems = [
     { to: '/projects', title: '项目' },
     { to: `/projects/${projectId}/products`, title: '产品' },
     { to: `/projects/${projectId}/products/${productId}`, title: product?.productName ?? '产品详情' },
-    { title: '凭证与量产' },
   ];
 
   if (productLoading && !product) {
@@ -1370,9 +1358,6 @@ const ProductCredentialsPage = () => {
               <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => void refreshAll()}>
                 <RefreshCw className="size-3.5" aria-hidden /> 刷新状态
               </Button>
-              <Button type="button" size="sm" className="gap-1.5" onClick={() => setBatchDialogOpen(true)} disabled={!canCreateBatch}>
-                <Plus className="size-3.5" aria-hidden /> 创建量产批次
-              </Button>
             </div>
           </div>
 
@@ -1385,112 +1370,65 @@ const ProductCredentialsPage = () => {
           {!canProvision ? (
             <Alert className="rounded-xl border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-100">
               <CircleAlert className="size-4" aria-hidden />
-              <AlertDescription>当前产品尚未发布，凭证签发、量产批次、预注册和导出操作会在发布后开放；现在可以先查看已有安全状态。</AlertDescription>
+              <AlertDescription>当前产品不可新增凭证或预注册名单，请先确认产品处于已发布状态。</AlertDescription>
             </Alert>
           ) : null}
           {canProvision && productSecretOnly && product.bootstrapMode === 'OPEN' ? (
             <Alert className="rounded-xl border-primary/20 bg-primary/5">
               <ShieldCheck className="size-4 text-primary" aria-hidden />
-              <AlertDescription>当前产品仅使用产品密钥并采用免预注册动态接入。设备首次上线时由平台动态生成设备凭证，因此不支持制造批次、划拨、预注册和导出操作。</AlertDescription>
+              <AlertDescription>动态注册：无需提前登记 UUID。设备首次使用产品密钥注册后，领取设备密钥。</AlertDescription>
             </Alert>
           ) : null}
           {canProvision && productSecretOnly && product.bootstrapMode === 'STRICT' ? (
             <Alert className="rounded-xl border-primary/20 bg-primary/5">
               <ShieldCheck className="size-4 text-primary" aria-hidden />
-              <AlertDescription>当前产品仅启用产品密钥，不能生成设备凭证；可以维护预注册资格，但不支持制造批次、划拨和导出设备凭证。</AlertDescription>
+              <AlertDescription>预注册：先添加 UUID 名单。名单内设备使用产品密钥注册后，领取设备密钥。</AlertDescription>
             </Alert>
           ) : null}
-          {canProvision && !productSecretOnly && preRegistrationMode ? (
-            <Alert className="rounded-xl border-primary/20 bg-primary/5">
-              <ShieldCheck className="size-4 text-primary" aria-hidden />
-              <AlertDescription>当前产品使用严格预注册接入。创建制造批次时会自动使用全部待绑定预注册 Hardware UUID，批次数量固定为 {formatNumber(pendingPreRegistrationCount)}。</AlertDescription>
-            </Alert>
-          ) : null}
+
 
           {batchesLoading || credentialsLoading || exportsLoading || preRegistrationsLoading ? <RequestLoading label="正在加载凭证概览…" /> : batchesError || credentialsError || exportsError || preRegistrationsError ? null : <>
-          <div className="grid items-stretch gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)]">
-            <Card className="h-full overflow-hidden">
-              <CardHeader className="border-b bg-muted/10">
-                <CardTitle className="flex items-center gap-2 text-base"><ShieldCheck className="size-4 text-emerald-500" aria-hidden />凭证安全概览</CardTitle>
-                <CardDescription>只展示非敏感摘要；明文凭证只会在签发或重置成功后短暂交付。</CardDescription>
-              </CardHeader>
-              <CardContent className="grid flex-1 gap-3 p-4 sm:grid-cols-2">
-                <div className="rounded-xl border bg-background p-3 transition-colors hover:bg-muted/30">
-                  <div className="flex items-center justify-between gap-2"><span className="text-xs text-muted-foreground">Product Secret</span>{productSecret ? statusBadge(credentialStatusLabel[productSecret.credentialStatus] ?? productSecret.credentialStatus, getCredentialTone(productSecret.credentialStatus)) : supportsProductSecret ? statusBadge('未签发', 'warning') : statusBadge('未启用', 'default')}</div>
-                  {productSecret ? <><p className="mt-3 font-mono text-xs">{productSecret.fingerprint}</p><p className="mt-1 text-xs text-muted-foreground">版本 v{productSecret.versionNo} · 更新于 {formatDateShort(productSecret.updateTime)}</p>{supportsProductSecret ? <Button type="button" variant="outline" size="sm" className="mt-3 w-full gap-1.5" onClick={() => setResetCredential(productSecret)} disabled={!canProvision}><RefreshCw className="size-3.5" aria-hidden />重置并交付新密钥</Button> : <p className="mt-3 text-xs text-muted-foreground">当前产品未启用产品密钥认证，不能继续重置。</p>}</> : supportsProductSecret ? <><p className="mt-3 text-xs text-muted-foreground">产品发布后可以签发第一把产品密钥。</p><Button type="button" variant="outline" size="sm" className="mt-3 w-full gap-1.5" onClick={() => setIssueCredentialKind('PRODUCT_SECRET')} disabled={!canProvision}><KeyRound className="size-3.5" aria-hidden />签发 Product Secret</Button></> : <p className="mt-3 text-xs text-muted-foreground">当前产品使用设备密钥认证，不需要产品密钥。</p>}
-                </div>
-                <div className="rounded-xl border bg-background p-3 transition-colors hover:bg-muted/30">
-                  <div className="flex items-center justify-between gap-2"><span className="text-xs text-muted-foreground">Device Secret</span>{statusBadge(`${formatNumber(deviceCredentials.length)} 个摘要`, 'default')}</div>
-                  <p className="mt-3 text-2xl font-semibold tabular-nums">{formatNumber(deviceCredentials.filter((item) => item.credentialStatus === 'ACTIVE').length)}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">当前有效版本 · 冻结和吊销不会删除审计记录</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="h-full overflow-hidden">
-              <CardHeader className="border-b bg-muted/10"><CardTitle className="text-base">量产进度</CardTitle><CardDescription>从生成到交付，每一步都能追溯固定集合。</CardDescription></CardHeader>
-              <CardContent className="flex flex-1 flex-col justify-between gap-3 pb-4">
-                <div className="grid grid-cols-3 gap-1.5 text-center">
-                  <div className="rounded-lg border border-border/60 bg-muted/70 px-2 py-1.5"><p className="text-base font-semibold leading-5 tabular-nums">{formatNumber(availableCount)}</p><p className="text-[10px] leading-4 text-muted-foreground">可划拨</p></div>
-                  <div className="rounded-lg border border-border/60 bg-muted/70 px-2 py-1.5"><p className="text-base font-semibold leading-5 tabular-nums">{formatNumber(allocatedCount)}</p><p className="text-[10px] leading-4 text-muted-foreground">已划拨</p></div>
-                  <div className="rounded-lg border border-border/60 bg-muted/70 px-2 py-1.5"><p className="text-base font-semibold leading-5 tabular-nums">{formatNumber(activeExports)}</p><p className="text-[10px] leading-4 text-muted-foreground">进行中</p></div>
-                </div>
-                <div className="space-y-3 rounded-xl border bg-muted/20 p-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-medium text-foreground">已划拨占比</span>
-                    <span className="rounded-full bg-background px-2 py-0.5 text-xs font-semibold tabular-nums ring-1 ring-foreground/10">{allocationPercent}%</span>
-                  </div>
-                  <Progress aria-label="已划拨占比" value={allocationPercent} className="[&_[data-slot=progress-track]]:!h-2 [&_[data-slot=progress-track]]:!bg-muted/80" />
-                </div>
-              </CardContent>
-            </Card>
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-lg border bg-muted/10 px-3 py-2 text-xs" aria-label="凭证与量产状态">
+            <span className="text-muted-foreground">设备凭证 <span className="ml-1 font-medium tabular-nums text-foreground">{formatNumber(deviceCredentials.length)}</span></span>
+            {supportsDeviceSecret ? <span className="text-muted-foreground">已领取 <span className="ml-1 font-medium tabular-nums text-foreground">{formatNumber(allocatedCount)}</span></span> : null}
+            {supportsDeviceSecret ? <span className="text-muted-foreground">导出中 <span className="ml-1 font-medium tabular-nums text-foreground">{formatNumber(activeExports)}</span></span> : null}
           </div>
-
-          <Card className="!gap-3 !py-3">
-            <CardHeader className="!gap-0"><CardTitle className="text-base">推荐工作流</CardTitle><CardDescription>{productSecretOnly && product.bootstrapMode === 'OPEN' ? '当前模式由产品密钥完成首次接入，不需要提前生成或导出设备凭证。' : preRegistrationMode ? '按“预注册 → 批次 → 划拨 → 导出”推进，批次成员始终来自预注册 Hardware UUID。' : '按“批次 → 划拨 → 导出”推进，避免把 Secret 直接暴露给不该看到的人。'}</CardDescription></CardHeader>
-            <CardContent className="grid gap-2 md:grid-cols-3">
-              {[
-                { icon: Plus, title: '1. 创建制造批次', description: preRegistrationMode ? `使用 ${formatNumber(pendingPreRegistrationCount)} 条预注册 Hardware UUID。` : '生成指定数量的 Device Secret 和硬件身份。', done: batches.length > 0 },
-                { icon: PackageCheck, title: '2. 固定划拨集合', description: '按产线或渠道冻结一组不可变成员。', done: allocatedCount > 0 },
-                { icon: CloudDownload, title: '3. 创建导出任务', description: '选择 Excel 或 JSON，按固定集合限时下载。', done: exports.length > 0 },
-              ].map((step) => (
-                <div key={step.title} className="group flex items-start gap-2 rounded-xl border p-2 transition-colors hover:bg-muted/30">
-                  <div className={cn('mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full border bg-muted/30 transition-colors', step.done && 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600')}>
-                    {step.done ? <Check className="size-3.5" aria-hidden /> : <step.icon className="size-3.5" aria-hidden />}
-                  </div>
-                  <div className="min-w-0"><p className="text-xs font-medium leading-4">{step.title}</p><p className="mt-0.5 text-[11px] leading-4 text-muted-foreground">{step.description}</p></div>
-                  <ChevronRight className="mt-0.5 ml-auto size-3.5 shrink-0 text-muted-foreground/50 transition-transform group-hover:translate-x-0.5" aria-hidden />
-                </div>
-              ))}
-            </CardContent>
-          </Card>
+          {supportsProductSecret ? (
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2"><span className="text-sm font-medium">产品密钥</span>{productSecret ? statusBadge(credentialStatusLabel[productSecret.credentialStatus] ?? productSecret.credentialStatus, getCredentialTone(productSecret.credentialStatus)) : statusBadge('未签发', 'warning')}</div>
+                {productSecret ? <p className="mt-1 break-all font-mono text-xs text-muted-foreground">{productSecret.credentialId} · v{productSecret.versionNo}</p> : <p className="mt-1 text-xs text-muted-foreground">用于设备首次接入。</p>}
+              </div>
+              <Button type="button" variant="outline" size="sm" onClick={() => productSecret ? setResetCredential(productSecret) : setIssueCredentialKind('PRODUCT_SECRET')} disabled={!canProvision}>{productSecret ? '重置产品密钥' : '签发产品密钥'}</Button>
+            </div>
+          ) : null}
 
           </>}
-          <Tabs defaultValue="batches" className="flex-col gap-4">
-            <TabsList variant="line" className="w-full gap-3 justify-start overflow-x-auto rounded-none border-b px-0 md:w-1/2">
-              <TabsTrigger value="batches" className="min-w-0 flex-1 basis-0 px-3">量产批次</TabsTrigger>
-              <TabsTrigger value="distributions" className="min-w-0 flex-1 basis-0 px-3">领取单</TabsTrigger>
-              <TabsTrigger value="credentials" className="min-w-0 flex-1 basis-0 px-3">设备凭证</TabsTrigger>
-              <TabsTrigger value="exports" className="min-w-0 flex-1 basis-0 px-3">导出记录</TabsTrigger>
-              <TabsTrigger value="pre-registrations" className="min-w-0 flex-1 basis-0 px-3">预注册</TabsTrigger>
-              <TabsTrigger value="rotations" className="min-w-0 flex-1 basis-0 px-3">密钥轮换</TabsTrigger>
+          <Tabs value={visibleTab} onValueChange={(value) => setActiveTab(value as string)} className="flex-col gap-4">
+            <TabsList variant="line" className="w-full gap-1 justify-start overflow-x-auto rounded-none border-b px-0">
+              {supportsDeviceSecret ? <TabsTrigger value="batches" className="shrink-0 px-3">量产批次</TabsTrigger> : null}
+              {supportsDeviceSecret ? <TabsTrigger value="distributions" className="shrink-0 px-3">领取单</TabsTrigger> : null}
+              <TabsTrigger value="credentials" className="shrink-0 px-3">设备凭证</TabsTrigger>
+              {supportsDeviceSecret ? <TabsTrigger value="exports" className="shrink-0 px-3">导出记录</TabsTrigger> : null}
+              {preRegistrationMode ? <TabsTrigger value="pre-registrations" className="shrink-0 px-3">预注册名单</TabsTrigger> : null}
+              <TabsTrigger value="rotations" className="shrink-0 px-3">密钥轮换</TabsTrigger>
             </TabsList>
 
             <TabsContent value="batches" className="space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-3"><div className="flex min-w-0 items-start gap-2"><div className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-md border border-border/60 bg-muted/40 text-muted-foreground"><PackagePlus className="size-3.5" aria-hidden /></div><div className="min-w-0"><h2 className="text-sm font-semibold leading-5">制造批次</h2><p className="mt-1 text-xs leading-4 text-muted-foreground">{productSecretOnly ? '当前认证配置不生成可导出的设备凭证。' : preRegistrationMode ? '批次数量和 Hardware UUID 取自待绑定预注册资格。' : '批次是生成凭证的来源，导出前还需要先创建固定划拨。'}</p></div></div><Button type="button" size="sm" className="gap-1.5" onClick={() => setBatchDialogOpen(true)} disabled={!canCreateBatch}><Plus className="size-3.5" aria-hidden />创建批次</Button></div>
-              {!preRegistrationsLoading && !preRegistrationsError && !credentialsLoading && !credentialsError && canProvision && preRegistrationMode && supportsDeviceSecret && pendingPreRegistrationCount === 0 ? <div className="rounded-lg border border-dashed bg-muted/20 px-3 py-2 text-xs text-muted-foreground">当前没有可用于制造批次的待绑定预注册资格。请先在“预注册”中导入 Hardware UUID。</div> : null}
+              <div className="flex flex-wrap items-center justify-between gap-3"><div className="flex min-w-0 items-start gap-2"><div className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-md border border-border/60 bg-muted/40 text-muted-foreground"><PackagePlus className="size-3.5" aria-hidden /></div><div className="min-w-0"><h2 className="text-sm font-semibold leading-5">制造批次</h2><p className="mt-1 text-xs leading-4 text-muted-foreground">批量生成设备凭证，完成后可创建领取单。</p></div></div><Button type="button" size="sm" className="gap-1.5" onClick={() => setBatchDialogOpen(true)} disabled={!canCreateBatch}><Plus className="size-3.5" aria-hidden />创建批次</Button></div>
               <div className="overflow-hidden rounded-xl border">
                 <Table>
                   <TableHeader><TableRow><TableHead>批次</TableHead><TableHead>状态</TableHead><TableHead>数量</TableHead><TableHead>失效时间</TableHead><TableHead className="text-right">操作</TableHead></TableRow></TableHeader>
                   <TableBody>
-                    {batchesLoading || batchesError ? <RequestTableState colSpan={5} error={batchesError} loading={batchesLoading} onRetry={() => void mutateBatches()} /> : batches.length === 0 ? <TableRow><TableCell colSpan={5} className="h-32 text-center text-sm text-muted-foreground">还没有量产批次，发布产品后可创建第一批凭证。</TableCell></TableRow> : batches.map((batch) => {
+                    {batchesLoading || batchesError ? <RequestTableState colSpan={5} error={batchesError} loading={batchesLoading} onRetry={() => void mutateBatches()} /> : batches.length === 0 ? <TableRow><TableCell colSpan={5} className="h-32 text-center text-sm text-muted-foreground">还没有量产批次，点击“创建批次”开始准备设备凭证。</TableCell></TableRow> : batches.map((batch) => {
                       const displayStatus = getBatchDisplayStatus(batch);
                       const fullyAllocated = displayStatus === 'FULLY_ALLOCATED';
                       return <TableRow key={batch.batchId} className="transition-colors hover:bg-muted/20">
-                        <TableCell><div className="font-medium">{batch.batchId}</div><div className="mt-1 text-xs text-muted-foreground">创建于 {formatDateShort(batch.createTime)}</div></TableCell>
+                        <TableCell><button type="button" className="text-left font-medium underline-offset-4 hover:underline" onClick={() => setManufacturingBatch(batch)} aria-label={`查看批次 ${batch.batchId}`}>批次 {maskId(batch.batchId)}</button><div className="mt-1 text-xs text-muted-foreground">{formatDateShort(batch.createTime)}</div></TableCell>
                         <TableCell>{statusBadge(batchStatusLabel[displayStatus] ?? displayStatus, getBatchTone(displayStatus))}</TableCell>
-                        <TableCell><div className="font-medium tabular-nums">{formatNumber(batch.targetQuantity)}</div><div className="mt-1 text-xs text-muted-foreground">{fullyAllocated ? `已全部划拨 ${formatNumber(batch.allocatedQuantity)}` : `可划拨 ${formatNumber(batch.availableCount)}`} · 已绑定 {formatNumber(batch.boundCount)}</div></TableCell>
+                        <TableCell><div className="font-medium tabular-nums">{formatNumber(batch.targetQuantity)}</div><div className="mt-1 text-xs text-muted-foreground">{fullyAllocated ? `已全部划拨 ${formatNumber(batch.allocatedQuantity)}` : `可绑定 ${formatNumber(batch.availableCount)}`} · 已绑定 {formatNumber(batch.boundCount)}</div></TableCell>
                         <TableCell className="text-sm text-muted-foreground">{formatDate(batch.expiresAt)}</TableCell>
-                        <TableCell className="text-right"><div className="flex flex-wrap justify-end gap-1.5"><Button type="button" variant="ghost" size="sm" className="gap-1.5" onClick={() => setManufacturingBatch(batch)}><Eye className="size-3.5" aria-hidden />制造项</Button><Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => setAllocateBatch(batch)} disabled={!manufacturingFlowEnabled || batch.availableCount === 0}><PackageCheck className="size-3.5" aria-hidden />{fullyAllocated ? '已全部划拨' : '划拨凭证'}</Button><Button type="button" variant="ghost" size="sm" className="gap-1.5" onClick={() => void openExportForBatch(batch)} disabled={!manufacturingFlowEnabled || batch.allocatedQuantity === 0}><CloudDownload className="size-3.5" aria-hidden />导出</Button></div></TableCell>
+                        <TableCell className="text-right"><div className="flex flex-wrap justify-end gap-1.5"><Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => { setAllocateBatch(batch); setAllocationOpen(true); }} disabled={!manufacturingFlowEnabled || batch.availableCount === 0}><PackageCheck className="size-3.5" aria-hidden />{fullyAllocated ? '已全部领取' : '创建领取单'}</Button><Button type="button" variant="ghost" size="sm" className="gap-1.5" onClick={() => void openExportForBatch(batch)} disabled={!manufacturingFlowEnabled || !distributions.some((item) => item.batchId === batch.batchId)}><Eye className="size-3.5" aria-hidden />查看领取单</Button></div></TableCell>
                       </TableRow>;
                     })}
                   </TableBody>
@@ -1499,20 +1437,21 @@ const ProductCredentialsPage = () => {
             </TabsContent>
 
             <TabsContent value="distributions" className="space-y-3">
+              <div className="flex flex-wrap items-center gap-2"><Label>来源批次</Label><Select value={distributionBatchFilter} onValueChange={(value) => setDistributionBatchFilter(value ?? 'ALL')}><SelectTrigger aria-label="筛选领取单来源批次" className="w-full sm:w-80"><SelectValue>{distributionBatchFilter === 'ALL' ? '全部批次' : distributionBatchFilter}</SelectValue></SelectTrigger><SelectContent><SelectItem value="ALL">全部批次</SelectItem>{batches.map((batch) => <SelectItem key={batch.batchId} value={batch.batchId}>{batch.batchId}</SelectItem>)}</SelectContent></Select></div>
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <div><h2 className="text-sm font-semibold">领取单列表</h2><p className="text-xs text-muted-foreground">领取单由制造批次划拨产生；成员集合冻结后才能导出和交付。</p></div>
-                <Button type="button" size="sm" className="gap-1.5" onClick={() => { const nextBatch = batches.find((batch) => batch.availableCount > 0); if (nextBatch) setAllocateBatch(nextBatch); else toast.info('暂无可划拨的制造批次。'); }} disabled={!manufacturingFlowEnabled || !batches.some((batch) => batch.availableCount > 0)}><Plus className="size-3.5" aria-hidden />创建领取单</Button>
+                <div><h2 className="text-sm font-semibold">领取单列表</h2><p className="text-xs text-muted-foreground">按产线或订单领取凭证，再导出交付。</p></div>
+                <Button type="button" size="sm" className="gap-1.5" onClick={() => { setAllocateBatch(null); setAllocationOpen(true); }} disabled={!manufacturingFlowEnabled || !batches.some((batch) => batch.availableCount > 0)}><Plus className="size-3.5" aria-hidden />创建领取单</Button>
               </div>
               <div className="overflow-hidden rounded-xl border">
                 <Table>
-                  <TableHeader><TableRow><TableHead>领取单</TableHead><TableHead>来源批次</TableHead><TableHead>数量</TableHead><TableHead>状态</TableHead><TableHead>冻结时间</TableHead><TableHead>失效时间</TableHead><TableHead className="text-right">操作</TableHead></TableRow></TableHeader>
+                  <TableHeader><TableRow><TableHead>领取单</TableHead><TableHead>来源批次</TableHead><TableHead>数量</TableHead><TableHead>状态</TableHead><TableHead>领取时间</TableHead><TableHead>失效时间</TableHead><TableHead className="text-right">操作</TableHead></TableRow></TableHeader>
                   <TableBody>
-                    {batchesLoading || distributionsLoading || batchesError || distributionsError ? <RequestTableState colSpan={7} error={batchesError || distributionsError} loading={batchesLoading || distributionsLoading} onRetry={() => void mutateDistributions()} /> : sortedDistributions.length === 0 ? <TableRow><TableCell colSpan={7} className="h-32 text-center text-sm text-muted-foreground">还没有领取单，请先在制造批次中划拨一组固定凭证。</TableCell></TableRow> : sortedDistributions.map((distribution) => <TableRow key={distribution.distributionId} className="transition-colors hover:bg-muted/20">
-                      <TableCell><button type="button" className="text-left font-medium underline-offset-4 hover:underline" onClick={() => void openDistributionDetail(distribution)}>{distribution.distributionId}</button><div className="mt-1 text-xs text-muted-foreground">{distribution.requestReference}</div></TableCell>
+                    {batchesLoading || distributionsLoading || batchesError || distributionsError ? <RequestTableState colSpan={7} error={batchesError || distributionsError} loading={batchesLoading || distributionsLoading} onRetry={() => void mutateDistributions()} /> : sortedDistributions.length === 0 ? <TableRow><TableCell colSpan={7} className="h-32 text-center text-sm text-muted-foreground">还没有领取单。点击“创建领取单”，选择批次和数量。</TableCell></TableRow> : sortedDistributions.map((distribution) => <TableRow key={distribution.distributionId} className="transition-colors hover:bg-muted/20">
+                      <TableCell><button type="button" className="text-left font-medium underline-offset-4 hover:underline" onClick={() => void openDistributionDetail(distribution)}>{distribution.distributionId}</button><div className="mt-1 text-xs text-muted-foreground">{distribution.distributionRequestId}</div></TableCell>
                       <TableCell><code className="font-mono text-xs">{distribution.batchId}</code></TableCell>
                       <TableCell><span className="font-medium tabular-nums">{formatNumber(distribution.allocatedQuantity)}</span><span className="text-xs text-muted-foreground"> / {formatNumber(distribution.requestedQuantity)}</span></TableCell>
                       <TableCell>{statusBadge(distributionStatusLabel[distribution.status] ?? distribution.status, getDistributionTone(distribution.status))}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{distribution.frozenAt ? formatDate(distribution.frozenAt) : '尚未冻结'}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{distribution.frozenAt ? formatDate(distribution.frozenAt) : '尚未领取'}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{formatDate(distribution.expiresAt)}</TableCell>
                       <TableCell><div className="flex justify-end gap-1.5"><Button type="button" variant="ghost" size="sm" onClick={() => void openDistributionDetail(distribution)}>查看</Button>{distribution.status === 'FROZEN' && manufacturingFlowEnabled ? <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => setExportDistribution(distribution)}><CloudDownload className="size-3.5" aria-hidden />导出</Button> : null}</div></TableCell>
                     </TableRow>)}
@@ -1522,28 +1461,28 @@ const ProductCredentialsPage = () => {
             </TabsContent>
 
             <TabsContent value="credentials" className="space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2"><div><h2 className="text-sm font-semibold">设备凭证摘要</h2><p className="text-xs text-muted-foreground">列表不返回 Device Secret，只展示设备身份、指纹和安全状态。</p></div><Button type="button" size="sm" className="gap-1.5" onClick={() => setIssueCredentialKind('DEVICE_SECRET')} disabled={!manufacturingFlowEnabled}><Plus className="size-3.5" aria-hidden />手动签发</Button></div>
+              <div className="flex flex-wrap items-center justify-between gap-2"><div><h2 className="text-sm font-semibold">设备凭证摘要</h2><p className="text-xs text-muted-foreground">管理设备凭证的访问状态；已激活设备可发起轮换。</p></div>{supportsDeviceSecret ? <Button type="button" size="sm" className="gap-1.5" onClick={() => setIssueCredentialKind('DEVICE_SECRET')} disabled={!manufacturingFlowEnabled}><Plus className="size-3.5" aria-hidden />手动签发</Button> : null}</div>
               <div className="overflow-hidden rounded-xl border">
                 <Table>
-                  <TableHeader><TableRow><TableHead>设备身份</TableHead><TableHead>凭证版本</TableHead><TableHead>状态</TableHead><TableHead>指纹</TableHead><TableHead>更新时间</TableHead><TableHead className="text-right">操作</TableHead></TableRow></TableHeader>
+                  <TableHeader><TableRow><TableHead>设备身份</TableHead><TableHead>凭证版本</TableHead><TableHead>状态</TableHead><TableHead>凭证族</TableHead><TableHead>更新时间</TableHead><TableHead className="text-right">操作</TableHead></TableRow></TableHeader>
                   <TableBody>{credentialsLoading || credentialsError ? <RequestTableState colSpan={6} error={credentialsError} loading={credentialsLoading} onRetry={() => void mutateCredentials()} /> : deviceCredentials.length === 0 ? <TableRow><TableCell colSpan={6} className="h-32 text-center text-sm text-muted-foreground">还没有设备级凭证摘要。</TableCell></TableRow> : deviceCredentials.map((credential) => <TableRow key={credential.credentialId} className="transition-colors hover:bg-muted/20">
                     <TableCell><div className="font-medium">{credential.deviceId || '未绑定设备'}</div><div className="mt-1 font-mono text-xs text-muted-foreground">{maskId(credential.hardwareUuid)}</div></TableCell>
                     <TableCell><span className="font-mono text-xs">v{credential.versionNo}</span><div className="mt-1 text-xs text-muted-foreground">{credential.credentialId}</div></TableCell>
                     <TableCell><div className="flex flex-wrap gap-1.5">{statusBadge(credentialStatusLabel[credential.credentialStatus] ?? credential.credentialStatus, getCredentialTone(credential.credentialStatus))}{statusBadge(accessStateLabel[credential.accessState] ?? credential.accessState, credential.accessState === 'ENABLED' ? 'success' : 'warning')}</div></TableCell>
-                    <TableCell><code className="font-mono text-xs text-muted-foreground">{credential.fingerprint}</code></TableCell>
+                    <TableCell><code className="font-mono text-xs text-muted-foreground">{credential.credentialFamilyId}</code></TableCell>
                     <TableCell className="text-sm text-muted-foreground">{formatDate(credential.updateTime)}</TableCell>
-                    <TableCell><div className="flex justify-end gap-1.5"><Button type="button" variant="ghost" size="sm" onClick={() => setRotationCredential(credential)} disabled={!manufacturingFlowEnabled || credential.credentialStatus !== 'ACTIVE'}><RotateCcw className="size-3.5" aria-hidden />轮换</Button>{credential.credentialStatus !== 'REVOKED' ? <Button type="button" variant="ghost" size="sm" className={credential.accessState === 'ENABLED' ? 'text-amber-600 hover:text-amber-700' : 'text-emerald-600 hover:text-emerald-700'} onClick={() => setPendingCredentialAction({ credential, action: credential.accessState === 'ENABLED' ? 'FREEZE' : 'UNFREEZE' })}>{credential.accessState === 'ENABLED' ? '冻结' : '解冻'}</Button> : null}<Button type="button" variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => setPendingCredentialAction({ credential, action: 'REVOKE' })} disabled={credential.credentialStatus === 'REVOKED'}>吊销</Button></div></TableCell>
+                    <TableCell><div className="flex justify-end gap-1.5"><Button type="button" variant="ghost" size="sm" onClick={() => setRotationCredential(credential)} disabled={!manufacturingFlowEnabled || credential.credentialStatus !== 'ACTIVE' || !credential.deviceId} title={!credential.deviceId ? '设备激活并绑定后才能轮换' : undefined}><RotateCcw className="size-3.5" aria-hidden />轮换</Button>{credential.credentialStatus !== 'REVOKED' ? <Button type="button" variant="ghost" size="sm" className={credential.accessState === 'ENABLED' ? 'text-amber-600 hover:text-amber-700' : 'text-emerald-600 hover:text-emerald-700'} onClick={() => setPendingCredentialAction({ credential, action: credential.accessState === 'ENABLED' ? 'FREEZE' : 'UNFREEZE' })}>{credential.accessState === 'ENABLED' ? '冻结' : '解冻'}</Button> : null}<Button type="button" variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => setPendingCredentialAction({ credential, action: 'REVOKE' })} disabled={credential.credentialStatus === 'REVOKED'}>吊销</Button></div></TableCell>
                   </TableRow>)}</TableBody>
                 </Table>
               </div>
             </TabsContent>
 
             <TabsContent value="exports" className="space-y-3">
-              <div><h2 className="text-sm font-semibold">导出任务</h2><p className="text-xs text-muted-foreground">每次点击导出都会创建新任务；下载链接单独签发并限时失效。</p></div>
+              <div><h2 className="text-sm font-semibold">导出任务</h2><p className="text-xs text-muted-foreground">导出完成后可下载 Excel 或 JSON 文件。</p></div>
               <div className="overflow-hidden rounded-xl border">
                 <Table>
                   <TableHeader><TableRow><TableHead>任务</TableHead><TableHead>集合</TableHead><TableHead>格式</TableHead><TableHead>结果</TableHead><TableHead className="text-right">操作</TableHead></TableRow></TableHeader>
-                  <TableBody>{exportsLoading || exportsError ? <RequestTableState colSpan={5} error={exportsError} loading={exportsLoading} onRetry={() => void mutateExports()} /> : exports.length === 0 ? <TableRow><TableCell colSpan={5} className="h-32 text-center text-sm text-muted-foreground">还没有导出任务。完成划拨后可创建。</TableCell></TableRow> : exports.map((task) => <TableRow key={task.exportId} className="transition-colors hover:bg-muted/20">
+                  <TableBody>{exportsLoading || exportsError ? <RequestTableState colSpan={5} error={exportsError} loading={exportsLoading} onRetry={() => void mutateExports()} /> : exports.length === 0 ? <TableRow><TableCell colSpan={5} className="h-32 text-center text-sm text-muted-foreground">还没有导出记录。请先从领取单中创建导出任务。</TableCell></TableRow> : exports.map((task) => <TableRow key={task.exportId} className="transition-colors hover:bg-muted/20">
                     <TableCell><div className="font-medium">{task.exportId}</div><div className="mt-1 text-xs text-muted-foreground">{formatDate(task.createTime)}</div></TableCell>
                     <TableCell><div className="font-mono text-xs">{task.distributionId}</div><div className="mt-1 text-xs text-muted-foreground">{formatNumber(task.expectedCount)} 台</div></TableCell>
                     <TableCell><Badge variant="outline">{task.format}</Badge></TableCell>
@@ -1555,16 +1494,16 @@ const ProductCredentialsPage = () => {
             </TabsContent>
 
             <TabsContent value="pre-registrations" className="space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2"><div><h2 className="text-sm font-semibold">一型一密预注册</h2><p className="text-xs text-muted-foreground">{preRegistrationMode ? '先登记硬件身份，设备首次绑定时再签发 Device Secret。' : '当前产品未启用预注册模式。'}</p></div><Button type="button" size="sm" className="gap-1.5" onClick={() => setPreRegistrationDialogOpen(true)} disabled={!canImportPreRegistrations}><Upload className="size-3.5" aria-hidden />导入资格</Button></div>
+              <div className="flex flex-wrap items-center justify-between gap-2"><div><h2 className="text-sm font-semibold">预注册名单</h2><p className="text-xs text-muted-foreground">{preRegistrationMode ? '先登记硬件身份，设备首次绑定时再签发 Device Secret。' : '当前产品未启用预注册模式。'}</p></div><Button type="button" size="sm" className="gap-1.5" onClick={() => setPreRegistrationDialogOpen(true)} disabled={!canImportPreRegistrations}><Upload className="size-3.5" aria-hidden />添加 UUID</Button></div>
               <div className="overflow-hidden rounded-xl border">
                 <Table>
-                  <TableHeader><TableRow><TableHead>Hardware Identity</TableHead><TableHead>状态</TableHead><TableHead>有效期</TableHead><TableHead>备注</TableHead><TableHead className="text-right">操作</TableHead></TableRow></TableHeader>
-                  <TableBody>{preRegistrationsLoading || preRegistrationsError ? <RequestTableState colSpan={5} error={preRegistrationsError} loading={preRegistrationsLoading} onRetry={() => void mutatePreRegistrations()} /> : preRegistrations.length === 0 ? <TableRow><TableCell colSpan={5} className="h-32 text-center text-sm text-muted-foreground">当前产品没有预注册资格。</TableCell></TableRow> : preRegistrations.map((item) => <TableRow key={item.preRegistrationId} className="transition-colors hover:bg-muted/20">
+                  <TableHeader><TableRow><TableHead>UUID</TableHead><TableHead>状态</TableHead><TableHead>有效期</TableHead><TableHead>备注</TableHead><TableHead className="text-right">操作</TableHead></TableRow></TableHeader>
+                  <TableBody>{preRegistrationsLoading || preRegistrationsError ? <RequestTableState colSpan={5} error={preRegistrationsError} loading={preRegistrationsLoading} onRetry={() => void mutatePreRegistrations()} /> : preRegistrations.length === 0 ? <TableRow><TableCell colSpan={5} className="h-32 text-center text-sm text-muted-foreground">还没有预注册设备。添加 UUID 后，名单内设备才可首次注册。</TableCell></TableRow> : preRegistrations.map((item) => <TableRow key={item.preRegistrationId} className="transition-colors hover:bg-muted/20">
                     <TableCell><code className="font-mono text-xs">{item.hardwareUuid}</code><div className="mt-1 text-xs text-muted-foreground">代次 {item.registrationGeneration}</div></TableCell>
                     <TableCell>{statusBadge(preRegistrationStatusLabel[item.status] ?? item.status, getPreRegistrationTone(item.status))}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{formatDate(item.expiresAt)}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{item.note || '—'}</TableCell>
-                    <TableCell className="text-right"><Button type="button" variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => setPendingRemoval(item)} disabled={item.status !== 'PENDING'}>移除</Button></TableCell>
+                    <TableCell className="text-right"><Button type="button" variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => setPendingRemoval(item)} disabled={!canImportPreRegistrations || item.status !== 'PENDING'}>移除</Button></TableCell>
                   </TableRow>)}</TableBody>
                 </Table>
               </div>
@@ -1574,12 +1513,12 @@ const ProductCredentialsPage = () => {
               <div><h2 className="text-sm font-semibold">Device Secret 轮换</h2><p className="text-xs text-muted-foreground">轮换先签发候选版本，再等待设备领取和切换；旧版本会在宽限期后退役。</p></div>
               <div className="overflow-hidden rounded-xl border">
                 <Table>
-                  <TableHeader><TableRow><TableHead>设备</TableHead><TableHead>任务状态</TableHead><TableHead>当前 / 候选版本</TableHead><TableHead>切换截止</TableHead><TableHead>安全模式</TableHead></TableRow></TableHeader>
+                  <TableHeader><TableRow><TableHead>设备</TableHead><TableHead>任务状态</TableHead><TableHead>当前 / 候选版本</TableHead><TableHead>领取截止</TableHead><TableHead>安全模式</TableHead></TableRow></TableHeader>
                   <TableBody>{rotationsLoading || rotationsError ? <RequestTableState colSpan={5} error={rotationsError} loading={rotationsLoading} onRetry={() => void mutateRotations()} /> : rotations.length === 0 ? <TableRow><TableCell colSpan={5} className="h-32 text-center text-sm text-muted-foreground">还没有轮换任务。</TableCell></TableRow> : rotations.map((task) => <TableRow key={task.taskId} className="transition-colors hover:bg-muted/20">
-                    <TableCell><div className="font-medium">{task.deviceId || '未绑定设备'}</div><div className="mt-1 font-mono text-xs text-muted-foreground">{maskId(task.hardwareUuid)}</div></TableCell>
+                    <TableCell><div className="font-medium">{task.hardwareUuid || '—'}</div><div className="mt-1 font-mono text-xs text-muted-foreground">{maskId(task.hardwareUuid)}</div></TableCell>
                     <TableCell>{statusBadge(rotationStatusLabel[task.status] ?? task.status, getRotationTone(task.status))}<div className="mt-1 text-xs text-muted-foreground">{task.reasonCode}</div></TableCell>
                     <TableCell className="font-mono text-xs">v{task.currentCredentialVersion} → {task.replacementCredentialVersion ? `v${task.replacementCredentialVersion}` : '待签发'}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{formatDate(task.switchDeadline)}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{formatDate(task.claimDeadline)}</TableCell>
                     <TableCell><Badge variant="outline">{task.enforcementMode === 'SECURITY_ENFORCED' ? '强制轮换' : '普通轮换'}</Badge></TableCell>
                   </TableRow>)}</TableBody>
                 </Table>
@@ -1589,12 +1528,12 @@ const ProductCredentialsPage = () => {
         </div>
       </ProjectWorkspaceShell>
 
-      <CreateBatchDialog open={batchDialogOpen} onOpenChange={setBatchDialogOpen} productId={productId} preRegistrationMode={preRegistrationMode} pendingPreRegistrationCount={pendingPreRegistrationCount} onCreated={async () => { await Promise.all([mutateBatches(), mutateCredentials()]); }} />
-      <ManufacturingBatchDetailDialog batch={manufacturingBatch} preRegistrationMode={preRegistrationMode} pendingPreRegistrationCount={pendingPreRegistrationCount} onOpenChange={(open) => { if (!open) setManufacturingBatch(null); }} onBatchUpdated={mutateBatches} />
-      <AllocateDialog batch={allocateBatch} onOpenChange={(open) => { if (!open) setAllocateBatch(null); }} onCreated={async () => { await mutateBatches(); await mutateDistributions(); }} />
-      <ExportDialog distribution={exportDistribution} onOpenChange={(open) => { if (!open) setExportDistribution(null); }} onCreated={mutateExports} />
-      <DistributionDetailDialog distribution={distributionDetail} loading={distributionDetailLoading} canExport={manufacturingFlowEnabled} onOpenChange={(open) => { if (!open) setDistributionDetail(null); }} onExport={setExportDistribution} />
-      <PreRegistrationDialog open={preRegistrationDialogOpen} onOpenChange={setPreRegistrationDialogOpen} productId={productId} onCreated={mutatePreRegistrations} />
+      <CreateBatchDialog open={batchDialogOpen} onOpenChange={setBatchDialogOpen} productId={productId} onCreated={async () => { setActiveTab('batches'); await Promise.all([mutateBatches(), mutateCredentials()]); }} />
+      <ManufacturingBatchDetailDialog batch={manufacturingBatch} onOpenChange={(open) => { if (!open) setManufacturingBatch(null); }} onBatchUpdated={mutateBatches} />
+      <AllocateDialog open={allocationOpen} batch={allocateBatch} batches={batches} onOpenChange={setAllocationOpen} onCreated={async () => { setDistributionBatchFilter('ALL'); setActiveTab('distributions'); await Promise.all([mutateBatches(), mutateDistributions()]); }} />
+      <ExportDialog distribution={exportDistribution} onOpenChange={(open) => { if (!open) setExportDistribution(null); }} onCreated={async () => { setActiveTab('exports'); await mutateExports(); }} />
+      <DistributionDetailDialog distribution={distributionDetail} canExport={manufacturingFlowEnabled} onOpenChange={(open) => { if (!open) setDistributionDetail(null); }} onExport={setExportDistribution} />
+      <PreRegistrationDialog open={preRegistrationDialogOpen && canImportPreRegistrations} onOpenChange={setPreRegistrationDialogOpen} productId={productId} onCreated={mutatePreRegistrations} />
       <IssueCredentialDialog open={issueCredentialKind != null} kind={issueCredentialKind ?? 'PRODUCT_SECRET'} productId={productId} onOpenChange={(open) => { if (!open) setIssueCredentialKind(null); }} onDelivered={(next) => { setDelivery(next); void mutateCredentials(); }} />
       <CredentialActionDialog target={pendingCredentialAction} onOpenChange={(open) => { if (!open) setPendingCredentialAction(null); }} onCompleted={mutateCredentials} />
       <CreateRotationDialog credential={rotationCredential} onOpenChange={(open) => { if (!open) setRotationCredential(null); }} onCreated={mutateRotations} />

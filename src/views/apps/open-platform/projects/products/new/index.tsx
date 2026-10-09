@@ -19,7 +19,7 @@ import {
 ParserProfileSelect,
 ParserProfileVersionSelect,
 } from '@/components/open-platform/parser-profile-selector';
-import { ProductBootstrapModeField } from '@/components/open-platform/product-bootstrap-mode-field';
+import { ProductAuthenticationField } from '@/components/open-platform/product-authentication-field';
 import { ProductIconPicker } from '@/components/open-platform/product-icon-picker';
 import { ProjectStatusBadge } from '@/components/open-platform/project-status-badge';
 import { ProjectWorkspaceShell } from '@/components/open-platform/project-workspace-shell';
@@ -32,7 +32,6 @@ CardFooter,
 CardHeader,
 CardTitle,
 } from '@/components/ui/card';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
 Field,
 FieldDescription,
@@ -51,13 +50,11 @@ import StyleAwareWrapper from '@/components/shared/StyleAwareWrapper';
 import BreadcrumbComp from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
 import { categoryLabel } from '@/lib/open-platform-category';
 import {
-PRODUCT_AUTH_MODE_LABEL,
 PRODUCT_DATA_MODE_LABEL,
 PRODUCT_NODE_TYPE_LABEL,
 PRODUCT_TRANSPORT_LABEL,
 labelOf,
 } from '@/lib/open-platform-labels';
-import { cn } from '@/lib/utils';
 import type {
 CategoryVersionView,
 CategoryView,
@@ -73,7 +70,7 @@ type ProductForm = {
   categoryCode: string;
   nodeType: string;
   transport: string;
-  authModes: string[];
+  authMode: string;
   customAuthProviderId: string;
   dataMode: string;
   bootstrapMode: string;
@@ -91,17 +88,14 @@ const initialForm: ProductForm = {
   categoryCode: '',
   nodeType: '',
   transport: '',
-  authModes: ['DEVICE_SECRET'],
+  authMode: 'DEVICE_SECRET',
   customAuthProviderId: '',
   dataMode: 'STANDARD_MODEL',
-  bootstrapMode: 'OPEN',
+  bootstrapMode: '',
   profileId: '',
   profileVersion: '',
 };
 
-const AUTH_MODE_OPTIONS = Object.entries(PRODUCT_AUTH_MODE_LABEL).filter(
-  ([code]) => ['DEVICE_SECRET', 'PRODUCT_SECRET', 'CUSTOM'].includes(code),
-);
 
 function validateProduct(
   form: ProductForm,
@@ -130,15 +124,13 @@ function validateConnection(form: ProductForm): FieldErrors {
   const errors: FieldErrors = {};
   if (!form.nodeType) errors.nodeType = '请选择节点类型。';
   if (!form.transport) errors.transport = '请选择传输协议。';
-  if (form.authModes.length === 0) errors.authModes = '至少选择一种认证方式。';
+  if (!form.authMode) errors.authMode = '请选择首次接入方式。';
   if (!form.dataMode) errors.dataMode = '请选择消息数据模式。';
-  if (form.authModes.includes('CUSTOM') && !form.customAuthProviderId.trim()) {
+  if (form.authMode === 'CUSTOM' && !form.customAuthProviderId.trim()) {
     errors.customAuthProviderId = '请填写自定义认证提供方。';
   }
-  if (!form.bootstrapMode) {
-    errors.bootstrapMode = form.authModes.includes('PRODUCT_SECRET')
-      ? '请选择动态注册或预注册。'
-      : '请选择注册模式。';
+  if (form.authMode === 'PRODUCT_SECRET' && !form.bootstrapMode) {
+    errors.bootstrapMode = '请选择动态注册或预注册。';
   }
   if (form.dataMode === 'CUSTOM_PAYLOAD') {
     if (!form.profileId.trim()) errors.profileId = '请选择已发布的 Parser Profile。';
@@ -233,16 +225,6 @@ const CreateProductPage = () => {
     setSubmitError(null);
   };
 
-  const toggleAuthMode = (code: string, checked: boolean) => {
-    setForm((current) => ({
-      ...current,
-      authModes: checked
-        ? [...new Set([...current.authModes, code])]
-        : current.authModes.filter((item) => item !== code),
-    }));
-    setErrors((current) => ({ ...current, authModes: undefined }));
-    setSubmitError(null);
-  };
 
   const selectParserProfile = (profileId: string | null) => {
     setForm((current) => ({
@@ -305,10 +287,10 @@ const CreateProductPage = () => {
           productModel: form.productModel.trim() || undefined,
           nodeType: form.nodeType,
           transport: form.transport,
-          authModes: form.authModes,
-          customAuthProviderId: form.authModes.includes('CUSTOM') ? form.customAuthProviderId.trim() : undefined,
+          authMode: form.authMode,
+          customAuthProviderId: form.authMode === 'CUSTOM' ? form.customAuthProviderId.trim() : undefined,
           dataMode: form.dataMode,
-          bootstrapMode: form.bootstrapMode,
+          bootstrapMode: form.authMode === 'PRODUCT_SECRET' ? form.bootstrapMode : null,
           protocolProfile:
             form.dataMode === 'CUSTOM_PAYLOAD'
               ? {
@@ -707,27 +689,18 @@ const CreateProductPage = () => {
 
                       </div>
 
-                      <Field className="mt-4" data-invalid={Boolean(errors.authModes) || undefined}>
-                        <FieldLabel>认证方式 <span className="text-destructive">*</span></FieldLabel>
-                        <FieldDescription>可只使用产品密钥，也可同时启用设备密钥；至少选择一种。</FieldDescription>
-                        <div className="grid gap-2 sm:grid-cols-3">
-                          {AUTH_MODE_OPTIONS.map(([code, label]) => {
-                            return (
-                            <label key={code} className={cn(
-                              'flex items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm',
-                            )}>
-                              <Checkbox
-                                checked={form.authModes.includes(code)}
-                                onCheckedChange={(checked) => toggleAuthMode(code, checked === true)}
-                              />
-                              <span>{label}</span>
-                            </label>
-                          )})}
-                        </div>
-                        {errors.authModes ? <FieldError>{errors.authModes}</FieldError> : null}
-                      </Field>
+                      <ProductAuthenticationField
+                        className="mt-4"
+                        authMode={form.authMode}
+                        bootstrapMode={form.bootstrapMode}
+                        onChange={(authMode, bootstrapMode) => {
+                          setForm((current) => ({ ...current, authMode, bootstrapMode, customAuthProviderId: '' }));
+                          setErrors((current) => ({ ...current, authMode: undefined, bootstrapMode: undefined }));
+                        }}
+                        error={errors.authMode ?? errors.bootstrapMode}
+                      />
 
-                      {form.authModes.includes('CUSTOM') ? (
+                      {form.authMode === 'CUSTOM' ? (
                         <Field className="mt-4" data-invalid={Boolean(errors.customAuthProviderId) || undefined}>
                           <FieldLabel htmlFor="custom-auth-provider">自定义认证提供方 <span className="text-destructive">*</span></FieldLabel>
                           <Input
@@ -740,14 +713,7 @@ const CreateProductPage = () => {
                         </Field>
                       ) : null}
 
-                      <ProductBootstrapModeField
-                        className="mt-4"
-                        value={form.bootstrapMode}
-                        onValueChange={(value) => updateField('bootstrapMode', value)}
-                        productSecretEnabled={form.authModes.includes('PRODUCT_SECRET')}
-                        deviceSecretEnabled={form.authModes.includes('DEVICE_SECRET')}
-                        error={errors.bootstrapMode}
-                      />
+
 
                       {form.dataMode === 'CUSTOM_PAYLOAD' ? (
                         <div className="mt-4 grid gap-4 border-t pt-4 sm:grid-cols-2">

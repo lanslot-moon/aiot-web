@@ -823,10 +823,10 @@ const seedProducts: ProductRecord[] = [
     categoryCatalogVersion: '2026.1',
     nodeType: 'DIRECT',
     transport: 'MQTT',
-    authModes: ['DEVICE_SECRET'],
+    authMode: 'DEVICE_SECRET',
     customAuthProviderId: null,
     dataMode: 'STANDARD_MODEL',
-    bootstrapMode: 'OPEN',
+    bootstrapMode: null,
     protocolProfile: null,
     topicTemplates: {},
     lifecycleStatus: 'PUBLISHED',
@@ -846,7 +846,7 @@ const seedProducts: ProductRecord[] = [
     categoryCatalogVersion: '2026.1',
     nodeType: 'GATEWAY',
     transport: 'MQTT',
-    authModes: ['DEVICE_SECRET', 'PRODUCT_SECRET'],
+    authMode: 'PRODUCT_SECRET',
     customAuthProviderId: null,
     dataMode: 'STANDARD_MODEL',
     bootstrapMode: 'STRICT',
@@ -869,10 +869,10 @@ const seedProducts: ProductRecord[] = [
     categoryCatalogVersion: '2026.1',
     nodeType: 'DIRECT',
     transport: 'MQTT',
-    authModes: ['DEVICE_SECRET'],
+    authMode: 'DEVICE_SECRET',
     customAuthProviderId: null,
     dataMode: 'STANDARD_MODEL',
-    bootstrapMode: 'OPEN',
+    bootstrapMode: null,
     protocolProfile: null,
     topicTemplates: {},
     lifecycleStatus: 'DRAFT',
@@ -892,7 +892,7 @@ const seedProducts: ProductRecord[] = [
     categoryCatalogVersion: '2026.1',
     nodeType: 'GATEWAY',
     transport: 'MQTT',
-    authModes: ['PRODUCT_SECRET'],
+    authMode: 'PRODUCT_SECRET',
     customAuthProviderId: null,
     dataMode: 'STANDARD_MODEL',
     bootstrapMode: 'STRICT',
@@ -915,7 +915,7 @@ const seedProducts: ProductRecord[] = [
     categoryCatalogVersion: '2026.1',
     nodeType: 'DIRECT',
     transport: 'HTTPS',
-    authModes: ['PRODUCT_SECRET'],
+    authMode: 'PRODUCT_SECRET',
     customAuthProviderId: null,
     dataMode: 'STANDARD_MODEL',
     bootstrapMode: 'STRICT',
@@ -938,10 +938,10 @@ const seedProducts: ProductRecord[] = [
     categoryCatalogVersion: '2026.2',
     nodeType: 'DIRECT',
     transport: 'MQTT',
-    authModes: ['DEVICE_SECRET'],
+    authMode: 'DEVICE_SECRET',
     customAuthProviderId: null,
     dataMode: 'STANDARD_MODEL',
-    bootstrapMode: 'OPEN',
+    bootstrapMode: null,
     protocolProfile: null,
     topicTemplates: {},
     lifecycleStatus: 'PUBLISHED',
@@ -961,7 +961,7 @@ const seedProducts: ProductRecord[] = [
     categoryCatalogVersion: '2026.1',
     nodeType: 'DIRECT',
     transport: 'HTTPS',
-    authModes: ['PRODUCT_SECRET'],
+    authMode: 'PRODUCT_SECRET',
     customAuthProviderId: null,
     dataMode: 'STANDARD_MODEL',
     bootstrapMode: 'STRICT',
@@ -989,10 +989,10 @@ const additionalSeedProducts: ProductRecord[] = [
     categoryCatalogVersion: '2026.1',
     nodeType: 'DIRECT',
     transport: 'MQTT',
-    authModes: ['DEVICE_SECRET'],
+    authMode: 'DEVICE_SECRET',
     customAuthProviderId: null,
     dataMode: 'STANDARD_MODEL',
-    bootstrapMode: 'OPEN',
+    bootstrapMode: null,
     protocolProfile: null,
     topicTemplates: {},
     lifecycleStatus: 'DRAFT',
@@ -1013,7 +1013,7 @@ const additionalSeedProducts: ProductRecord[] = [
     categoryCatalogVersion: '2026.1',
     nodeType: 'DIRECT',
     transport: 'MQTT',
-    authModes: ['DEVICE_SECRET', 'PRODUCT_SECRET'],
+    authMode: 'PRODUCT_SECRET',
     customAuthProviderId: null,
     dataMode: 'STANDARD_MODEL',
     bootstrapMode: 'OPEN',
@@ -1037,10 +1037,10 @@ const additionalSeedProducts: ProductRecord[] = [
     categoryCatalogVersion: '2026.1',
     nodeType: 'DIRECT',
     transport: 'HTTPS',
-    authModes: ['DEVICE_SECRET'],
+    authMode: 'DEVICE_SECRET',
     customAuthProviderId: null,
     dataMode: 'STANDARD_MODEL',
-    bootstrapMode: 'STRICT',
+    bootstrapMode: null,
     protocolProfile: null,
     topicTemplates: {},
     lifecycleStatus: 'PUBLISHED',
@@ -1061,7 +1061,7 @@ const additionalSeedProducts: ProductRecord[] = [
     categoryCatalogVersion: '2026.1',
     nodeType: 'GATEWAY',
     transport: 'MQTT',
-    authModes: ['DEVICE_SECRET', 'PRODUCT_SECRET'],
+    authMode: 'PRODUCT_SECRET',
     customAuthProviderId: null,
     dataMode: 'STANDARD_MODEL',
     bootstrapMode: 'STRICT',
@@ -1085,7 +1085,7 @@ const additionalSeedProducts: ProductRecord[] = [
     categoryCatalogVersion: '2026.1',
     nodeType: 'DIRECT',
     transport: 'HTTPS',
-    authModes: ['DEVICE_SECRET', 'PRODUCT_SECRET'],
+    authMode: 'PRODUCT_SECRET',
     customAuthProviderId: null,
     dataMode: 'STANDARD_MODEL',
     bootstrapMode: 'STRICT',
@@ -1109,10 +1109,10 @@ const additionalSeedProducts: ProductRecord[] = [
     categoryCatalogVersion: '2026.1',
     nodeType: 'DIRECT',
     transport: 'HTTPS',
-    authModes: ['DEVICE_SECRET'],
+    authMode: 'DEVICE_SECRET',
     customAuthProviderId: null,
     dataMode: 'STANDARD_MODEL',
-    bootstrapMode: 'OPEN',
+    bootstrapMode: null,
     protocolProfile: null,
     topicTemplates: {},
     lifecycleStatus: 'DRAFT',
@@ -1133,7 +1133,7 @@ const additionalSeedProducts: ProductRecord[] = [
     categoryCatalogVersion: '2026.1',
     nodeType: 'DIRECT',
     transport: 'MQTT',
-    authModes: ['DEVICE_SECRET', 'PRODUCT_SECRET'],
+    authMode: 'PRODUCT_SECRET',
     customAuthProviderId: null,
     dataMode: 'CUSTOM_PAYLOAD',
     bootstrapMode: 'STRICT',
@@ -1157,7 +1157,7 @@ const additionalSeedProducts: ProductRecord[] = [
     categoryCatalogVersion: '2026.1',
     nodeType: 'GATEWAY',
     transport: 'MQTT',
-    authModes: ['DEVICE_SECRET', 'PRODUCT_SECRET'],
+    authMode: 'PRODUCT_SECRET',
     customAuthProviderId: null,
     dataMode: 'CUSTOM_PAYLOAD',
     bootstrapMode: 'STRICT',
@@ -1181,10 +1181,10 @@ const additionalSeedProducts: ProductRecord[] = [
     categoryCatalogVersion: '2026.1',
     nodeType: 'GATEWAY',
     transport: 'MQTT',
-    authModes: ['DEVICE_SECRET'],
+    authMode: 'DEVICE_SECRET',
     customAuthProviderId: null,
     dataMode: 'CUSTOM_PAYLOAD',
-    bootstrapMode: 'OPEN',
+    bootstrapMode: null,
     protocolProfile: { profileId: 'parser_profile_modbus_meter', profileVersion: '2.0' },
     topicTemplates: {},
     lifecycleStatus: 'DRAFT',
@@ -1205,7 +1205,7 @@ const additionalSeedProducts: ProductRecord[] = [
     categoryCatalogVersion: '2026.1',
     nodeType: 'GATEWAY',
     transport: 'MQTT',
-    authModes: ['DEVICE_SECRET', 'PRODUCT_SECRET'],
+    authMode: 'PRODUCT_SECRET',
     customAuthProviderId: null,
     dataMode: 'CUSTOM_PAYLOAD',
     bootstrapMode: 'STRICT',
@@ -1229,10 +1229,10 @@ const additionalSeedProducts: ProductRecord[] = [
     categoryCatalogVersion: null,
     nodeType: 'DIRECT',
     transport: 'MQTT',
-    authModes: ['DEVICE_SECRET'],
+    authMode: 'DEVICE_SECRET',
     customAuthProviderId: null,
     dataMode: 'STANDARD_MODEL',
-    bootstrapMode: 'OPEN',
+    bootstrapMode: null,
     protocolProfile: null,
     topicTemplates: {},
     lifecycleStatus: 'DRAFT',
@@ -1253,10 +1253,10 @@ const additionalSeedProducts: ProductRecord[] = [
     categoryCatalogVersion: '2026.1',
     nodeType: 'GATEWAY',
     transport: 'MQTT',
-    authModes: ['DEVICE_SECRET'],
+    authMode: 'DEVICE_SECRET',
     customAuthProviderId: null,
     dataMode: 'STANDARD_MODEL',
-    bootstrapMode: 'STRICT',
+    bootstrapMode: null,
     protocolProfile: null,
     topicTemplates: {},
     lifecycleStatus: 'DISABLED',
@@ -2222,7 +2222,7 @@ function credentialProductCanProvision(productId: string) {
 }
 
 function credentialProductSupportsDeviceSecret(product: ProductRecord | undefined) {
-  return product?.authModes.includes('DEVICE_SECRET') ?? false;
+  return product?.authMode === 'DEVICE_SECRET';
 }
 
 function credentialProductUsesPreRegistration(product: ProductRecord | undefined) {
@@ -2382,7 +2382,7 @@ function productPublishPrecheckFailure(product: ProductRecord) {
   if (
     !product.nodeType ||
     !product.transport ||
-    product.authModes.length === 0
+    !product.authMode
   ) {
     return {
       code: 'PARAM_INVALID',
@@ -2528,7 +2528,7 @@ export const OpenPlatformHandlers = [
       if (!productId || !product) return fail('PRODUCT_NOT_FOUND', '产品不存在。', 404);
       if (!credentialProductCanProvision(productId)) return fail('PRODUCT_NOT_PUBLISHED', '产品发布后才能签发凭证。', 409);
       if (!body.kind || !['PRODUCT_SECRET', 'DEVICE_SECRET'].includes(body.kind)) return fail('PARAM_INVALID', '凭证类型不合法。', 400);
-      if (!product.authModes.includes(body.kind)) return fail('CREDENTIAL_KIND_NOT_ENABLED', `当前产品未启用${credentialKindLabel(body.kind)}认证。`, 409);
+      if (!(product.authMode === body.kind || (body.kind === 'DEVICE_SECRET' && product.authMode === 'PRODUCT_SECRET'))) return fail('CREDENTIAL_KIND_NOT_ENABLED', `当前产品未启用${credentialKindLabel(body.kind)}认证。`, 409);
       if (body.kind === 'PRODUCT_SECRET' && (body.hardwareUuid || body.deviceId)) return fail('PARAM_INVALID', '产品密钥不能绑定设备身份。', 400);
       if (body.kind === 'DEVICE_SECRET' && !body.deviceId && !body.hardwareUuid) return fail('PARAM_INVALID', '设备密钥需要绑定设备或硬件身份。', 400);
       const activeDuplicate = credentials.find(
@@ -2637,7 +2637,7 @@ export const OpenPlatformHandlers = [
       if (!current) return fail('CREDENTIAL_NOT_FOUND', '凭证不存在。', 404);
       if (!credentialProductCanProvision(current.productId)) return fail('PRODUCT_NOT_PUBLISHED', '产品发布后才能重置凭证。', 409);
       const product = credentialProduct(current.productId);
-      if (!product?.authModes.includes(current.kind)) return fail('CREDENTIAL_KIND_NOT_ENABLED', `当前产品未启用${credentialKindLabel(current.kind)}认证，不能重置该凭证。`, 409);
+      if (!(product?.authMode === current.kind || (current.kind === 'DEVICE_SECRET' && product?.authMode === 'PRODUCT_SECRET'))) return fail('CREDENTIAL_KIND_NOT_ENABLED', `当前产品未启用${credentialKindLabel(current.kind)}认证，不能重置该凭证。`, 409);
       const body = (await request.json()) as { expectedVersion?: number | string; expiresAt?: number | null };
       if (String(body.expectedVersion ?? '') !== String(current.securityVersion)) return fail('VERSION_MISMATCH', '凭证已发生变化，请刷新后重试。', 412);
       current.credentialStatus = 'REVOKED';
@@ -3025,7 +3025,7 @@ export const OpenPlatformHandlers = [
       const product = credentialProduct(productId);
       if (!product) return fail('PRODUCT_NOT_FOUND', '产品不存在。', 404);
       if (!credentialProductCanProvision(productId)) return fail('PRODUCT_NOT_PUBLISHED', '产品发布后才能导入预注册资格。', 409);
-      if (product.bootstrapMode !== 'STRICT' || !product.authModes.includes('PRODUCT_SECRET')) {
+      if (product.bootstrapMode !== 'STRICT' || product.authMode !== 'PRODUCT_SECRET') {
         return fail('PRE_REGISTRATION_NOT_ENABLED', '当前产品未启用严格预注册接入。', 409);
       }
       const body = (await request.json()) as { hardwareUuids?: string[]; note?: string; expiresAt?: number };
@@ -3492,7 +3492,7 @@ export const OpenPlatformHandlers = [
       const hasConnectionPatch = [
         'nodeType',
         'transport',
-        'authModes',
+        'authMode',
         'customAuthProviderId',
         'dataMode',
         'bootstrapMode',
@@ -3502,9 +3502,7 @@ export const OpenPlatformHandlers = [
       if (hasConnectionPatch) {
         product.nodeType = body.nodeType ?? null;
         product.transport = body.transport ?? null;
-        product.authModes = Array.from(
-          new Set(Array.isArray(body.authModes) ? [...body.authModes] : product.authModes),
-        );
+        product.authMode = body.authMode ?? '';
         product.customAuthProviderId = body.customAuthProviderId ?? null;
         product.dataMode = body.dataMode ?? null;
         product.bootstrapMode = body.bootstrapMode ?? null;
@@ -4354,13 +4352,7 @@ export const OpenPlatformHandlers = [
       const category = categoryType === 'STANDARD' ? findCategory(categoryCode) : null;
       const nodeType = body?.nodeType?.trim() ?? '';
       const transport = body?.transport?.trim() ?? '';
-      const authModes = Array.from(
-        new Set(
-          Array.isArray(body?.authModes)
-            ? body.authModes.map((mode) => String(mode).trim()).filter(Boolean)
-            : [],
-        ),
-      );
+      const authMode = body?.authMode?.trim() ?? '';
       const dataMode = body?.dataMode?.trim() ?? '';
       const bootstrapMode = body?.bootstrapMode?.trim() ?? '';
       const protocolProfile = body?.protocolProfile ?? null;
@@ -4387,7 +4379,7 @@ export const OpenPlatformHandlers = [
         }
       }
 
-      if (!nodeType || !transport || authModes.length === 0 || !dataMode || !bootstrapMode) {
+      if (!nodeType || !transport || !authMode || !dataMode || (authMode === 'PRODUCT_SECRET' && !bootstrapMode)) {
         return fail('CONNECTION_CONFIG_REQUIRED', '请完整填写节点类型、传输协议、认证方式、数据模式和接入模式。', 400);
       }
       if (
@@ -4425,7 +4417,7 @@ export const OpenPlatformHandlers = [
                 ?.categoryVersion ?? null,
         nodeType,
         transport,
-        authModes,
+        authMode,
         customAuthProviderId: body?.customAuthProviderId ?? null,
         dataMode,
         bootstrapMode,

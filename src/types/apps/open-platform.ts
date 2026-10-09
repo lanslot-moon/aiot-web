@@ -107,10 +107,10 @@ export interface ProductCreateRequest {
   productModel?: string;
   nodeType: string;
   transport: string;
-  authModes: string[];
+  authMode: string;
   customAuthProviderId?: string | null;
   dataMode: string;
-  bootstrapMode: string;
+  bootstrapMode: string | null;
   protocolProfile?: ProtocolProfileRefView | null;
   topicTemplates?: Record<string, string>;
 }
@@ -124,10 +124,10 @@ export interface ProductUpdateRequest {
   iconUrl?: string;
   nodeType?: string;
   transport?: string;
-  authModes?: string[];
+  authMode?: string;
   customAuthProviderId?: string | null;
   dataMode?: string;
-  bootstrapMode?: string;
+  bootstrapMode?: string | null;
   protocolProfile?: ProtocolProfileRefView | null;
   topicTemplates?: Record<string, string>;
 }
@@ -263,7 +263,7 @@ export interface ProductDetailView extends ProductListItem {
   categoryCatalogVersion: string | null;
   nodeType: string | null;
   transport: string | null;
-  authModes: string[];
+  authMode: string;
   customAuthProviderId: string | null;
   dataMode: string | null;
   bootstrapMode: string | null;

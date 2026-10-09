@@ -27,7 +27,7 @@ import {
 ParserProfileSelect,
 ParserProfileVersionSelect,
 } from '@/components/open-platform/parser-profile-selector';
-import { ProductBootstrapModeField } from '@/components/open-platform/product-bootstrap-mode-field';
+import { ProductAuthenticationField } from '@/components/open-platform/product-authentication-field';
 import { ProductLifecycleBadge } from '@/components/open-platform/product-lifecycle-badge';
 import { ProjectWorkspaceShell } from '@/components/open-platform/project-workspace-shell';
 import StyleAwareWrapper from '@/components/shared/StyleAwareWrapper';
@@ -51,7 +51,6 @@ CardDescription,
 CardHeader,
 CardTitle,
 } from '@/components/ui/card';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
 Dialog,
 DialogContent,
@@ -76,7 +75,6 @@ PRODUCT_DATA_MODE_LABEL,
 PRODUCT_NODE_TYPE_LABEL,
 PRODUCT_TRANSPORT_LABEL,
 } from '@/lib/open-platform-labels';
-import { cn } from '@/lib/utils';
 import type {
 CursorResult,
 ParserProfileVersionView,
@@ -95,11 +93,8 @@ function productPublishedModelKey(productId: string) {
   return `${productModelKey(productId)}/published`;
 }
 
-function authModesLabel(authModes: string[]) {
-  if (authModes.length === 0) return '未配置';
-  return authModes
-    .map((mode) => labelOf(PRODUCT_AUTH_MODE_LABEL, mode, '其他认证方式'))
-    .join('、');
+function authModeLabel(authMode: string) {
+  return labelOf(PRODUCT_AUTH_MODE_LABEL, authMode, '未配置');
 }
 
 function ModelState({
@@ -189,16 +184,14 @@ type ProductEditForm = {
   description: string;
   nodeType: string;
   transport: string;
-  authModes: string[];
+  authMode: string;
+  customAuthProviderId: string;
   dataMode: string;
   bootstrapMode: string;
   profileId: string;
   profileVersion: string;
 };
 
-const AUTH_MODE_OPTIONS = Object.entries(PRODUCT_AUTH_MODE_LABEL).filter(
-  ([code]) => ['DEVICE_SECRET', 'PRODUCT_SECRET', 'CUSTOM'].includes(code),
-);
 
 function productEditForm(product: ProductDetailView): ProductEditForm {
   return {
@@ -207,9 +200,10 @@ function productEditForm(product: ProductDetailView): ProductEditForm {
     description: product.description ?? '',
     nodeType: product.nodeType ?? '',
     transport: product.transport ?? '',
-    authModes: Array.from(new Set(product.authModes ?? [])),
+    authMode: product.authMode ?? '',
+    customAuthProviderId: product.customAuthProviderId ?? '',
     dataMode: product.dataMode ?? 'STANDARD_MODEL',
-    bootstrapMode: product.bootstrapMode ?? 'OPEN',
+    bootstrapMode: product.bootstrapMode ?? '',
     profileId: product.protocolProfile?.profileId ?? '',
     profileVersion: product.protocolProfile?.profileVersion ?? '',
   };
@@ -271,14 +265,6 @@ function ProductEditDialog({
     setForm((current) => ({ ...current, [field]: value }));
   };
 
-  const toggleAuthMode = (code: string, checked: boolean) => {
-    setForm((current) => ({
-      ...current,
-      authModes: checked
-        ? [...new Set([...current.authModes, code])]
-        : current.authModes.filter((item) => item !== code),
-    }));
-  };
 
   const selectParserProfile = (profileId: string | null) => {
     setForm((current) => ({
@@ -296,9 +282,10 @@ function ProductEditDialog({
       description: form.description.trim() || undefined,
       nodeType: form.nodeType || undefined,
       transport: form.transport || undefined,
-      authModes: form.authModes,
+      authMode: form.authMode,
+      customAuthProviderId: form.authMode === 'CUSTOM' ? form.customAuthProviderId.trim() : null,
       dataMode: form.dataMode || undefined,
-      bootstrapMode: form.bootstrapMode || undefined,
+      bootstrapMode: form.authMode === 'PRODUCT_SECRET' ? form.bootstrapMode : null,
       protocolProfile:
         customPayload && form.profileId.trim() && form.profileVersion.trim()
           ? ({
@@ -354,7 +341,7 @@ function ProductEditDialog({
             <div>
               <p className="text-sm font-medium">连接契约</p>
               <p className="mt-1 text-xs text-muted-foreground">
-                发布前必须补齐节点类型、传输协议、认证方式和注册方式。
+                发布前必须补齐节点类型、传输协议和首次接入方式。
               </p>
             </div>
 
@@ -406,31 +393,17 @@ function ProductEditDialog({
               </label>
             </div>
 
-            <div className="grid gap-2">
-              <span className="text-sm font-medium">认证方式</span>
-              <p className="text-xs text-muted-foreground">可只使用产品密钥，也可同时启用设备密钥；至少选择一种。</p>
-              <div className="grid gap-2 sm:grid-cols-3">
-                {AUTH_MODE_OPTIONS.map(([code, label]) => {
-                  return (
-                  <label key={code} className={cn(
-                    'flex items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm',
-                  )}>
-                    <Checkbox
-                      checked={form.authModes.includes(code)}
-                      onCheckedChange={(checked) => toggleAuthMode(code, checked === true)}
-                    />
-                    <span>{label}</span>
-                  </label>
-                )})}
-              </div>
-            </div>
-
-            <ProductBootstrapModeField
-              value={form.bootstrapMode}
-              onValueChange={(value) => updateField('bootstrapMode', value)}
-              productSecretEnabled={form.authModes.includes('PRODUCT_SECRET')}
-              deviceSecretEnabled={form.authModes.includes('DEVICE_SECRET')}
+            <ProductAuthenticationField
+              authMode={form.authMode}
+              bootstrapMode={form.bootstrapMode}
+              onChange={(authMode, bootstrapMode) => setForm((current) => ({ ...current, authMode, bootstrapMode, customAuthProviderId: '' }))}
             />
+            {form.authMode === 'CUSTOM' ? (
+              <label className="grid gap-1.5 text-sm">
+                <span className="font-medium">自定义认证提供方</span>
+                <Input value={form.customAuthProviderId} onChange={(event) => updateField('customAuthProviderId', event.target.value)} required placeholder="已配置的认证提供方标识" />
+              </label>
+            ) : null}
 
             {customPayload ? (
               <div className="grid gap-4 border-t pt-3 sm:grid-cols-2">
@@ -480,7 +453,7 @@ function ProductEditDialog({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
               取消
             </Button>
-            <Button type="submit" disabled={submitting || form.authModes.length === 0}>
+            <Button type="submit" disabled={submitting || !form.authMode}>
               {submitting ? <Spinner /> : null}
               保存产品配置
             </Button>
@@ -979,17 +952,17 @@ const ProductDetailPage = () => {
                       </div>
                       <p className="mt-2 text-[11px] text-muted-foreground">认证方式</p>
                       <p className="mt-0.5 text-sm font-medium">
-                        {authModesLabel(product.authModes)}
+                        {authModeLabel(product.authMode)}
                       </p>
                     </div>
                     <div className="rounded-md border bg-background px-3 py-2.5">
                       <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                         <Settings2 className="size-3.5" aria-hidden />
-                        注册方式
+                        首次接入
                       </div>
-                      <p className="mt-2 text-[11px] text-muted-foreground">动态注册或预注册</p>
+                      <p className="mt-2 text-[11px] text-muted-foreground">接入路线</p>
                       <p className="mt-0.5 text-sm font-medium">
-                        {labelOf(PRODUCT_BOOTSTRAP_MODE_LABEL, product.bootstrapMode, '未配置')}
+                        {product.authMode === 'PRODUCT_SECRET' ? labelOf(PRODUCT_BOOTSTRAP_MODE_LABEL, product.bootstrapMode, '未配置') : authModeLabel(product.authMode)}
                       </p>
                     </div>
                   </div>

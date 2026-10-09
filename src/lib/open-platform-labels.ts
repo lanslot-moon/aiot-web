@@ -74,7 +74,7 @@ export const PRODUCT_BOOTSTRAP_MODE_LABEL: Record<string, string> = {
 
 export const PRODUCT_BOOTSTRAP_MODE_DESCRIPTION: Record<string, string> = {
   OPEN: '免预注册：设备首次上线时使用产品密钥和设备身份动态完成注册。',
-  STRICT: '先登记 Hardware UUID，再按预注册名单生成设备凭证和导出批次。',
+  STRICT: '先登记 UUID；设备通过产品密钥注册后领取设备密钥。',
 };
 
 export const MODEL_DRAFT_STATUS_LABEL: Record<string, string> = {
