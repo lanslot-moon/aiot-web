@@ -591,10 +591,12 @@ function CreateBatchDialog({
 
 function ManufacturingBatchDetailDialog({
   batch,
+  canManage,
   onOpenChange,
   onBatchUpdated,
 }: {
   batch: CredentialManufacturingBatchView | null;
+  canManage: boolean;
   onOpenChange: (open: boolean) => void;
   onBatchUpdated: () => Promise<unknown>;
 }) {
@@ -674,7 +676,7 @@ function ManufacturingBatchDetailDialog({
   };
 
   const voidItem = async () => {
-    if (!pendingVoid) return;
+    if (!canManage || !pendingVoid) return;
     setVoidBusy(true);
     try {
       const result = await openPlatformPost<CredentialManufacturingItemView>(`/api/v1/credential-batches/${encodeURIComponent(pendingVoid.batchId)}/items/${encodeURIComponent(pendingVoid.itemId)}/void`, {
@@ -780,7 +782,7 @@ function ManufacturingBatchDetailDialog({
                             <TableCell>{statusBadge(manufacturingItemStatusLabel[item.status] ?? item.status, getManufacturingItemTone(item.status))}</TableCell>
                             <TableCell className="whitespace-normal break-all"><code className="break-all font-mono text-xs">{item.credentialId}</code><div className="mt-1 text-xs text-muted-foreground">v{item.credentialVersion}</div></TableCell>
                             <TableCell className="whitespace-normal break-words text-sm">{item.status === 'BOUND' ? item.boundDeviceId || '已绑定设备' : item.status === 'AVAILABLE' ? '尚未绑定' : item.status === 'VOID' ? '已作废' : '—'}</TableCell>
-                            <TableCell><div className="flex justify-end gap-1.5"><Button type="button" variant="ghost" size="sm" className="gap-1.5" onClick={() => void openItemDetail(item)}><Eye className="size-3.5" aria-hidden />查看</Button>{item.status === 'AVAILABLE' ? <Button type="button" variant="ghost" size="sm" className="gap-1.5 text-destructive hover:text-destructive" onClick={() => { setPendingVoid(item); setVoidReason(''); }}><Ban className="size-3.5" aria-hidden />作废</Button> : null}</div></TableCell>
+                            <TableCell><div className="flex justify-end gap-1.5"><Button type="button" variant="ghost" size="sm" className="gap-1.5" onClick={() => void openItemDetail(item)}><Eye className="size-3.5" aria-hidden />查看</Button>{canManage && item.status === 'AVAILABLE' ? <Button type="button" variant="ghost" size="sm" className="gap-1.5 text-destructive hover:text-destructive" onClick={() => { setPendingVoid(item); setVoidReason(''); }}><Ban className="size-3.5" aria-hidden />作废</Button> : null}</div></TableCell>
                           </TableRow>
                           {selectedItemId === item.itemId ? <TableRow className="bg-muted/10"><TableCell colSpan={6} className="p-3">{itemDetailPanel}</TableCell></TableRow> : null}
                         </Fragment>
@@ -797,7 +799,7 @@ function ManufacturingBatchDetailDialog({
         </SheetContent>
       </Sheet>
 
-      <AlertDialog open={pendingVoid != null} onOpenChange={(open) => { if (!open && !voidBusy) { setPendingVoid(null); setVoidReason(''); } }}>
+      <AlertDialog open={canManage && pendingVoid != null} onOpenChange={(open) => { if (!open && !voidBusy) { setPendingVoid(null); setVoidReason(''); } }}>
         <AlertDialogContent>
           <AlertDialogHeader><AlertDialogTitle>作废这个制造项？</AlertDialogTitle><AlertDialogDescription>作废后该制造项不能再绑定设备，关联的设备凭证也会被吊销。这个操作不可恢复，请确认当前硬件身份和凭证版本。</AlertDialogDescription></AlertDialogHeader>
           {pendingVoid ? <div className="space-y-2"><div className="rounded-lg border bg-muted/20 p-3 text-xs"><div className="flex items-center justify-between gap-3"><span className="text-muted-foreground">制造项</span><code className="font-mono">{pendingVoid.itemId}</code></div><div className="mt-2 flex items-center justify-between gap-3"><span className="text-muted-foreground">硬件身份</span><code className="font-mono">{pendingVoid.hardwareUuid}</code></div></div><Label htmlFor="manufacturing-void-reason">作废说明（可选）</Label><Input id="manufacturing-void-reason" value={voidReason} onChange={(event) => setVoidReason(event.target.value)} maxLength={256} placeholder="例如：产线抽检失败" /></div> : null}
@@ -1205,6 +1207,7 @@ const ProductCredentialsPage = () => {
 
   const productKey = productId ? `/api/v1/products/${encodeURIComponent(productId)}` : null;
   const { data: product, error: productError, isLoading: productLoading } = useSWR<ProductDetailView>(productKey, openPlatformGetFetcher);
+  const canReadCredentials = product != null && product.lifecycleStatus !== 'DRAFT';
   const supportsProductSecret = product?.authMode === 'PRODUCT_SECRET';
   const supportsDeviceSecret = product?.authMode === 'DEVICE_SECRET';
   const preRegistrationMode = supportsProductSecret && product?.bootstrapMode === 'STRICT';
@@ -1212,16 +1215,16 @@ const ProductCredentialsPage = () => {
     || (!preRegistrationMode && activeTab === 'pre-registrations') || !activeTab
     ? (supportsDeviceSecret ? 'batches' : preRegistrationMode ? 'pre-registrations' : 'credentials')
     : activeTab;
-  const batchesKey = productId && supportsDeviceSecret ? `/api/v1/credential-batches?productId=${encodeURIComponent(productId)}&limit=100` : null;
-  const credentialsKey = productId ? `/api/v1/credentials?productId=${encodeURIComponent(productId)}&limit=100` : null;
-  const exportsKey = productId && supportsDeviceSecret ? `/api/v1/credential-exports?productId=${encodeURIComponent(productId)}&limit=100` : null;
-  const rotationsKey = productId ? `/api/v1/rotation-tasks?productId=${encodeURIComponent(productId)}&limit=100` : null;
+  const batchesKey = canReadCredentials && productId && supportsDeviceSecret ? `/api/v1/credential-batches?productId=${encodeURIComponent(productId)}&limit=100` : null;
+  const credentialsKey = canReadCredentials && productId ? `/api/v1/credentials?productId=${encodeURIComponent(productId)}&limit=100` : null;
+  const exportsKey = canReadCredentials && productId && supportsDeviceSecret ? `/api/v1/credential-exports?productId=${encodeURIComponent(productId)}&limit=100` : null;
+  const rotationsKey = canReadCredentials && productId ? `/api/v1/rotation-tasks?productId=${encodeURIComponent(productId)}&limit=100` : null;
 
   const { data: batchesData, isLoading: batchesLoading, error: batchesError, mutate: mutateBatches } = useSWR<CursorResult<CredentialManufacturingBatchView>>(batchesKey, openPlatformGetFetcher, { refreshInterval: (data) => data?.items.some((item) => item.status === 'ISSUING') ? 5000 : 0 });
   const { data: credentialsData, isLoading: credentialsLoading, error: credentialsError, mutate: mutateCredentials } = useSWR<CursorResult<CredentialSummaryView>>(credentialsKey, openPlatformGetFetcher);
   const { data: exportsData, isLoading: exportsLoading, error: exportsError, mutate: mutateExports } = useSWR<CursorResult<CredentialExportTaskView>>(exportsKey, openPlatformGetFetcher, { refreshInterval: (data) => data?.items.some((item) => ['PENDING', 'RUNNING'].includes(item.status)) ? 5000 : 0 });
   const getPreRegistrationPageKey = (pageIndex: number, previousPageData: CursorResult<CredentialPreRegistrationView> | null) => {
-    if (!productId || !preRegistrationMode) return null;
+    if (!canReadCredentials || !productId || !preRegistrationMode) return null;
     if (pageIndex > 0 && (!previousPageData || !previousPageData.hasMore)) return null;
     const params = new URLSearchParams({ limit: '100' });
     if (previousPageData?.nextCursor) params.set('cursor', previousPageData.nextCursor);
@@ -1271,7 +1274,7 @@ const ProductCredentialsPage = () => {
   };
 
   const removePreRegistration = async () => {
-    if (!pendingRemoval) return;
+    if (!canImportPreRegistrations || !pendingRemoval) return;
     setBusyAction(true);
     try {
       await openPlatformDelete(`/api/v1/pre-registrations/${encodeURIComponent(pendingRemoval.preRegistrationId)}`, { reasonCode: 'MANUAL_REMOVE', reason: '管理台移除预注册资格', expectedVersion: pendingRemoval.version });
@@ -1286,8 +1289,8 @@ const ProductCredentialsPage = () => {
   };
 
   const downloadExport = async (task: CredentialExportTaskView) => {
-    if (!supportsDeviceSecret) {
-      toast.info('当前产品未启用设备密钥，不支持下载设备凭证导出文件。');
+    if (!manufacturingFlowEnabled) {
+      toast.info('当前产品状态不允许签发下载链接。');
       return;
     }
     try {
@@ -1367,10 +1370,18 @@ const ProductCredentialsPage = () => {
             <Button type="button" variant="secondary" size="sm" className={`${PRODUCT_TAB_CLASS} bg-background shadow-sm`} nativeButton={false} render={<Link to={`/projects/${projectId}/products/${productId}/credentials`} />}><FileKey2 className="size-3.5" aria-hidden />凭证与量产</Button>
           </nav>
 
+          {product.lifecycleStatus === 'DRAFT' ? (
+            <section className="flex flex-col items-start gap-3 rounded-lg border border-dashed bg-muted/10 p-6" aria-labelledby="credentials-publish-title">
+              <FileKey2 className="size-6 text-muted-foreground" aria-hidden />
+              <h2 id="credentials-publish-title" className="text-base font-semibold">发布产品后，开始准备设备凭证</h2>
+              <p className="max-w-xl text-sm leading-6 text-muted-foreground">先完成产品接入配置和物模型，再检查并发布。发布后即可按接入方式签发密钥、创建量产批次或维护预注册名单。</p>
+              <Button nativeButton={false} render={<Link to={`/projects/${projectId}/products/${productId}`} />}>返回产品，完成发布</Button>
+            </section>
+          ) : <>
           {!canProvision ? (
             <Alert className="rounded-xl border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-100">
               <CircleAlert className="size-4" aria-hidden />
-              <AlertDescription>当前产品不可新增凭证或预注册名单，请先确认产品处于已发布状态。</AlertDescription>
+              <AlertDescription>{product.lifecycleStatus === 'DEPRECATED' ? '产品已废弃，当前为只读档案。可查看历史凭证、批次和领取单；不再支持签发、变更、导出或下载密钥。' : '产品已停用，当前仅可查看历史数据。重新启用产品后可继续操作。'}</AlertDescription>
             </Alert>
           ) : null}
           {canProvision && productSecretOnly && product.bootstrapMode === 'OPEN' ? (
@@ -1420,7 +1431,7 @@ const ProductCredentialsPage = () => {
                 <Table>
                   <TableHeader><TableRow><TableHead>批次</TableHead><TableHead>状态</TableHead><TableHead>数量</TableHead><TableHead>失效时间</TableHead><TableHead className="text-right">操作</TableHead></TableRow></TableHeader>
                   <TableBody>
-                    {batchesLoading || batchesError ? <RequestTableState colSpan={5} error={batchesError} loading={batchesLoading} onRetry={() => void mutateBatches()} /> : batches.length === 0 ? <TableRow><TableCell colSpan={5} className="h-32 text-center text-sm text-muted-foreground">还没有量产批次，点击“创建批次”开始准备设备凭证。</TableCell></TableRow> : batches.map((batch) => {
+                    {batchesLoading || batchesError ? <RequestTableState colSpan={5} error={batchesError} loading={batchesLoading} onRetry={() => void mutateBatches()} /> : batches.length === 0 ? <TableRow><TableCell colSpan={5} className="h-32 text-center text-sm text-muted-foreground">{canProvision ? '还没有量产批次，点击“创建批次”开始准备设备凭证。' : '没有历史量产批次。'}</TableCell></TableRow> : batches.map((batch) => {
                       const displayStatus = getBatchDisplayStatus(batch);
                       const fullyAllocated = displayStatus === 'FULLY_ALLOCATED';
                       return <TableRow key={batch.batchId} className="transition-colors hover:bg-muted/20">
@@ -1428,7 +1439,7 @@ const ProductCredentialsPage = () => {
                         <TableCell>{statusBadge(batchStatusLabel[displayStatus] ?? displayStatus, getBatchTone(displayStatus))}</TableCell>
                         <TableCell><div className="font-medium tabular-nums">{formatNumber(batch.targetQuantity)}</div><div className="mt-1 text-xs text-muted-foreground">{fullyAllocated ? `已全部划拨 ${formatNumber(batch.allocatedQuantity)}` : `可绑定 ${formatNumber(batch.availableCount)}`} · 已绑定 {formatNumber(batch.boundCount)}</div></TableCell>
                         <TableCell className="text-sm text-muted-foreground">{formatDate(batch.expiresAt)}</TableCell>
-                        <TableCell className="text-right"><div className="flex flex-wrap justify-end gap-1.5"><Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => { setAllocateBatch(batch); setAllocationOpen(true); }} disabled={!manufacturingFlowEnabled || batch.availableCount === 0}><PackageCheck className="size-3.5" aria-hidden />{fullyAllocated ? '已全部领取' : '创建领取单'}</Button><Button type="button" variant="ghost" size="sm" className="gap-1.5" onClick={() => void openExportForBatch(batch)} disabled={!manufacturingFlowEnabled || !distributions.some((item) => item.batchId === batch.batchId)}><Eye className="size-3.5" aria-hidden />查看领取单</Button></div></TableCell>
+                        <TableCell className="text-right"><div className="flex flex-wrap justify-end gap-1.5"><Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => { setAllocateBatch(batch); setAllocationOpen(true); }} disabled={!manufacturingFlowEnabled || batch.availableCount === 0}><PackageCheck className="size-3.5" aria-hidden />{fullyAllocated ? '已全部领取' : '创建领取单'}</Button><Button type="button" variant="ghost" size="sm" className="gap-1.5" onClick={() => void openExportForBatch(batch)} disabled={!distributions.some((item) => item.batchId === batch.batchId)}><Eye className="size-3.5" aria-hidden />查看领取单</Button></div></TableCell>
                       </TableRow>;
                     })}
                   </TableBody>
@@ -1446,7 +1457,7 @@ const ProductCredentialsPage = () => {
                 <Table>
                   <TableHeader><TableRow><TableHead>领取单</TableHead><TableHead>来源批次</TableHead><TableHead>数量</TableHead><TableHead>状态</TableHead><TableHead>领取时间</TableHead><TableHead>失效时间</TableHead><TableHead className="text-right">操作</TableHead></TableRow></TableHeader>
                   <TableBody>
-                    {batchesLoading || distributionsLoading || batchesError || distributionsError ? <RequestTableState colSpan={7} error={batchesError || distributionsError} loading={batchesLoading || distributionsLoading} onRetry={() => void mutateDistributions()} /> : sortedDistributions.length === 0 ? <TableRow><TableCell colSpan={7} className="h-32 text-center text-sm text-muted-foreground">还没有领取单。点击“创建领取单”，选择批次和数量。</TableCell></TableRow> : sortedDistributions.map((distribution) => <TableRow key={distribution.distributionId} className="transition-colors hover:bg-muted/20">
+                    {batchesLoading || distributionsLoading || batchesError || distributionsError ? <RequestTableState colSpan={7} error={batchesError || distributionsError} loading={batchesLoading || distributionsLoading} onRetry={() => void mutateDistributions()} /> : sortedDistributions.length === 0 ? <TableRow><TableCell colSpan={7} className="h-32 text-center text-sm text-muted-foreground">{canProvision ? '还没有领取单。点击“创建领取单”，选择批次和数量。' : '没有历史领取单。'}</TableCell></TableRow> : sortedDistributions.map((distribution) => <TableRow key={distribution.distributionId} className="transition-colors hover:bg-muted/20">
                       <TableCell><button type="button" className="text-left font-medium underline-offset-4 hover:underline" onClick={() => void openDistributionDetail(distribution)}>{distribution.distributionId}</button><div className="mt-1 text-xs text-muted-foreground">{distribution.distributionRequestId}</div></TableCell>
                       <TableCell><code className="font-mono text-xs">{distribution.batchId}</code></TableCell>
                       <TableCell><span className="font-medium tabular-nums">{formatNumber(distribution.allocatedQuantity)}</span><span className="text-xs text-muted-foreground"> / {formatNumber(distribution.requestedQuantity)}</span></TableCell>
@@ -1471,7 +1482,7 @@ const ProductCredentialsPage = () => {
                     <TableCell><div className="flex flex-wrap gap-1.5">{statusBadge(credentialStatusLabel[credential.credentialStatus] ?? credential.credentialStatus, getCredentialTone(credential.credentialStatus))}{statusBadge(accessStateLabel[credential.accessState] ?? credential.accessState, credential.accessState === 'ENABLED' ? 'success' : 'warning')}</div></TableCell>
                     <TableCell><code className="font-mono text-xs text-muted-foreground">{credential.credentialFamilyId}</code></TableCell>
                     <TableCell className="text-sm text-muted-foreground">{formatDate(credential.updateTime)}</TableCell>
-                    <TableCell><div className="flex justify-end gap-1.5"><Button type="button" variant="ghost" size="sm" onClick={() => setRotationCredential(credential)} disabled={!manufacturingFlowEnabled || credential.credentialStatus !== 'ACTIVE' || !credential.deviceId} title={!credential.deviceId ? '设备激活并绑定后才能轮换' : undefined}><RotateCcw className="size-3.5" aria-hidden />轮换</Button>{credential.credentialStatus !== 'REVOKED' ? <Button type="button" variant="ghost" size="sm" className={credential.accessState === 'ENABLED' ? 'text-amber-600 hover:text-amber-700' : 'text-emerald-600 hover:text-emerald-700'} onClick={() => setPendingCredentialAction({ credential, action: credential.accessState === 'ENABLED' ? 'FREEZE' : 'UNFREEZE' })}>{credential.accessState === 'ENABLED' ? '冻结' : '解冻'}</Button> : null}<Button type="button" variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => setPendingCredentialAction({ credential, action: 'REVOKE' })} disabled={credential.credentialStatus === 'REVOKED'}>吊销</Button></div></TableCell>
+                    <TableCell><div className="flex justify-end gap-1.5"><Button type="button" variant="ghost" size="sm" onClick={() => canProvision && setRotationCredential(credential)} disabled={!canProvision || credential.credentialStatus !== 'ACTIVE' || !credential.deviceId} title={!credential.deviceId ? '设备激活并绑定后才能轮换' : undefined}><RotateCcw className="size-3.5" aria-hidden />轮换</Button>{canProvision && credential.credentialStatus !== 'REVOKED' ? <Button type="button" variant="ghost" size="sm" className={credential.accessState === 'ENABLED' ? 'text-amber-600 hover:text-amber-700' : 'text-emerald-600 hover:text-emerald-700'} onClick={() => setPendingCredentialAction({ credential, action: credential.accessState === 'ENABLED' ? 'FREEZE' : 'UNFREEZE' })}>{credential.accessState === 'ENABLED' ? '冻结' : '解冻'}</Button> : null}<Button type="button" variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => setPendingCredentialAction({ credential, action: 'REVOKE' })} disabled={!canProvision || credential.credentialStatus === 'REVOKED'}>吊销</Button></div></TableCell>
                   </TableRow>)}</TableBody>
                 </Table>
               </div>
@@ -1525,22 +1536,23 @@ const ProductCredentialsPage = () => {
               </div>
             </TabsContent>
           </Tabs>
+          </>}
         </div>
       </ProjectWorkspaceShell>
 
-      <CreateBatchDialog open={batchDialogOpen} onOpenChange={setBatchDialogOpen} productId={productId} onCreated={async () => { setActiveTab('batches'); await Promise.all([mutateBatches(), mutateCredentials()]); }} />
-      <ManufacturingBatchDetailDialog batch={manufacturingBatch} onOpenChange={(open) => { if (!open) setManufacturingBatch(null); }} onBatchUpdated={mutateBatches} />
-      <AllocateDialog open={allocationOpen} batch={allocateBatch} batches={batches} onOpenChange={setAllocationOpen} onCreated={async () => { setDistributionBatchFilter('ALL'); setActiveTab('distributions'); await Promise.all([mutateBatches(), mutateDistributions()]); }} />
-      <ExportDialog distribution={exportDistribution} onOpenChange={(open) => { if (!open) setExportDistribution(null); }} onCreated={async () => { setActiveTab('exports'); await mutateExports(); }} />
+      <CreateBatchDialog open={batchDialogOpen && manufacturingFlowEnabled} onOpenChange={setBatchDialogOpen} productId={productId} onCreated={async () => { setActiveTab('batches'); await Promise.all([mutateBatches(), mutateCredentials()]); }} />
+      <ManufacturingBatchDetailDialog canManage={canProvision} batch={manufacturingBatch} onOpenChange={(open) => { if (!open) setManufacturingBatch(null); }} onBatchUpdated={mutateBatches} />
+      <AllocateDialog open={allocationOpen && manufacturingFlowEnabled} batch={allocateBatch} batches={batches} onOpenChange={setAllocationOpen} onCreated={async () => { setDistributionBatchFilter('ALL'); setActiveTab('distributions'); await Promise.all([mutateBatches(), mutateDistributions()]); }} />
+      <ExportDialog distribution={manufacturingFlowEnabled ? exportDistribution : null} onOpenChange={(open) => { if (!open) setExportDistribution(null); }} onCreated={async () => { setActiveTab('exports'); await mutateExports(); }} />
       <DistributionDetailDialog distribution={distributionDetail} canExport={manufacturingFlowEnabled} onOpenChange={(open) => { if (!open) setDistributionDetail(null); }} onExport={setExportDistribution} />
       <PreRegistrationDialog open={preRegistrationDialogOpen && canImportPreRegistrations} onOpenChange={setPreRegistrationDialogOpen} productId={productId} onCreated={mutatePreRegistrations} />
-      <IssueCredentialDialog open={issueCredentialKind != null} kind={issueCredentialKind ?? 'PRODUCT_SECRET'} productId={productId} onOpenChange={(open) => { if (!open) setIssueCredentialKind(null); }} onDelivered={(next) => { setDelivery(next); void mutateCredentials(); }} />
-      <CredentialActionDialog target={pendingCredentialAction} onOpenChange={(open) => { if (!open) setPendingCredentialAction(null); }} onCompleted={mutateCredentials} />
-      <CreateRotationDialog credential={rotationCredential} onOpenChange={(open) => { if (!open) setRotationCredential(null); }} onCreated={mutateRotations} />
-      <ResetProductSecretDialog credential={resetCredential} onOpenChange={(open) => { if (!open) setResetCredential(null); }} onDelivered={async (next) => { setDelivery(next); await mutateCredentials(); }} />
+      <IssueCredentialDialog open={canProvision && issueCredentialKind != null} kind={issueCredentialKind ?? 'PRODUCT_SECRET'} productId={productId} onOpenChange={(open) => { if (!open) setIssueCredentialKind(null); }} onDelivered={(next) => { setDelivery(next); void mutateCredentials(); }} />
+      <CredentialActionDialog target={canProvision ? pendingCredentialAction : null} onOpenChange={(open) => { if (!open) setPendingCredentialAction(null); }} onCompleted={mutateCredentials} />
+      <CreateRotationDialog credential={canProvision ? rotationCredential : null} onOpenChange={(open) => { if (!open) setRotationCredential(null); }} onCreated={mutateRotations} />
+      <ResetProductSecretDialog credential={canProvision ? resetCredential : null} onOpenChange={(open) => { if (!open) setResetCredential(null); }} onDelivered={async (next) => { setDelivery(next); await mutateCredentials(); }} />
       <OneTimeSecretDialog delivery={delivery} onOpenChange={(open) => { if (!open) setDelivery(null); }} />
 
-      <AlertDialog open={pendingRemoval != null} onOpenChange={(open) => { if (!open && !busyAction) setPendingRemoval(null); }}>
+      <AlertDialog open={canImportPreRegistrations && pendingRemoval != null} onOpenChange={(open) => { if (!open && !busyAction) setPendingRemoval(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader><AlertDialogTitle>移除这条预注册资格？</AlertDialogTitle><AlertDialogDescription>只有尚未绑定的资格可以移除。移除后该 Hardware Identity 不会再自动领取设备凭证。</AlertDialogDescription></AlertDialogHeader>
           <AlertDialogFooter><AlertDialogCancel disabled={busyAction}>取消</AlertDialogCancel><AlertDialogAction variant="destructive" disabled={busyAction} onClick={(event) => { event.preventDefault(); void removePreRegistration(); }}>{busyAction ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}确认移除</AlertDialogAction></AlertDialogFooter>
