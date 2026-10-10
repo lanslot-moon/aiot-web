@@ -1473,7 +1473,14 @@ const ProductCredentialsPage = () => {
 
             <TabsContent value="credentials" className="space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2"><div><h2 className="text-sm font-semibold">设备凭证摘要</h2><p className="text-xs text-muted-foreground">管理设备凭证的访问状态；已激活设备可发起轮换。</p></div>{supportsDeviceSecret ? <Button type="button" size="sm" className="gap-1.5" onClick={() => setIssueCredentialKind('DEVICE_SECRET')} disabled={!manufacturingFlowEnabled}><Plus className="size-3.5" aria-hidden />手动签发</Button> : null}</div>
-              <div className="overflow-hidden rounded-xl border">
+              {supportsProductSecret && product.bootstrapMode === 'OPEN' && !credentialsLoading && !credentialsError && deviceCredentials.length === 0 ? (
+                <div className="rounded-xl border border-dashed px-6 py-10 text-center" role="status">
+                  <p className="text-sm font-medium">暂无设备凭证</p>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                    {canProvision ? '设备完成动态注册后，系统会自动生成凭证，无需手动创建。' : '当前产品没有历史设备凭证。'}
+                  </p>
+                </div>
+              ) : <div className="overflow-hidden rounded-xl border">
                 <Table>
                   <TableHeader><TableRow><TableHead>设备身份</TableHead><TableHead>凭证版本</TableHead><TableHead>状态</TableHead><TableHead>凭证族</TableHead><TableHead>更新时间</TableHead><TableHead className="text-right">操作</TableHead></TableRow></TableHeader>
                   <TableBody>{credentialsLoading || credentialsError ? <RequestTableState colSpan={6} error={credentialsError} loading={credentialsLoading} onRetry={() => void mutateCredentials()} /> : deviceCredentials.length === 0 ? <TableRow><TableCell colSpan={6} className="h-32 text-center text-sm text-muted-foreground">还没有设备级凭证摘要。</TableCell></TableRow> : deviceCredentials.map((credential) => <TableRow key={credential.credentialId} className="transition-colors hover:bg-muted/20">
@@ -1485,7 +1492,7 @@ const ProductCredentialsPage = () => {
                     <TableCell><div className="flex justify-end gap-1.5"><Button type="button" variant="ghost" size="sm" onClick={() => canProvision && setRotationCredential(credential)} disabled={!canProvision || credential.credentialStatus !== 'ACTIVE' || !credential.deviceId} title={!credential.deviceId ? '设备激活并绑定后才能轮换' : undefined}><RotateCcw className="size-3.5" aria-hidden />轮换</Button>{canProvision && credential.credentialStatus !== 'REVOKED' ? <Button type="button" variant="ghost" size="sm" className={credential.accessState === 'ENABLED' ? 'text-amber-600 hover:text-amber-700' : 'text-emerald-600 hover:text-emerald-700'} onClick={() => setPendingCredentialAction({ credential, action: credential.accessState === 'ENABLED' ? 'FREEZE' : 'UNFREEZE' })}>{credential.accessState === 'ENABLED' ? '冻结' : '解冻'}</Button> : null}<Button type="button" variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => setPendingCredentialAction({ credential, action: 'REVOKE' })} disabled={!canProvision || credential.credentialStatus === 'REVOKED'}>吊销</Button></div></TableCell>
                   </TableRow>)}</TableBody>
                 </Table>
-              </div>
+              </div>}
             </TabsContent>
 
             <TabsContent value="exports" className="space-y-3">
