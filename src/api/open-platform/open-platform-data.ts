@@ -1800,8 +1800,6 @@ const seedManufacturingBatches: CredentialManufacturingBatchView[] = [
     status: 'PARTIALLY_AVAILABLE',
     targetQuantity: 500,
     availableCount: 238,
-    boundCount: 245,
-    revokedCount: 10,
     expiredCount: 7,
     voidCount: 0,
     expiresAt: null,
@@ -1816,8 +1814,6 @@ const seedManufacturingBatches: CredentialManufacturingBatchView[] = [
     status: 'AVAILABLE',
     targetQuantity: 50,
     availableCount: 50,
-    boundCount: 0,
-    revokedCount: 0,
     expiredCount: 0,
     voidCount: 0,
     expiresAt: Date.UTC(2026, 8, 22, 23, 59, 59),
@@ -1912,6 +1908,8 @@ const seedCredentialExports: CredentialExportTaskView[] = [
     status: 'SUCCEEDED',
     expectedCount: 245,
     successCount: 245,
+    skipReportObjectKey: null,
+    retentionUntil: Date.UTC(2026, 7, 19, 10, 31, 0),
     failureCode: null,
     version: 1,
     createTime: Date.UTC(2026, 7, 19, 10, 15, 0),
@@ -2722,8 +2720,6 @@ export const OpenPlatformHandlers = [
         status: 'AVAILABLE',
         targetQuantity: quantity,
         availableCount: quantity,
-        boundCount: 0,
-        revokedCount: 0,
         expiredCount: 0,
         voidCount: 0,
         expiresAt: body.expiresAt ?? null,
@@ -2956,6 +2952,8 @@ export const OpenPlatformHandlers = [
         status: 'SUCCEEDED',
         expectedCount: distribution.allocatedQuantity,
         successCount: distribution.allocatedQuantity,
+        skipReportObjectKey: null,
+        retentionUntil: timestamp + 15 * 60 * 1000,
         failureCode: null,
         version: 1,
         createTime: timestamp,
@@ -2975,32 +2973,30 @@ export const OpenPlatformHandlers = [
     return HttpResponse.json(ok(clone(task)));
   }),
 
-  http.post('/api/v1/credential-exports/:exportId/download-grants', ({ params }) => {
+  http.post('/api/v1/credential-exports/:exportId/download-link', ({ params }) => {
     const task = credentialExports.find((item) => item.exportId === String(params.exportId));
     if (!task) return fail('EXPORT_NOT_FOUND', '导出任务不存在。', 404);
     if (!credentialProductSupportsDeviceSecret(credentialProduct(task.productId))) {
       return fail('DEVICE_SECRET_NOT_ENABLED', '当前产品未启用设备密钥，不支持下载设备凭证导出文件。', 409);
     }
     if (!['SUCCEEDED', 'PARTIALLY_SUCCEEDED'].includes(task.status)) return fail('EXPORT_NOT_READY', '导出任务尚未完成。', 409);
+    if (task.retentionUntil == null || task.retentionUntil <= Date.now()) return fail('INVALID_STATE', '下载链接申请期限已结束。', 409);
     const snapshotItemIds = credentialExportSnapshots.get(task.exportId);
     if (snapshotItemIds && credentialProductUsesPreRegistration(credentialProduct(task.productId)) && snapshotItemIds.length !== task.expectedCount) {
       return fail('EXPORT_ITEMS_NOT_READY', '导出快照与严格预注册批次数量不一致，不能创建下载授权。', 409);
     }
-    return HttpResponse.json(ok({ downloadUrl: `/mock-downloads/${task.exportId}.${task.format.toLowerCase()}`, expiresAt: Date.now() + 10 * 60 * 1000 }));
+    return HttpResponse.json(ok({ downloadUrl: `/mock-downloads/${task.exportId}.${task.format === 'EXCEL' ? 'xlsx' : 'json'}`, expiresAt: Date.now() + 5 * 60 * 1000 }));
   }),
 
-  http.get('/api/v1/credential-exports/:exportId/content', ({ params }) => {
+  http.post('/api/v1/credential-exports/:exportId/skip-report/download-link', ({ params }) => {
     const task = credentialExports.find((item) => item.exportId === String(params.exportId));
     if (!task) return fail('EXPORT_NOT_FOUND', '导出任务不存在。', 404);
     if (!credentialProductSupportsDeviceSecret(credentialProduct(task.productId))) {
       return fail('DEVICE_SECRET_NOT_ENABLED', '当前产品未启用设备密钥，不支持下载设备凭证导出文件。', 409);
     }
-    if (!['SUCCEEDED', 'PARTIALLY_SUCCEEDED'].includes(task.status)) return fail('EXPORT_NOT_READY', '导出任务尚未完成。', 409);
-    const snapshotItemIds = credentialExportSnapshots.get(task.exportId);
-    if (snapshotItemIds && credentialProductUsesPreRegistration(credentialProduct(task.productId)) && snapshotItemIds.length !== task.expectedCount) {
-      return fail('EXPORT_ITEMS_NOT_READY', '导出快照与严格预注册批次数量不一致，不能下载文件。', 409);
-    }
-    return HttpResponse.json(ok({ downloadUrl: `/mock-downloads/${task.exportId}.${task.format.toLowerCase()}`, expiresAt: Date.now() + 10 * 60 * 1000 }));
+    if (task.retentionUntil == null || task.retentionUntil <= Date.now()) return fail('INVALID_STATE', '下载链接申请期限已结束。', 409);
+    if (!task.skipReportObjectKey) return fail('INVALID_STATE', '当前任务没有未导出明细报告。', 409);
+    return HttpResponse.json(ok({ downloadUrl: `/mock-downloads/${task.exportId}/skipped-items.${task.format === 'EXCEL' ? 'xlsx' : 'json'}`, expiresAt: Date.now() + 5 * 60 * 1000 }));
   }),
 
   http.get('/api/v1/products/:productId/pre-registrations', ({ params, request }) => {

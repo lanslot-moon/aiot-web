@@ -488,7 +488,6 @@ const ProductDetailPage = () => {
   const [editOpen, setEditOpen] = useState(false);
   const [iconEditOpen, setIconEditOpen] = useState(false);
   const [busyAction, setBusyAction] = useState<string | null>(null);
-  const [actionError, setActionError] = useState<OpenPlatformApiError | null>(null);
   const [confirmAction, setConfirmAction] = useState<ProductLifecycleAction | null>(null);
   const isCustomCategory =
     product?.categoryType === 'CUSTOM' || product?.categoryCode === 'CUSTOM';
@@ -507,17 +506,29 @@ const ProductDetailPage = () => {
     ]);
   };
 
+  const showActionError = (error: unknown) => {
+    if (error instanceof OpenPlatformApiError && error.code === 'MODEL_NOT_PUBLISHED') {
+      toast.error('暂时无法发布产品', {
+        description: '请先发布该产品的物模型，再发布产品。',
+        action: {
+          label: '去管理物模型',
+          onClick: () => navigate(`/projects/${projectId}/products/${productId}/model`),
+        },
+      });
+      return;
+    }
+    toast.error(error instanceof OpenPlatformApiError ? error.message : '操作失败，请稍后重试。');
+  };
   const saveProduct = async (body: ProductUpdateRequest) => {
     if (!product) return;
     setBusyAction('save');
-    setActionError(null);
     try {
       await openPlatformPut<boolean>(productKey as string, body);
       setEditOpen(false);
       await refreshProduct();
       toast.success('产品配置已保存。');
     } catch (error) {
-      setActionError(error as OpenPlatformApiError);
+      showActionError(error);
     } finally {
       setBusyAction(null);
     }
@@ -540,12 +551,11 @@ const ProductDetailPage = () => {
   const checkProductPublish = async () => {
     if (!product) return;
     setBusyAction('publish-check');
-    setActionError(null);
     try {
       await openPlatformPost<boolean>(`${productKey}/publish/validate`, {});
       setConfirmAction('publish');
     } catch (error) {
-      setActionError(error as OpenPlatformApiError);
+      showActionError(error);
     } finally {
       setBusyAction(null);
     }
@@ -555,7 +565,6 @@ const ProductDetailPage = () => {
     if (!product || !confirmAction) return;
     const action = confirmAction;
     setBusyAction(action);
-    setActionError(null);
     try {
       if (action === 'delete') {
         await openPlatformDelete<boolean>(productKey as string);
@@ -579,7 +588,7 @@ const ProductDetailPage = () => {
               : '产品已废弃。',
       );
     } catch (error) {
-      setActionError(error as OpenPlatformApiError);
+      showActionError(error);
     } finally {
       setBusyAction(null);
     }
@@ -603,13 +612,6 @@ const ProductDetailPage = () => {
     >
       <BreadcrumbComp title="产品详情" items={breadcrumbItems} />
       <ProjectWorkspaceShell activePrimary="products">
-        {actionError ? (
-          <ApiErrorAlert
-            code={actionError.code}
-            message={actionError.message}
-            onRetry={() => void refreshProduct()}
-          />
-        ) : null}
         {productError ? (
           <ApiErrorAlert
             code={error?.code}

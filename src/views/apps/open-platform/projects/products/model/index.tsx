@@ -751,7 +751,7 @@ const ProductModelPage = () => {
         setLocalDefinition(null);
         setConfirmAction(null);
       },
-      '物模型已发布为新版本。',
+      '物模型发布完成，草稿已清除。',
     );
   };
 
@@ -1049,10 +1049,6 @@ const ProductModelPage = () => {
                       <CardDescription className="mt-1">
                         {publishedOnly
                           ? '当前查看设备正在使用的已发布版本，只读查看能力定义。'
-                          : readOnlyDefinition
-                          ? isCustomCategory
-                            ? '当前没有草稿，以下为已发布版本的只读能力定义；自定义品类不会继承平台能力。'
-                            : '当前没有草稿，以下为已发布版本的只读能力定义。'
                           : isCustomCategory
                           ? '自定义品类不继承平台能力，请在此定义产品自己的属性、动作和事件。'
                           : '按属性、动作、事件管理产品可用能力；JSON 仅在展开单项能力后查看。'}
@@ -1074,7 +1070,7 @@ const ProductModelPage = () => {
                       ) : (
                         <>
                           {!isCustomCategory ? (
-                            <Button type="button" variant="outline" size="sm" className="gap-1" onClick={openMergeDialog} disabled={busyAction != null || !product?.categoryCatalogVersion}>
+                            <Button type="button" variant="outline" size="sm" className="gap-1" onClick={openMergeDialog} disabled={busyAction != null || readOnlyDefinition || !product?.categoryCatalogVersion}>
                               <RefreshCw className="size-3.5" aria-hidden />
                               从品类新增
                             </Button>
@@ -1115,8 +1111,9 @@ const ProductModelPage = () => {
                   ) : null}
                 </CardHeader>
                 <CardContent className="space-y-4 py-4">
-                  {(draftError && !publishedOnly) || publishedError ? <ApiErrorAlert message={((draftError && !publishedOnly ? draftError : publishedError) as Error).message} /> : ((draftLoading && draft === undefined) ||
-                    (publishedLoading && published === undefined)) ? (
+                  {(publishedOnly ? publishedError : draftError) ? <ApiErrorAlert message={((publishedOnly ? publishedError : draftError) as Error).message} /> : (publishedOnly
+                    ? publishedLoading && published === undefined
+                    : draftLoading && draft === undefined) ? (
                     <div className="space-y-3">
                       <Skeleton className="h-14 w-full" />
                       <Skeleton className="h-72 w-full" />

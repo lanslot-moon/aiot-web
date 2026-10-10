@@ -313,8 +313,6 @@ export interface CredentialManufacturingBatchView {
   status: ManufacturingBatchStatus;
   targetQuantity: number;
   availableCount: number;
-  boundCount: number;
-  revokedCount: number;
   expiredCount: number;
   voidCount: number;
   expiresAt: number | null;
@@ -381,6 +379,10 @@ export interface CredentialExportTaskView {
   status: CredentialExportStatus;
   expectedCount: number;
   successCount: number;
+  /** 未导出明细报告对象键，仅用于判断报告是否存在。 */
+  skipReportObjectKey: string | null;
+  /** 凭证文件和报告的下载链接申请截止时间，Unix 毫秒。 */
+  retentionUntil: number | null;
   failureCode: string | null;
   version: number;
   createTime: number;

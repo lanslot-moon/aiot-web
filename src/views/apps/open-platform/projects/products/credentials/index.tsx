@@ -149,7 +149,6 @@ const manufacturingItemStatusLabel: Record<string, string> = {
   AVAILABLE: '可绑定',
   BOUND: '已绑定',
   EXPIRED: '已过期',
-  REVOKED: '已吊销',
   VOID: '已作废',
 };
 
@@ -216,7 +215,7 @@ function getDistributionTone(status: string) {
 function getManufacturingItemTone(status: string) {
   if (status === 'AVAILABLE') return 'success' as const;
   if (status === 'BOUND') return 'default' as const;
-  if (status === 'VOID' || status === 'REVOKED') return 'danger' as const;
+  if (status === 'VOID') return 'danger' as const;
   return 'warning' as const;
 }
 
@@ -338,11 +337,9 @@ function IssueCredentialDialog({
         </DialogHeader>
         <form className="space-y-4" onSubmit={(event) => void submit(event)}>
           {kind === 'DEVICE_SECRET' ? (
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="credential-hardware-uuid">Hardware Identity</Label>
-                <Input required id="credential-hardware-uuid" value={hardwareUuid} onChange={(event) => setHardwareUuid(event.target.value)} placeholder="例如：GW-HW-202608-0003" />
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="credential-hardware-uuid">Hardware Identity</Label>
+              <Input required id="credential-hardware-uuid" value={hardwareUuid} onChange={(event) => setHardwareUuid(event.target.value)} placeholder="例如：GW-HW-202608-0003" />
             </div>
           ) : null}
           <div className="space-y-2">
@@ -744,7 +741,7 @@ function ManufacturingBatchDetailDialog({
                 <div className="min-w-0"><p className="text-xs text-muted-foreground">批次 ID</p><code className="mt-1 block break-all font-mono text-xs">{detail?.batchId ?? batch.batchId}</code></div>
                 <div><p className="text-xs text-muted-foreground">状态</p><div className="mt-1">{statusBadge(batchStatusLabel[getBatchDisplayStatus(detail ?? batch)] ?? (detail ?? batch).status, getBatchTone((detail ?? batch).status))}</div></div>
                 <div><p className="text-xs text-muted-foreground">目标数量</p><p className="mt-1 font-semibold tabular-nums">{formatNumber((detail ?? batch).targetQuantity)}</p></div>
-                <div><p className="text-xs text-muted-foreground">可绑定 / 已绑定 / 已作废</p><p className="mt-1 text-sm tabular-nums">{formatNumber((detail ?? batch).availableCount)} / {formatNumber((detail ?? batch).boundCount)} / {formatNumber((detail ?? batch).voidCount)}</p></div>
+                <div><p className="text-xs text-muted-foreground">剩余可领取 / 已作废</p><p className="mt-1 text-sm tabular-nums">{formatNumber((detail ?? batch).availableCount)} / {formatNumber((detail ?? batch).voidCount)}</p></div>
               </div>
 
               <div className="min-w-0 space-y-3 rounded-xl border">
@@ -760,7 +757,6 @@ function ManufacturingBatchDetailDialog({
                       <SelectItem value="AVAILABLE">可绑定</SelectItem>
                       <SelectItem value="BOUND">已绑定</SelectItem>
                       <SelectItem value="EXPIRED">已过期</SelectItem>
-                      <SelectItem value="REVOKED">已吊销</SelectItem>
                       <SelectItem value="VOID">已作废</SelectItem>
                     </SelectContent>
                   </Select>
@@ -1035,13 +1031,13 @@ function DistributionDetailPanel({ distribution, canManage, onClose, onExport, o
     </div>
     {!canManage && <p className="rounded-lg border bg-muted/20 p-3 text-sm text-muted-foreground">当前产品仅可查看历史成员，不能作废或导出凭证。</p>}
     <form className="flex flex-wrap items-end gap-2" onSubmit={(event) => { event.preventDefault(); setUuidPrefix(search.trim()); setExpandedId(null); }}>
-      <div className="min-w-48 flex-1 space-y-1.5"><Label htmlFor="pickup-uuid-search">UUID</Label><Input id="pickup-uuid-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="输入完整 UUID 或前缀" /></div>
-      <div className="w-36 space-y-1.5"><Label>制造项状态</Label><Select value={status} onValueChange={(value) => { setStatus(value ?? 'ALL'); setExpandedId(null); }}><SelectTrigger aria-label="筛选领取单成员状态"><SelectValue>{status === 'ALL' ? '全部状态' : manufacturingItemStatusLabel[status]}</SelectValue></SelectTrigger><SelectContent><SelectItem value="ALL">全部状态</SelectItem>{Object.entries(manufacturingItemStatusLabel).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent></Select></div>
-      <Button type="submit" variant="outline">查询</Button>{(filtered || search) && <Button type="button" variant="ghost" onClick={() => { setSearch(''); setUuidPrefix(''); setStatus('ALL'); setExpandedId(null); }}>重置</Button>}
+      <div className="flex min-w-48 flex-1 flex-col gap-1.5"><Label htmlFor="pickup-uuid-search">UUID</Label><Input id="pickup-uuid-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="输入完整 UUID 或前缀" /></div>
+      <div className="flex w-36 flex-col gap-1.5"><Label>制造项状态</Label><Select value={status} onValueChange={(value) => { setStatus(value ?? 'ALL'); setExpandedId(null); }}><SelectTrigger aria-label="筛选领取单成员状态"><SelectValue>{status === 'ALL' ? '全部状态' : manufacturingItemStatusLabel[status]}</SelectValue></SelectTrigger><SelectContent><SelectItem value="ALL">全部状态</SelectItem>{Object.entries(manufacturingItemStatusLabel).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent></Select></div>
+      <Button type="submit" variant="outline" className="h-8!">查询</Button>{(filtered || search) && <Button type="button" variant="ghost" className="h-8!" onClick={() => { setSearch(''); setUuidPrefix(''); setStatus('ALL'); setExpandedId(null); }}>重置</Button>}
     </form>
     <div className="overflow-hidden rounded-xl border"><Table><TableHeader><TableRow><TableHead>设备 UUID</TableHead><TableHead>制造项状态</TableHead><TableHead>设备绑定</TableHead><TableHead className="text-right">操作</TableHead></TableRow></TableHeader><TableBody>
       {isLoading || (error && items.length === 0) ? <RequestTableState colSpan={4} loading={isLoading} error={error} onRetry={() => void mutate()} /> : items.length === 0 ? <TableRow><TableCell colSpan={4} className="h-32 text-center text-muted-foreground">{filtered ? '没有符合条件的制造项，请调整筛选条件。' : '本领取单暂无制造项。'}</TableCell></TableRow> : items.map((item) => <Fragment key={item.itemId}>
-        <TableRow><TableCell className="break-all font-mono text-xs">{item.hardwareUuid}</TableCell><TableCell>{statusBadge(manufacturingItemStatusLabel[item.status] ?? item.status, item.status === 'VOID' || item.status === 'REVOKED' ? 'danger' : 'default')}</TableCell><TableCell className="text-sm">{item.boundDeviceId ? <span className="break-all font-mono text-xs">{item.boundDeviceId}</span> : '未绑定'}</TableCell><TableCell><div className="flex justify-end gap-1"><Button variant="ghost" size="sm" aria-expanded={expandedId === item.itemId} aria-controls={`pickup-item-${item.itemId}`} onClick={() => setExpandedId(expandedId === item.itemId ? null : item.itemId)}>{expandedId === item.itemId ? '收起' : '详情'}</Button>{canManage && item.status === 'AVAILABLE' && !item.boundDeviceId && (item.expiresAt == null || item.expiresAt > Date.now()) && <Button variant="ghost" size="sm" className="text-destructive" disabled={busy} onClick={() => { setPendingVoid(item); setReason(''); }}>作废</Button>}</div></TableCell></TableRow>
+        <TableRow><TableCell className="break-all font-mono text-xs">{item.hardwareUuid}</TableCell><TableCell>{statusBadge(manufacturingItemStatusLabel[item.status] ?? item.status, item.status === 'VOID' ? 'danger' : 'default')}</TableCell><TableCell className="text-sm">{item.boundDeviceId ? <span className="break-all font-mono text-xs">{item.boundDeviceId}</span> : '未绑定'}</TableCell><TableCell><div className="flex justify-end gap-1"><Button variant="ghost" size="sm" aria-expanded={expandedId === item.itemId} aria-controls={`pickup-item-${item.itemId}`} onClick={() => setExpandedId(expandedId === item.itemId ? null : item.itemId)}>{expandedId === item.itemId ? '收起' : '详情'}</Button>{canManage && item.status === 'AVAILABLE' && !item.boundDeviceId && (item.expiresAt == null || item.expiresAt > Date.now()) && <Button variant="ghost" size="sm" className="text-destructive" disabled={busy} onClick={() => { setPendingVoid(item); setReason(''); }}>作废</Button>}</div></TableCell></TableRow>
         {expandedId === item.itemId && <TableRow id={`pickup-item-${item.itemId}`}><TableCell colSpan={4} className="bg-muted/20"><dl className="grid gap-3 py-2 text-xs sm:grid-cols-2"><div><dt className="text-muted-foreground">制造项 ID</dt><dd className="mt-1 break-all font-mono">{item.itemId}</dd></div><div><dt className="text-muted-foreground">凭证 ID · 版本</dt><dd className="mt-1 break-all font-mono">{item.credentialId} · v{item.credentialVersion}</dd></div><div><dt className="text-muted-foreground">领取时间</dt><dd className="mt-1">{formatDate(item.allocatedAt)}</dd></div><div><dt className="text-muted-foreground">失效时间</dt><dd className="mt-1">{formatDate(item.expiresAt)}</dd></div></dl></TableCell></TableRow>}
       </Fragment>)}
     </TableBody></Table></div>
@@ -1289,6 +1285,16 @@ const ProductCredentialsPage = () => {
     if (manufacturingState) void mutateCredentials();
   }, [manufacturingState, mutateCredentials]);
   const exports = exportsData?.items ?? [];
+  const [exportClock, setExportClock] = useState(() => Date.now());
+  const [exportDownloadPending, setExportDownloadPending] = useState<string | null>(null);
+  useEffect(() => {
+    if (!exportsData?.items.some((task) => task.retentionUntil != null && task.retentionUntil > Date.now())) return;
+    // 在下一个下载截止时间触发本地刷新，不为按钮过期状态轮询接口。
+    const deadlines = exportsData.items.flatMap((task) => task.retentionUntil != null && task.retentionUntil > Date.now() ? [task.retentionUntil] : []);
+    if (deadlines.length === 0) return;
+    const timer = window.setTimeout(() => setExportClock(Date.now()), Math.min(Math.max(1, Math.min(...deadlines) - Date.now()), 2147483647));
+    return () => window.clearTimeout(timer);
+  }, [exportsData, exportClock]);
   const preRegistrations = preRegistrationPages?.flatMap((page) => page.items) ?? [];
   const rotations = rotationsData?.items ?? [];
   const productSecret = credentials.find((credential) => credential.kind === 'PRODUCT_SECRET' && credential.credentialStatus === 'ACTIVE');
@@ -1330,17 +1336,27 @@ const ProductCredentialsPage = () => {
     }
   };
 
-  const downloadExport = async (task: CredentialExportTaskView) => {
+  const downloadExport = async (task: CredentialExportTaskView, report = false) => {
+    if (exportDownloadPending) return;
+    if (task.retentionUntil == null || task.retentionUntil <= Date.now()) {
+      toast.info('下载链接申请期限已结束，请重新创建导出任务。');
+      return;
+    }
     if (!manufacturingFlowEnabled) {
       toast.info('当前产品状态不允许签发下载链接。');
       return;
     }
+    if (report ? !task.skipReportObjectKey : !['SUCCEEDED', 'PARTIALLY_SUCCEEDED'].includes(task.status)) return;
+    setExportDownloadPending(`${task.exportId}:${report ? 'report' : 'credentials'}`);
     try {
-      const result = await openPlatformPost<{ downloadUrl: string; expiresAt: number }>(`/api/v1/credential-exports/${encodeURIComponent(task.exportId)}/download-link`, {});
+      const endpoint = report ? 'skip-report/download-link' : 'download-link';
+      const result = await openPlatformPost<{ downloadUrl: string; expiresAt: number }>(`/api/v1/credential-exports/${encodeURIComponent(task.exportId)}/${endpoint}`, {});
       toast.success(`下载链接已签发，将于 ${formatDate(result.expiresAt)} 失效。`);
       window.open(result.downloadUrl, '_blank', 'noopener,noreferrer');
     } catch (error) {
       toast.error(error instanceof OpenPlatformApiError ? error.message : '下载链接签发失败。');
+    } finally {
+      setExportDownloadPending(null);
     }
   };
 
@@ -1479,7 +1495,7 @@ const ProductCredentialsPage = () => {
                       return <TableRow key={batch.batchId} className="transition-colors hover:bg-muted/20">
                         <TableCell><button type="button" className="text-left font-medium underline-offset-4 hover:underline" onClick={() => setManufacturingBatch(batch)} aria-label={`查看批次 ${batch.batchId}`}>批次 {maskId(batch.batchId)}</button><div className="mt-1 text-xs text-muted-foreground">{formatDateShort(batch.createTime)}</div></TableCell>
                         <TableCell>{statusBadge(batchStatusLabel[displayStatus] ?? displayStatus, getBatchTone(displayStatus))}</TableCell>
-                        <TableCell><div className="font-medium tabular-nums">{formatNumber(batch.targetQuantity)}</div><div className="mt-1 text-xs text-muted-foreground">{fullyAllocated ? `已全部划拨 ${formatNumber(batch.allocatedQuantity)}` : `可绑定 ${formatNumber(batch.availableCount)}`} · 已绑定 {formatNumber(batch.boundCount)}</div></TableCell>
+                        <TableCell><div className="font-medium tabular-nums">{formatNumber(batch.targetQuantity)}</div><div className="mt-1 text-xs text-muted-foreground">{fullyAllocated ? `已全部划拨 ${formatNumber(batch.allocatedQuantity)}` : `剩余可领取 ${formatNumber(batch.availableCount)}`}</div></TableCell>
                         <TableCell className="text-sm text-muted-foreground">{formatDate(batch.expiresAt)}</TableCell>
                         <TableCell className="text-right"><div className="flex flex-wrap justify-end gap-1.5"><Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => { setAllocateBatch(batch); setAllocationOpen(true); }} disabled={!manufacturingFlowEnabled || batch.availableCount === 0}><PackageCheck className="size-3.5" aria-hidden />{fullyAllocated ? '已全部领取' : '创建领取单'}</Button><Button type="button" variant="ghost" size="sm" className="gap-1.5" onClick={() => void openExportForBatch(batch)} disabled={!distributions.some((item) => item.batchId === batch.batchId)}><Eye className="size-3.5" aria-hidden />查看领取单</Button></div></TableCell>
                       </TableRow>;
@@ -1518,12 +1534,12 @@ const ProductCredentialsPage = () => {
             <TabsContent value="credentials" className="space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2"><div><h2 className="text-sm font-semibold">设备凭证摘要</h2><p className="text-xs text-muted-foreground">管理设备凭证的访问状态；已激活设备可发起轮换。</p></div>{supportsDeviceSecret ? <Button type="button" size="sm" className="gap-1.5" onClick={() => setIssueCredentialKind('DEVICE_SECRET')} disabled={!manufacturingFlowEnabled}><Plus className="size-3.5" aria-hidden />手动签发</Button> : null}</div>
               <form className="flex flex-wrap items-end gap-2" onSubmit={(event) => { event.preventDefault(); setCredentialSearch({ field: credentialSearchField, value: credentialSearchText.trim() }); }}>
-                <div className="w-36 space-y-1.5"><Label>查询字段</Label><Select value={credentialSearchField} onValueChange={(value) => { setCredentialSearchField(value ?? 'hardwareUuid'); setCredentialSearchText(''); setCredentialSearch({ field: value ?? 'hardwareUuid', value: '' }); }}><SelectTrigger aria-label="凭证查询字段"><SelectValue>{credentialSearchLabels[credentialSearchField]}</SelectValue></SelectTrigger><SelectContent>{Object.entries(credentialSearchLabels).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent></Select></div>
-                <div className="min-w-56 flex-1 space-y-1.5"><Label htmlFor="device-credential-search">{credentialSearchLabels[credentialSearchField]}</Label><Input id="device-credential-search" value={credentialSearchText} onChange={(event) => setCredentialSearchText(event.target.value)} placeholder={`输入完整${credentialSearchLabels[credentialSearchField]}，精确查询`} /></div>
-                <div className="w-36 space-y-1.5"><Label>凭证状态</Label><Select value={credentialStatusFilter} onValueChange={(value) => setCredentialStatusFilter(value ?? 'ALL')}><SelectTrigger aria-label="筛选凭证状态"><SelectValue>{credentialStatusFilter === 'ALL' ? '全部状态' : credentialStatusLabel[credentialStatusFilter]}</SelectValue></SelectTrigger><SelectContent><SelectItem value="ALL">全部状态</SelectItem>{Object.entries(credentialStatusLabel).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent></Select></div>
-                <div className="w-36 space-y-1.5"><Label>访问状态</Label><Select value={credentialAccessFilter} onValueChange={(value) => setCredentialAccessFilter(value ?? 'ALL')}><SelectTrigger aria-label="筛选访问状态"><SelectValue>{credentialAccessFilter === 'ALL' ? '全部状态' : credentialAccessFilter === 'ENABLED' ? '未冻结' : '已冻结'}</SelectValue></SelectTrigger><SelectContent><SelectItem value="ALL">全部状态</SelectItem><SelectItem value="ENABLED">未冻结</SelectItem><SelectItem value="FROZEN">已冻结</SelectItem></SelectContent></Select></div>
-                <Button type="submit" variant="outline">查询</Button>
-                {(credentialsFiltered || credentialSearchText) && <Button type="button" variant="ghost" onClick={() => { setCredentialSearchText(''); setCredentialSearch({ field: credentialSearchField, value: '' }); setCredentialStatusFilter('ALL'); setCredentialAccessFilter('ALL'); }}>重置</Button>}
+                <div className="flex w-36 flex-col gap-1.5"><Label>查询字段</Label><Select value={credentialSearchField} onValueChange={(value) => { setCredentialSearchField(value ?? 'hardwareUuid'); setCredentialSearchText(''); setCredentialSearch({ field: value ?? 'hardwareUuid', value: '' }); }}><SelectTrigger aria-label="凭证查询字段"><SelectValue>{credentialSearchLabels[credentialSearchField]}</SelectValue></SelectTrigger><SelectContent>{Object.entries(credentialSearchLabels).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent></Select></div>
+                <div className="flex min-w-56 flex-1 flex-col gap-1.5"><Label htmlFor="device-credential-search">{credentialSearchLabels[credentialSearchField]}</Label><Input id="device-credential-search" value={credentialSearchText} onChange={(event) => setCredentialSearchText(event.target.value)} placeholder={`输入完整${credentialSearchLabels[credentialSearchField]}，精确查询`} /></div>
+                <div className="flex w-36 flex-col gap-1.5"><Label>凭证状态</Label><Select value={credentialStatusFilter} onValueChange={(value) => setCredentialStatusFilter(value ?? 'ALL')}><SelectTrigger aria-label="筛选凭证状态"><SelectValue>{credentialStatusFilter === 'ALL' ? '全部状态' : credentialStatusLabel[credentialStatusFilter]}</SelectValue></SelectTrigger><SelectContent><SelectItem value="ALL">全部状态</SelectItem>{Object.entries(credentialStatusLabel).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent></Select></div>
+                <div className="flex w-36 flex-col gap-1.5"><Label>访问状态</Label><Select value={credentialAccessFilter} onValueChange={(value) => setCredentialAccessFilter(value ?? 'ALL')}><SelectTrigger aria-label="筛选访问状态"><SelectValue>{credentialAccessFilter === 'ALL' ? '全部状态' : credentialAccessFilter === 'ENABLED' ? '未冻结' : '已冻结'}</SelectValue></SelectTrigger><SelectContent><SelectItem value="ALL">全部状态</SelectItem><SelectItem value="ENABLED">未冻结</SelectItem><SelectItem value="FROZEN">已冻结</SelectItem></SelectContent></Select></div>
+                <Button type="submit" variant="outline" className="h-8!">查询</Button>
+                {(credentialsFiltered || credentialSearchText) && <Button type="button" variant="ghost" className="h-8!" onClick={() => { setCredentialSearchText(''); setCredentialSearch({ field: credentialSearchField, value: '' }); setCredentialStatusFilter('ALL'); setCredentialAccessFilter('ALL'); }}>重置</Button>}
               </form>
               {supportsProductSecret && product.bootstrapMode === 'OPEN' && !credentialsFiltered && !deviceCredentialsLoading && !deviceCredentialError && queriedDeviceCredentials.length === 0 ? (
                 <div className="rounded-xl border border-dashed px-6 py-10 text-center" role="status">
@@ -1554,13 +1570,39 @@ const ProductCredentialsPage = () => {
               <div className="overflow-hidden rounded-xl border">
                 <Table>
                   <TableHeader><TableRow><TableHead>任务</TableHead><TableHead>集合</TableHead><TableHead>格式</TableHead><TableHead>结果</TableHead><TableHead className="text-right">操作</TableHead></TableRow></TableHeader>
-                  <TableBody>{exportsLoading || exportsError ? <RequestTableState colSpan={5} error={exportsError} loading={exportsLoading} onRetry={() => void mutateExports()} /> : exports.length === 0 ? <TableRow><TableCell colSpan={5} className="h-32 text-center text-sm text-muted-foreground">还没有导出记录。请先从领取单中创建导出任务。</TableCell></TableRow> : exports.map((task) => <TableRow key={task.exportId} className="transition-colors hover:bg-muted/20">
-                    <TableCell><div className="font-medium">{task.exportId}</div><div className="mt-1 text-xs text-muted-foreground">{formatDate(task.createTime)}</div></TableCell>
-                    <TableCell><div className="font-mono text-xs">{task.distributionId}</div><div className="mt-1 text-xs text-muted-foreground">{formatNumber(task.expectedCount)} 台</div></TableCell>
-                    <TableCell><Badge variant="outline">{task.format}</Badge></TableCell>
-                    <TableCell>{statusBadge(exportStatusLabel[task.status] ?? task.status, getExportTone(task.status))}<div className="mt-1 text-xs text-muted-foreground">{formatNumber(task.successCount)} / {formatNumber(task.expectedCount)} 成功</div></TableCell>
-                    <TableCell className="text-right"><Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => void downloadExport(task)} disabled={!manufacturingFlowEnabled || !['SUCCEEDED', 'PARTIALLY_SUCCEEDED'].includes(task.status)}><CloudDownload className="size-3.5" aria-hidden />下载</Button></TableCell>
-                  </TableRow>)}</TableBody>
+                  <TableBody>{exportsLoading || exportsError ? <RequestTableState colSpan={5} error={exportsError} loading={exportsLoading} onRetry={() => void mutateExports()} /> : exports.length === 0 ? <TableRow><TableCell colSpan={5} className="h-32 text-center text-sm text-muted-foreground">还没有导出记录。请先从领取单中创建导出任务。</TableCell></TableRow> : exports.map((task) => {
+                    const completed = ['SUCCEEDED', 'PARTIALLY_SUCCEEDED'].includes(task.status);
+                    const skippedCount = completed ? Math.max(0, task.expectedCount - task.successCount) : 0;
+                    const emptyFile = completed && task.successCount === 0;
+                    const expired = task.retentionUntil != null && task.retentionUntil <= Math.max(exportClock, Date.now());
+                    const downloadDisabled = !manufacturingFlowEnabled || task.retentionUntil == null || expired || exportDownloadPending != null;
+                    return <TableRow key={task.exportId} className="transition-colors hover:bg-muted/20">
+                      <TableCell><div className="font-medium">{task.exportId}</div><div className="mt-1 text-xs text-muted-foreground">{formatDate(task.createTime)}</div></TableCell>
+                      <TableCell><div className="font-mono text-xs">{task.distributionId}</div><div className="mt-1 text-xs text-muted-foreground">{formatNumber(task.expectedCount)} 台</div></TableCell>
+                      <TableCell><Badge variant="outline">{task.format}</Badge></TableCell>
+                      <TableCell>
+                        {statusBadge(emptyFile ? '已完成 · 无凭证数据' : exportStatusLabel[task.status] ?? task.status, getExportTone(task.status))}
+                        {completed ? <>
+                          <div className="mt-1 text-xs text-muted-foreground">成功 {formatNumber(task.successCount)} 项 · 跳过 {formatNumber(skippedCount)} 项</div>
+                          {emptyFile && <div className="mt-1 text-xs text-muted-foreground">{task.format === 'EXCEL' ? '凭证文件仅含表头，无设备凭证数据。' : '凭证文件为空数组，无设备凭证数据。'}</div>}
+                          {skippedCount > 0 && task.skipReportObjectKey && <div className="mt-1 text-xs text-muted-foreground">具体原因见未导出明细 {task.format === 'EXCEL' ? 'Excel' : 'JSON'}。</div>}
+                        </> : task.status === 'FAILED' ? <div className="mt-1 text-xs text-destructive">导出未完成{task.failureCode ? `（原因码：${task.failureCode}）` : ''}，请重新创建导出任务。</div> : null}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex flex-wrap justify-end gap-2">
+                          <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => void downloadExport(task)} disabled={!completed || downloadDisabled}>
+                            {exportDownloadPending === `${task.exportId}:credentials` ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : <CloudDownload className="size-3.5" aria-hidden />}
+                            {emptyFile ? '下载空凭证文件' : '下载凭证'}
+                          </Button>
+                          {task.skipReportObjectKey && <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => void downloadExport(task, true)} disabled={downloadDisabled}>
+                            {exportDownloadPending === `${task.exportId}:report` ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : <CloudDownload className="size-3.5" aria-hidden />}
+                            下载未导出明细
+                          </Button>}
+                        </div>
+                        <div className="mt-1 text-xs text-muted-foreground">{expired ? '下载链接申请已截止' : task.retentionUntil != null ? `链接申请截止 ${formatDate(task.retentionUntil)}` : completed ? '未设置链接申请期限' : ['PENDING', 'RUNNING'].includes(task.status) ? '完成后可申请下载链接' : '当前任务不可下载'}</div>
+                      </TableCell>
+                    </TableRow>;
+                  })}</TableBody>
                 </Table>
               </div>
             </TabsContent>
