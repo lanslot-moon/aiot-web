@@ -11,6 +11,8 @@ import { GatewayDataTable } from '@/components/tables/data-table/DataTable';
 import { policyRequest, policyPath, query, formatTime, principalLabels, type Policy, type Draft, type Version, type Binding, type Usage, type Page, type Document, type Validation, type PrincipalType } from '@/api/policy/client';
 import PolicyEditor from './policy-editor';
 import PolicyRulesTable from './policy-rules-table';
+import PolicyOverlapNotice from './policy-overlap-notice';
+import PolicyDocumentView from './policy-document-view';
 import { Status, Failure, Field, Loading, Pager, PolicySelect } from './shared';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -27,7 +29,11 @@ export default function PolicyDetail({ projectId, id, back, initialEdit = false 
   const policy = useSWR([projectId, base], () => read<Policy>(base));
   const draft = useSWR([projectId, base, 'draft'], () => read<Draft>(base + '/draft'), { revalidateOnFocus: false });
   const usage = useSWR([projectId, base, 'usage'], () => read<Usage>(base + '/usage'));
-  const [tab, setTab] = useState('draft');
+  const [selectedTab, setTab] = useState<string | null>(initialEdit ? 'draft' : null);
+  const tab = selectedTab ?? (policy.data?.currentVersionNo ? 'current' : 'draft');
+  const currentVersionNo = policy.data?.currentVersionNo;
+  const current = useSWR(currentVersionNo ? [projectId, base, currentVersionNo] : null,
+    () => read<Version>(base + '/versions/' + currentVersionNo));
   const [editing, setEditing] = useState(initialEdit);
   const [dirty, setDirty] = useState(false);
   const [discard, setDiscard] = useState<'back' | 'cancel' | null>(null);
@@ -61,7 +67,7 @@ export default function PolicyDetail({ projectId, id, back, initialEdit = false 
     if (busy) return;
     if (editing && dirty) setDiscard('back'); else back();
   }
-  async function refresh() { await Promise.allSettled([policy.mutate(), draft.mutate(), bindings.mutate(), versions.mutate(), usage.mutate()]); }
+  async function refresh() { await Promise.allSettled([policy.mutate(), draft.mutate(), bindings.mutate(), versions.mutate(), usage.mutate(), current.mutate()]); }
   async function save(document: Document) {
     if (!draft.data) return;
     setBusy(true); setError(undefined);
@@ -123,30 +129,53 @@ export default function PolicyDetail({ projectId, id, back, initialEdit = false 
     <Button variant="ghost" disabled={busy} onClick={leave}><ArrowLeft className="size-4" />返回策略列表</Button>
     <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
       <div className="min-w-0 flex-1">
-        <div className="flex min-h-8 flex-wrap items-center gap-3"><h2 className="min-w-0 break-words text-lg font-semibold leading-8">{p.name}</h2><Status value={p.status} /></div>
+        <div className="flex min-h-8 flex-wrap items-center gap-3"><h2 className="min-w-0 break-words text-lg font-semibold leading-8">{p.name}</h2>{p.status === 'ACTIVE' ? <span className="rounded-md border px-2 py-0.5 text-xs font-normal text-muted-foreground">已发布</span> : <Status value={p.status} />}</div>
         <p className="mt-2 break-words text-xs leading-6 text-muted-foreground">{p.description || '暂无说明'}</p>
-        <p className="mt-2 break-all text-xs leading-5 text-muted-foreground">{p.policyType === 'MQTT_DEVICE' ? '设备通信 · 产品 ' + p.scopeProductId : '资源操作'} · {p.policyId}</p>
+        <Collapsible className="mt-2"><CollapsibleTrigger render={<Button variant="ghost" size="sm" className="group h-auto px-0 text-xs text-muted-foreground" />}><ChevronDown className="size-3 transition-transform group-data-panel-open:rotate-180" />策略标识与产品范围</CollapsibleTrigger><CollapsibleContent><dl className="mt-2 space-y-1 break-all text-xs text-muted-foreground"><div>策略 ID：{p.policyId}</div><div>{p.policyType === 'MQTT_DEVICE' ? '产品 ID：' + p.scopeProductId : '类型：资源操作'}</div></dl></CollapsibleContent></Collapsible>
       </div>
       <div className="flex shrink-0 flex-wrap items-center gap-2">
         <Button variant="outline" disabled={!writable || busy || editing} onClick={() => open('metadata')}><Pencil className="size-4" />编辑信息</Button>
         <Button variant="ghost" disabled={busy || editing} onClick={() => void refresh()}>刷新详情</Button>
       </div>
     </div>
-    <div className="grid gap-3 border-y py-4 text-xs sm:grid-cols-3"><span>当前生效：{p.currentVersionNo ? 'v' + p.currentVersionNo : '尚未发布'}</span><span>生效绑定：{usage.data ? usage.data.activeBindingCount : '—'}</span>{p.scheduledVersionNo && <span>待生效版本：v{p.scheduledVersionNo}</span>}</div>
+    {p.scheduledVersionNo && <p className="text-xs text-muted-foreground">待生效版本：v{p.scheduledVersionNo}</p>}
     <Tabs value={tab} onValueChange={value => setTab(String(value))} className="flex-col! gap-4">
-      <TabsList aria-label="策略详情导航" className="h-9! shrink-0 self-start rounded-lg!">
-        <TabsTrigger value="draft" disabled={busy || editing} className="rounded-md! px-3!">草稿与规则</TabsTrigger>
+      <TabsList aria-label="策略详情导航" className="h-auto! min-h-9 shrink-0 self-start flex-wrap rounded-lg!">
+        <TabsTrigger value="current" disabled={busy || editing} className="rounded-md! px-3!">已发布规则{p.currentVersionNo ? ` · v${p.currentVersionNo}` : ''}</TabsTrigger>
+        <TabsTrigger value="draft" disabled={busy || editing} className="rounded-md! px-3!">草稿编辑</TabsTrigger>
         <TabsTrigger value="bindings" disabled={busy || editing} className="rounded-md! px-3!">授权对象</TabsTrigger>
         <TabsTrigger value="versions" disabled={busy || editing} className="rounded-md! px-3!">版本记录</TabsTrigger>
       </TabsList>
       <TabsContent value={tab} className="space-y-4">
     <Failure error={error} />
+    {tab === 'current' && <div className="space-y-4">
+      {!p.currentVersionNo ? <div className="rounded-lg border border-dashed p-6 text-center"><h3 className="text-sm font-medium">尚无已发布版本</h3><p className="mt-2 text-muted-foreground">保存草稿不会生效。请先校验并发布，再为需要的对象绑定策略。</p><Button variant="outline" className="mt-4" onClick={() => setTab('draft')}>查看草稿</Button></div> : <>
+        <Failure error={usage.error} retry={() => usage.mutate()} />
+        {!usage.error && usage.data && <div className="flex flex-wrap items-center justify-between gap-4 rounded-lg border bg-muted/30 p-4 sm:px-5">
+          <div className="min-w-0 flex-1"><h3 className="text-sm font-semibold">{p.status === 'ARCHIVED' ? '此策略已归档' : usage.data.activeBindingCount === 0 ? '已发布，尚未应用到任何对象' : `已有 ${usage.data.activeBindingCount} 条生效授权`}</h3><p className="mt-1 text-xs leading-5 text-muted-foreground">{p.status === 'ARCHIVED' ? '以下内容仅供查阅。' : usage.data.activeBindingCount === 0 ? '发布只是保存可用版本；绑定授权对象后，才会影响它们的权限。' : '以下规则应用于有效期内的授权对象。'}{usage.data.scheduledBindingCount > 0 ? `另有 ${usage.data.scheduledBindingCount} 条授权等待生效。` : ''}</p></div>
+          <Button variant="outline" onClick={() => setTab('bindings')}>{usage.data.activeBindingCount === 0 && writable ? '选择授权对象' : '查看授权对象'}</Button>
+        </div>}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-xs text-muted-foreground">已发布 v{p.currentVersionNo} · 草稿修改不会影响此版本</p>
+          <Button variant="ghost" disabled={busy || !writable} onClick={() => setTab('draft')}><Pencil className="size-3.5" />修改草稿</Button>
+        </div>
+        <Failure error={current.error} retry={() => current.mutate()} />
+        {current.isLoading ? <Loading /> : !current.error && current.data && <>
+          {current.data.document ? <PolicyDocumentView key={p.currentVersionNo} projectId={projectId} type={p.policyType} document={current.data.document} /> : <p className="text-muted-foreground">未返回此版本的规则内容，请刷新详情后重试。</p>}
+          <div className="flex flex-wrap gap-x-6 gap-y-2 border-t pt-3 text-xs text-muted-foreground">
+            <p>版本生效时间 <span className="text-foreground">{formatTime(current.data.effectiveAt)}</span></p>
+            {current.data.changeReason && <p className="min-w-0 whitespace-pre-wrap break-words">{current.data.changeReason}</p>}
+          </div>
+
+        </>}
+      </>}
+    </div>}
     {tab === 'draft' && <><Failure error={draft.error} retry={() => draft.mutate()} />{!draft.data && !draft.error ? <Loading /> : draft.data && <>
       {editing ? <><PolicyEditor key={draft.data.revision} projectId={projectId} type={p.policyType} initial={draft.data.document} onSave={save} onDirtyChange={setDirty} onCancel={() => { if (dirty) setDiscard('cancel'); else setEditing(false); }} busy={busy} /></> : <>
         <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
           <div className="min-w-0 flex-1">
             <h3 className="text-sm font-medium leading-8">草稿 r{draft.data.revision}</h3>
-            <p className="mt-1 text-xs text-muted-foreground">发布后更新当前版本；只有绑定的对象会应用这份策略。</p>
+            <p className="mt-1 text-xs text-muted-foreground">{p.currentVersionNo ? `此处是待发布草稿，保存不会改变当前生效的 v${p.currentVersionNo}。` : '此处是待发布草稿，校验并发布后才会成为生效版本。'}</p>
           </div>
           <div role="group" aria-label="策略操作" className="flex flex-wrap items-center gap-2 xl:justify-end">
             <Button variant="outline" disabled={!writable || busy} onClick={() => setEditing(true)}>编辑规则</Button>
@@ -159,6 +188,7 @@ export default function PolicyDetail({ projectId, id, back, initialEdit = false 
         <Failure error={usage.error} retry={() => usage.mutate()} />
         {usage.data?.blockingReasons?.map(reason => <p key={reason} className="text-muted-foreground">{reason}</p>)}
         <p className="flex flex-wrap items-center gap-2 text-xs leading-5 text-muted-foreground">校验状态：<Status value={draft.data.validationStatus} />{p.scheduledVersionNo ? ' · 请先处理待生效版本，再发布新版本。' : ' · 修改后需重新通过服务端校验。'}</p>
+        <PolicyOverlapNotice type={p.policyType} rules={draft.data.document?.statements ?? []} />
         <PolicyRulesTable projectId={projectId} type={p.policyType} rules={draft.data.document?.statements ?? []} />
         <Collapsible><CollapsibleTrigger render={<Button variant="ghost" className="group" />}><ChevronDown className="size-4 transition-transform group-data-panel-open:rotate-180" />查看完整文档（包含约束）</CollapsibleTrigger><CollapsibleContent className="pt-3"><pre className="max-h-80 overflow-auto rounded-lg bg-muted p-4 text-xs">{JSON.stringify(draft.data.document, null, 2)}</pre></CollapsibleContent></Collapsible>
       </>}
@@ -180,7 +210,23 @@ export default function PolicyDetail({ projectId, id, back, initialEdit = false 
       {['delete', 'deleteBinding'].includes(operation ?? '') && <p className="text-xs text-destructive">删除后无法恢复，请确认目标无误。</p>}
       <Failure error={modalError} /></div><DialogFooter className="m-0 px-6 py-4"><Button variant="outline" disabled={busy} onClick={() => setOperation(null)}>取消</Button><Button disabled={busy} variant={['delete', 'deleteBinding', 'revoke'].includes(operation ?? '') ? 'destructive' : 'default'} onClick={() => void commit()}>{busy ? '提交中…' : '确认' + (operation ? titles[operation] : '')}</Button></DialogFooter>
     </DialogContent></Dialog>
-    <Dialog open={inspectVersion !== null} onOpenChange={v => { if (!v) setInspectVersion(null); }}><DialogContent className="max-h-[calc(100dvh-2rem)] max-w-[min(calc(100%-2rem),42rem)]! overflow-y-auto p-6!"><DialogHeader><DialogTitle>版本 v{inspectVersion}</DialogTitle><DialogDescription>已发布版本只读。</DialogDescription></DialogHeader><Failure error={inspected.error} retry={() => inspected.mutate()} />{inspected.isLoading ? <Loading /> : inspected.data && <pre className="overflow-auto rounded-lg bg-muted p-4 text-xs">{JSON.stringify(inspected.data.document, null, 2)}</pre>}</DialogContent></Dialog>
+    <Dialog open={inspectVersion !== null} onOpenChange={v => { if (!v) setInspectVersion(null); }}>
+      <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-[min(calc(100%-2rem),48rem)]! grid-rows-[auto_minmax(0,1fr)_auto] gap-0! overflow-hidden p-0!">
+        <DialogHeader className="border-b px-6 py-5 pr-12"><DialogTitle>版本 v{inspectVersion} · 规则内容</DialogTitle><DialogDescription>此版本为只读快照。查看不会修改当前生效权限。</DialogDescription></DialogHeader>
+        <div className="min-h-0 space-y-5 overflow-y-auto px-6 py-5">
+          <Failure error={inspected.error} retry={() => inspected.mutate()} />
+          {inspected.isLoading ? <Loading /> : !inspected.error && inspected.data && <>
+            <dl className="grid gap-4 rounded-lg bg-muted/30 p-4 text-xs sm:grid-cols-2">
+              <div><dt className="mb-1 text-muted-foreground">版本状态</dt><dd><Status value={inspected.data.status} /></dd></div>
+              <div><dt className="mb-1 text-muted-foreground">生效时间</dt><dd>{formatTime(inspected.data.effectiveAt)}</dd></div>
+              <div className="sm:col-span-2"><dt className="mb-1 text-muted-foreground">变更说明</dt><dd className="whitespace-pre-wrap break-words">{inspected.data.changeReason || '未填写变更说明'}</dd></div>
+            </dl>
+            {inspected.data.document ? <PolicyDocumentView key={inspectVersion} projectId={projectId} type={p.policyType} document={inspected.data.document} /> : <p className="text-sm text-muted-foreground">此版本未返回规则内容，请刷新后重试。</p>}
+          </>}
+        </div>
+        <DialogFooter className="m-0 px-6 py-4"><Button variant="outline" onClick={() => setInspectVersion(null)}>关闭</Button></DialogFooter>
+      </DialogContent>
+    </Dialog>
     <AlertDialog open={discard !== null} onOpenChange={open => { if (!open) setDiscard(null); }}>
       <AlertDialogContent className="overflow-hidden rounded-lg!">
         <AlertDialogHeader>
