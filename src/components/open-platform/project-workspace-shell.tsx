@@ -9,6 +9,7 @@ Loader2,
 Package,
 Pencil,
 Settings,
+ShieldCheck,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
@@ -65,6 +66,7 @@ type PrimaryTab =
   | 'categories'
   | 'parserProfiles'
   | 'devices'
+  | 'policies'
   | 'settings';
 
 type SettingsTab =
@@ -113,6 +115,12 @@ const PRIMARY_NAV: {
     badge: '未发布',
   },
   {
+    id: 'policies',
+    label: '策略与授权',
+    icon: ShieldCheck,
+    path: (id) => `/projects/${id}/policies`,
+  },
+  {
     id: 'settings',
     label: '项目设置',
     icon: Settings,
@@ -141,6 +149,7 @@ const SETTINGS_NAV: {
 ];
 
 function primaryFromPath(pathname: string): PrimaryTab {
+  if (pathname.includes('/policies')) return 'policies';
   if (pathname.includes('/categories')) return 'categories';
   if (pathname.includes('/parser-profiles')) return 'parserProfiles';
   if (pathname.includes('/products') || pathname.includes('/thing-model')) {

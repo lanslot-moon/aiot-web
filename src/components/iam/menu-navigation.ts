@@ -52,6 +52,8 @@ const permissions: Record<string, string[]> = {
   categories: ['thing-model:view'],
   'parser-profiles': ['product:view'],
   devices: ['device:view'],
+  // Policy 请求经网关执行权限校验；此处仅提供项目内导航入口。
+  policies: [],
   members: ['project-member:view'],
   'access-requests': ['project-member:review'],
   authorization: ['project-credential:manage', 'project-credential:network-policy'],
@@ -85,7 +87,7 @@ export function projectNavigation(projectId: string): MenuItem[] {
       { name: '加入申请审批', icon: UserPlus, url: `${base}/access-requests` },
     ] },
     { heading: '开放 API', items: [{ name: 'API 凭证与来源限制', icon: KeyRound, url: `${base}/authorization` }] },
-    { heading: '项目管理', items: [{ name: '项目设置', icon: Settings, url: `${base}/settings` }] },
+    { heading: '项目管理', items: [{ name: '策略与授权', icon: ShieldCheck, url: `${base}/policies`, labelSource: 'app' }, { name: '项目设置', icon: Settings, url: `${base}/settings` }] },
   ];
 }
 
@@ -121,5 +123,5 @@ export function authorizedNavigation(groups: MenuItem[], menus: MenuItemVO[], co
 export function projectSection(pathname: string): string {
   const id = projectIdFromPath(pathname);
   const section = id ? pathname.slice(`/projects/${id}/`.length).split('/')[0] : '';
-  return ['overview', 'members', 'access-requests', 'authorization', 'settings', 'products', 'devices', 'categories', 'parser-profiles'].includes(section) ? section : 'overview';
+  return ['overview', 'members', 'access-requests', 'authorization', 'settings', 'products', 'devices', 'policies', 'categories', 'parser-profiles'].includes(section) ? section : 'overview';
 }
