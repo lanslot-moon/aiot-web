@@ -1,6 +1,6 @@
 import type { MenuItemVO } from '@/api/iam/contracts';
 import type { ChildItem, MenuItem } from '@/layouts/full/vertical/sidebar/sidebaritems';
-import { CircleUserRound, FolderKanban, House, KeyRound, List, Settings, ShieldCheck, UserPlus, Users, Package, ListTree, Braces, Cpu } from 'lucide-react';
+import { CircleUserRound, FolderKanban, House, KeyRound, Settings, ShieldCheck, UserPlus, Users, Package, ListTree, Braces, Cpu } from 'lucide-react';
 
 export function projectIdFromPath(pathname: string): string | undefined {
   const match = pathname.match(/^\/projects\/([^/]+)(?:\/|$)/);
@@ -26,7 +26,6 @@ export const platformMainNavigation: MenuItem[] = [
 
 export const settingsNavigation: ChildItem[] = [
   { name: '角色与权限', icon: Users, url: '/iam/roles' },
-  { name: '控制台菜单', icon: List, url: '/iam/menus' },
 ];
 
 export const platformNavigation: MenuItem[] = [

@@ -1,4 +1,11 @@
 // Protocol labels mirrored from Policy StandardMqttChannel; not policy records or authorization results.
+export const mqttActionOptions = [
+  { value: 'mqtt:Publish', label: '设备发布消息' },
+  { value: 'mqtt:Subscribe', label: '设备订阅消息' },
+  { value: 'mqtt:Connect', label: '设备连接' },
+  { value: 'mqtt:RetainPublish', label: '设备发布保留消息' },
+];
+
 export const standardChannels = [
   {
     "id": "PROPERTY_REPORT",

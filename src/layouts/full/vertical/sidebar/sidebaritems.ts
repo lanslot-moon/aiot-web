@@ -94,7 +94,6 @@ const SidebarContent: MenuItem[] = [
       { id: uniqueId(), name: "账号安全", icon: ShieldCheck, url: "/account/security" },
       { id: uniqueId(), name: "登录设备", icon: Key, url: "/account/sessions" },
       { id: uniqueId(), name: "角色与权限", icon: Users, url: "/iam/roles" },
-      { id: uniqueId(), name: "菜单管理", icon: List, url: "/iam/menus" },
       { id: uniqueId(), name: "加入申请", icon: UserPlus, url: "/account/access-requests" },
     ],
   },
