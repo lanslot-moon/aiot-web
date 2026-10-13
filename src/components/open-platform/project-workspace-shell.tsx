@@ -112,7 +112,6 @@ const PRIMARY_NAV: {
     label: '设备',
     icon: Cpu,
     path: (id) => `/projects/${id}/devices`,
-    badge: '未发布',
   },
   {
     id: 'policies',
