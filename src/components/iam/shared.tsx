@@ -190,6 +190,7 @@ export function FieldsForm({
   errorToFields,
   compactErrors = false,
   clearFieldErrorsOnChange = {},
+  footer,
 }: {
   fields: Field[];
   initial?: Values;
@@ -208,6 +209,7 @@ export function FieldsForm({
   errorToFields?: (error: unknown) => Values;
   compactErrors?: boolean;
   clearFieldErrorsOnChange?: Record<string, string[]>;
+  footer?: (submitButton: ReactNode) => ReactNode;
 }) {
   const prefix = useId();
   const [values, setValues] = useState<Values>(() => ({
@@ -281,6 +283,17 @@ export function FieldsForm({
       busyRef.current = false;
     }
   }
+  const submitButton = (
+    <Button
+      className={cn('min-w-24', fullWidth && 'w-full')}
+      variant={danger ? 'destructive' : 'default'}
+      type="submit"
+      disabled={busy || submitDisabled}
+    >
+      {busy && <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />}
+      {label}
+    </Button>
+  );
   return (
     <form ref={formRef} noValidate onSubmit={submit} className="space-y-4" aria-busy={busy}>
       {fields.map((field) => {
@@ -380,15 +393,7 @@ export function FieldsForm({
       {compactErrors && error && (!(error instanceof OpenPlatformApiError) || [400, 409].includes(error.status))
         ? <FieldError className="text-xs">{error instanceof Error ? error.message : '操作失败，请重试。'}</FieldError>
         : <ErrorNotice error={error} />}
-      <Button
-        className={cn('min-w-24', fullWidth && 'w-full')}
-        variant={danger ? 'destructive' : 'default'}
-        type="submit"
-        disabled={busy || submitDisabled}
-      >
-        {busy && <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />}
-        {label}
-      </Button>
+      {footer ? footer(submitButton) : submitButton}
     </form>
   );
 }
@@ -439,7 +444,7 @@ export function Action({
           else setOpen(next);
         }}
       >
-        <DialogContent className="max-h-[85dvh] overflow-y-auto">
+        <DialogContent className="max-h-[85dvh] overflow-y-auto" showCloseButton={!pending}>
           <DialogHeader>
             <DialogTitle>{label}</DialogTitle>
             <DialogDescription>
@@ -458,20 +463,23 @@ export function Action({
               setOpen(false);
               done?.();
             }}
+            footer={submitButton => (
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={pending}
+                  autoFocus={danger}
+                  onClick={() => (dirty ? setDiscard(true) : setOpen(false))}
+                >
+                  取消
+                </Button>
+                {submitButton}
+              </DialogFooter>
+            )}
           >
             {children}
           </FieldsForm>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="ghost"
-              disabled={pending}
-              autoFocus={danger}
-              onClick={() => (dirty ? setDiscard(true) : setOpen(false))}
-            >
-              取消
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
       <Dialog open={discard} onOpenChange={setDiscard}>

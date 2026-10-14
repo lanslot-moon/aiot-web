@@ -6,11 +6,12 @@ export interface DeviceSummary {
   deviceId: string; projectId: string; productId: string; deviceName: string;
   nickname: string | null; lifecycle: Lifecycle; virtualDevice: boolean;
   nodeType: 'DIRECT' | 'GATEWAY' | 'SUB_DEVICE';
+  createTime: number; updateTime: number;
+  activation: { method: string; activatedAt: number; observedAt: number } | null;
 }
 export interface DeviceDetail extends DeviceSummary {
   description: string | null; customIconUrl: string | null; hardwareUuid: string | null;
-  authRoute: string; activation: { method: string; activatedAt: number; observedAt: number } | null;
-  createTime: number; updateTime: number;
+  authRoute: string;
 }
 export interface DeviceGroup {
   groupId: string; projectId: string; name: string; description: string | null;

@@ -1,18 +1,19 @@
 import { useEffect, useState } from 'react';
-import { useParams, useSearchParams } from 'react-router';
+import { Link, useParams, useSearchParams } from 'react-router';
 import { useIam } from '@/context/iam-context/identity';
 import { ProjectWorkspaceShell } from '@/components/open-platform/project-workspace-shell';
 import StyleAwareWrapper from '@/components/shared/StyleAwareWrapper';
 import BreadcrumbComp from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
-import { DataTable } from '@/components/iam/shared';
+
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { CopyIdButton } from '@/components/open-platform/copy-id-button';
+import { DeviceInput as Input, DeviceTabsNav, DeviceTable as DataTable } from '@/components/device/layout';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { CursorList, DeviceSelect, LifecycleBadge } from '@/components/device/shared';
 import DeviceDetails from '@/components/device/detail';
-import { GroupList, GroupDetails } from '@/components/device/groups';
+import { GroupList, GroupDetails, CreateGroup } from '@/components/device/groups';
 import CreateVirtualDevice from '@/components/device/create-virtual';
-import { query, lifecycleLabels, nodeLabels, type DeviceSummary } from '@/api/device/client';
+import { query, formatTime, lifecycleLabels, nodeLabels, type DeviceSummary } from '@/api/device/client';
 
 function Workspace({ projectId }: { projectId: string }) {
   const [params, setParams] = useSearchParams();
@@ -23,6 +24,10 @@ function Workspace({ projectId }: { projectId: string }) {
   const searchBy = ['keyword', 'deviceId', 'productId', 'hardwareUuid'].includes(requestedSearchBy) ? requestedSearchBy : 'keyword';
   const search = params.get('search') ?? '';
   const [draft, setDraft] = useState(search);
+  const productScope = params.get('productScope') ?? '';
+  const [draftProduct, setDraftProduct] = useState(productScope);
+  useEffect(() => { setDraft(search); }, [search]);
+  useEffect(() => { setDraftProduct(productScope); }, [productScope]);
   const lifecycle = params.get('lifecycle') ?? '';
   const virtual = params.get('virtualDevice') ?? '';
   const nodeType = params.get('nodeType') ?? '';
@@ -31,23 +36,63 @@ function Workspace({ projectId }: { projectId: string }) {
   }
   function openDevice(id: string) { setParams(previous => { const next = new URLSearchParams(previous); const origin = next.get('group'); next.delete('group'); next.set('device', id); if (origin) next.set('fromGroup', origin); return next; }); }
   function openGroup(id: string) { setParams(previous => { const next = new URLSearchParams(previous); next.delete('device'); next.set('section', 'groups'); next.set('group', id); return next; }); }
-  const path = 'devices' + query({ [searchBy]: search, lifecycle, virtualDevice: virtual, nodeType });
+  const path = 'devices' + query({ [searchBy]: search, lifecycle, virtualDevice: virtual, nodeType, ...(searchBy === 'hardwareUuid' ? { productId: productScope } : {}) });
   if (deviceId) return <DeviceDetails key={deviceId} projectId={projectId} id={deviceId} backLabel={params.get('fromGroup') ? '返回分组成员' : '返回设备列表'} back={() => setParams(previous => { const next = new URLSearchParams(previous); next.delete('device'); const origin = next.get('fromGroup'); if (origin) next.set('group', origin); next.delete('fromGroup'); return next; })} openGroup={openGroup} />;
   if (groupId) return <GroupDetails key={groupId} projectId={projectId} id={groupId} back={() => update('group', '')} openGroup={openGroup} openDevice={openDevice} />;
   return <Tabs value={section} onValueChange={v => update('section', v === 'groups' ? 'groups' : '')} className="flex-col! gap-4">
-    <div className="flex flex-wrap items-center justify-between gap-3 border-b"><TabsList variant="line" aria-label="设备管理" className="justify-start"><TabsTrigger value="devices">设备列表</TabsTrigger><TabsTrigger value="groups">静态分组</TabsTrigger></TabsList>{section === 'devices' && <CreateVirtualDevice projectId={projectId} done={openDevice} />}</div>
+    <DeviceTabsNav label="设备管理" items={[{ value: 'devices', label: '设备列表' }, { value: 'groups', label: '静态分组' }]} actions={section === 'devices' ? <CreateVirtualDevice projectId={projectId} done={openDevice} /> : <CreateGroup projectId={projectId} done={openGroup} />} />
     <TabsContent value="devices"><div className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-3"><DeviceSelect label="管理状态" value={lifecycle} onChange={v => update('lifecycle', v)} options={[{ value: '', label: '全部管理状态' }, ...Object.entries(lifecycleLabels).map(([value, label]) => ({ value, label }))]} /><DeviceSelect label="设备类型" value={virtual} onChange={v => update('virtualDevice', v)} options={[{ value: '', label: '全部设备类型' }, { value: 'false', label: '实体设备' }, { value: 'true', label: '虚拟设备' }]} /><DeviceSelect label="节点类型" value={nodeType} onChange={v => update('nodeType', v)} options={[{ value: '', label: '全部节点类型' }, ...Object.entries(nodeLabels).map(([value, label]) => ({ value, label }))]} /></div>
-      <form className="flex flex-wrap items-center gap-2" onSubmit={e => { e.preventDefault(); update('search', draft.trim()); }}><div className="w-44"><DeviceSelect label="查询字段" value={searchBy} options={[{ value: 'keyword', label: '名称 / 昵称前缀' }, { value: 'deviceId', label: '设备 ID（精确）' }, { value: 'productId', label: '产品 ID（精确）' }, { value: 'hardwareUuid', label: '硬件标识（精确）' }]} onChange={v => { setDraft(''); setParams(previous => { const next = new URLSearchParams(previous); next.set('searchBy', v); next.delete('search'); return next; }); }} /></div><Input className="min-w-40 flex-1" aria-label="设备查询内容" placeholder={searchBy === 'keyword' ? '输入设备名称或昵称前缀' : '输入完整标识'} value={draft} maxLength={128} onChange={e => setDraft(e.target.value)} /><Button type="submit" variant="outline">查询</Button><Button type="button" variant="ghost" onClick={() => { setDraft(''); setParams({}); }}>重置</Button></form>
-      <p className="text-xs text-muted-foreground">管理状态不代表实时在线状态。实体设备经预配登记后出现在列表中。</p>
-      <CursorList<DeviceSummary> key={path} projectId={projectId} path={path} emptyTitle={search || lifecycle || virtual || nodeType ? '没有符合条件的设备' : '当前项目尚无设备'} emptyDescription={search || lifecycle || virtual || nodeType ? '调整筛选条件后重新查询。' : '实体设备完成预配登记后会出现在这里，也可以创建虚拟设备档案。'}>{items => <DataTable rows={items} columns={[
-        { label: '设备名称', render: d => <div><Button variant="link" className="h-auto! max-w-64 p-0!" onClick={() => openDevice(d.deviceId)}><span className="truncate">{d.nickname || d.deviceName}</span></Button>{d.nickname && <span className="block text-xs text-muted-foreground">{d.deviceName}</span>}</div> },
-        { label: '设备 ID', render: d => <span className="font-mono text-xs">{d.deviceId}</span> }, { label: '产品 ID', render: d => d.productId },
-        { label: '管理状态', render: d => <LifecycleBadge value={d.lifecycle} /> }, { label: '类型', render: d => <span className="whitespace-nowrap">{d.virtualDevice ? '虚拟' : '实体'} · {nodeLabels[d.nodeType]}</span> },
-        { label: '操作', render: d => <Button variant="ghost" size="sm" onClick={() => openDevice(d.deviceId)}>{d.lifecycle === 'DELETING' ? '查看并继续删除' : '查看详情'}</Button> },
+      <form className="grid grid-cols-2 items-end gap-3 sm:grid-cols-3 xl:grid-cols-[7rem_7rem_7rem_minmax(0,1fr)]" aria-label="设备筛选" onSubmit={e => {
+        e.preventDefault();
+        setParams(previous => {
+          const next = new URLSearchParams(previous);
+          const value = draft.trim();
+          if (value) next.set('search', value); else next.delete('search');
+          if (searchBy === 'hardwareUuid' && draftProduct.trim()) next.set('productScope', draftProduct.trim());
+          else next.delete('productScope');
+          return next;
+        });
+      }}>
+        <div className="flex min-w-0 flex-col gap-1.5">
+          <DeviceSelect label="管理状态" value={lifecycle} onChange={v => update('lifecycle', v)} options={[{ value: '', label: '全部状态' }, ...Object.entries(lifecycleLabels).map(([value, label]) => ({ value, label }))]} />
+        </div>
+        <div className="flex min-w-0 flex-col gap-1.5">
+          <DeviceSelect label="设备类型" value={virtual} onChange={v => update('virtualDevice', v)} options={[{ value: '', label: '全部类型' }, { value: 'false', label: '实体设备' }, { value: 'true', label: '虚拟设备' }]} />
+        </div>
+        <div className="flex min-w-0 flex-col gap-1.5">
+          <DeviceSelect label="节点类型" value={nodeType} onChange={v => update('nodeType', v)} options={[{ value: '', label: '全部节点' }, ...Object.entries(nodeLabels).map(([value, label]) => ({ value, label }))]} />
+        </div>
+        <div className="col-span-2 min-w-0 space-y-1.5 sm:col-span-3 xl:col-span-1">
+          <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center justify-start gap-2 sm:grid-cols-[9rem_minmax(8rem,14rem)_auto_auto]">
+            <div className="col-span-3 min-w-0 sm:col-span-1"><DeviceSelect label="查询字段" value={searchBy} options={[{ value: 'keyword', label: '名称 / 昵称前缀' }, { value: 'deviceId', label: '设备 ID' }, { value: 'productId', label: '产品 ID' }, { value: 'hardwareUuid', label: '硬件标识' }]} onChange={v => {
+            setDraft(''); setDraftProduct('');
+            setParams(previous => { const next = new URLSearchParams(previous); next.set('searchBy', v); next.delete('search'); next.delete('productScope'); return next; });
+          }} /></div>
+          <Input className="w-full" aria-label="设备查询内容" placeholder={searchBy === 'keyword' ? '输入名称或昵称前缀' : '输入完整标识，精确查询'} value={draft} maxLength={128} onChange={e => setDraft(e.target.value)} />
+          <Button type="submit" variant="outline">查询</Button>
+          <Button type="button" variant="ghost" onClick={() => { setDraft(''); setDraftProduct(''); setParams(previous => { const next = new URLSearchParams(previous); ['search', 'searchBy', 'productScope', 'lifecycle', 'virtualDevice', 'nodeType'].forEach(key => next.delete(key)); return next; }); }}>重置</Button>
+          </div>
+        </div>
+        {searchBy === 'hardwareUuid' && <label className="col-span-2 sm:col-span-3 xl:col-span-4 flex max-w-lg min-w-0 flex-col gap-1.5">
+          <span className="text-sm font-medium">所属产品 ID</span>
+          <Input aria-label="硬件标识所属产品 ID" placeholder="输入所属产品的完整 ID" required value={draftProduct} maxLength={128} onChange={e => setDraftProduct(e.target.value)} />
+        </label>}
+      </form>
+      <CursorList<DeviceSummary> key={path} projectId={projectId} path={path} emptyTitle={search || lifecycle || virtual || nodeType ? '没有符合条件的设备' : '当前项目尚无设备'} emptyDescription={search || lifecycle || virtual || nodeType ? '调整筛选条件后重新查询。' : '实体设备完成预配登记后会出现在这里，也可以创建虚拟设备档案。'}>{items => <DataTable stickyActions rows={items} columns={[
+        { label: '设备名称', render: d => <Button variant="link" className="h-auto! max-w-48 p-0! font-medium" onClick={() => openDevice(d.deviceId)}><span className="truncate" title={d.deviceName}>{d.deviceName}</span></Button> },
+        { label: '昵称', render: d => <span className="block max-w-40 truncate" title={d.nickname ?? undefined}>{d.nickname || '—'}</span> },
+        { label: '设备 ID', render: d => <div className="flex max-w-44 items-center gap-0.5"><code className="min-w-0 flex-1 truncate font-mono text-xs text-muted-foreground" title={d.deviceId}>{d.deviceId}</code><CopyIdButton value={d.deviceId} label="Device ID" /></div> },
+        { label: '产品 ID', render: d => <Link className="block max-w-40 truncate font-mono text-xs text-muted-foreground underline-offset-4 hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-ring" title={d.productId} to={'/projects/' + encodeURIComponent(projectId) + '/products/' + encodeURIComponent(d.productId)}>{d.productId}</Link> },
+        { label: '管理状态', render: d => <LifecycleBadge value={d.lifecycle} /> },
+        { label: '设备类型', render: d => d.virtualDevice ? '虚拟设备' : '实体设备' },
+        { label: '节点类型', render: d => nodeLabels[d.nodeType] },
+        { label: '激活时间', render: d => <span className="whitespace-nowrap text-xs text-muted-foreground">{d.activation ? formatTime(d.activation.activatedAt) : '尚无激活记录'}</span> },
+        { label: '创建时间', render: d => <span className="whitespace-nowrap text-xs text-muted-foreground">{formatTime(d.createTime)}</span> },
+        { label: '更新时间', render: d => <span className="whitespace-nowrap text-xs text-muted-foreground">{formatTime(d.updateTime)}</span> },
+        { label: '操作', render: d => <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => openDevice(d.deviceId)}>{d.lifecycle === 'DELETING' ? '查看并继续删除' : '查看详情'}</Button> },
       ]} />}</CursorList>
     </div></TabsContent>
-    <TabsContent value="groups">{section === 'groups' && <GroupList projectId={projectId} openGroup={openGroup} />}</TabsContent>
+    <TabsContent value="groups">{section === 'groups' && <GroupList projectId={projectId} openGroup={openGroup} showCreate={false} />}</TabsContent>
   </Tabs>;
 }
 
