@@ -4,7 +4,7 @@ export type Lifecycle = 'PENDING_ACTIVATION' | 'ACTIVE' | 'DISABLED' | 'DELETING
 export interface CursorPage<T> { items: T[]; nextCursor: string | null; hasMore: boolean }
 export interface DeviceSummary {
   deviceId: string; projectId: string; productId: string; deviceName: string;
-  nickname: string | null; lifecycle: Lifecycle; virtualDevice: boolean;
+  lifecycle: Lifecycle; virtualDevice: boolean;
   nodeType: 'DIRECT' | 'GATEWAY' | 'SUB_DEVICE';
   createTime: number; updateTime: number;
   activation: { method: string; activatedAt: number; observedAt: number } | null;

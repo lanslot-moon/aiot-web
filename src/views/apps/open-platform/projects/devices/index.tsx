@@ -64,11 +64,11 @@ function Workspace({ projectId }: { projectId: string }) {
         </div>
         <div className="col-span-2 min-w-0 space-y-1.5 sm:col-span-3 xl:col-span-1">
           <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center justify-start gap-2 sm:grid-cols-[9rem_minmax(8rem,14rem)_auto_auto]">
-            <div className="col-span-3 min-w-0 sm:col-span-1"><DeviceSelect label="查询字段" value={searchBy} options={[{ value: 'keyword', label: '名称 / 昵称前缀' }, { value: 'deviceId', label: '设备 ID' }, { value: 'productId', label: '产品 ID' }, { value: 'hardwareUuid', label: '硬件标识' }]} onChange={v => {
+            <div className="col-span-3 min-w-0 sm:col-span-1"><DeviceSelect label="查询字段" value={searchBy} options={[{ value: 'keyword', label: '设备名称前缀' }, { value: 'deviceId', label: '设备 ID' }, { value: 'productId', label: '产品 ID' }, { value: 'hardwareUuid', label: '硬件标识' }]} onChange={v => {
             setDraft(''); setDraftProduct('');
             setParams(previous => { const next = new URLSearchParams(previous); next.set('searchBy', v); next.delete('search'); next.delete('productScope'); return next; });
           }} /></div>
-          <Input className="w-full" aria-label="设备查询内容" placeholder={searchBy === 'keyword' ? '输入名称或昵称前缀' : '输入完整标识，精确查询'} value={draft} maxLength={128} onChange={e => setDraft(e.target.value)} />
+          <Input className="w-full" aria-label="设备查询内容" placeholder={searchBy === 'keyword' ? '输入设备名称前缀' : '输入完整标识，精确查询'} value={draft} maxLength={128} onChange={e => setDraft(e.target.value)} />
           <Button type="submit" variant="outline">查询</Button>
           <Button type="button" variant="ghost" onClick={() => { setDraft(''); setDraftProduct(''); setParams(previous => { const next = new URLSearchParams(previous); ['search', 'searchBy', 'productScope', 'lifecycle', 'virtualDevice', 'nodeType'].forEach(key => next.delete(key)); return next; }); }}>重置</Button>
           </div>
@@ -80,7 +80,6 @@ function Workspace({ projectId }: { projectId: string }) {
       </form>
       <CursorList<DeviceSummary> key={path} projectId={projectId} path={path} emptyTitle={search || lifecycle || virtual || nodeType ? '没有符合条件的设备' : '当前项目尚无设备'} emptyDescription={search || lifecycle || virtual || nodeType ? '调整筛选条件后重新查询。' : '实体设备完成预配登记后会出现在这里，也可以创建虚拟设备档案。'}>{items => <DataTable stickyActions rows={items} columns={[
         { label: '设备名称', render: d => <Button variant="link" className="h-auto! max-w-48 p-0! font-medium" onClick={() => openDevice(d.deviceId)}><span className="truncate" title={d.deviceName}>{d.deviceName}</span></Button> },
-        { label: '昵称', render: d => <span className="block max-w-40 truncate" title={d.nickname ?? undefined}>{d.nickname || '—'}</span> },
         { label: '设备 ID', render: d => <div className="flex max-w-44 items-center gap-0.5"><code className="min-w-0 flex-1 truncate font-mono text-xs text-muted-foreground" title={d.deviceId}>{d.deviceId}</code><CopyIdButton value={d.deviceId} label="Device ID" /></div> },
         { label: '产品 ID', render: d => <Link className="block max-w-40 truncate font-mono text-xs text-muted-foreground underline-offset-4 hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-ring" title={d.productId} to={'/projects/' + encodeURIComponent(projectId) + '/products/' + encodeURIComponent(d.productId)}>{d.productId}</Link> },
         { label: '管理状态', render: d => <LifecycleBadge value={d.lifecycle} /> },
@@ -88,7 +87,6 @@ function Workspace({ projectId }: { projectId: string }) {
         { label: '节点类型', render: d => nodeLabels[d.nodeType] },
         { label: '激活时间', render: d => <span className="whitespace-nowrap text-xs text-muted-foreground">{d.activation ? formatTime(d.activation.activatedAt) : '尚无激活记录'}</span> },
         { label: '创建时间', render: d => <span className="whitespace-nowrap text-xs text-muted-foreground">{formatTime(d.createTime)}</span> },
-        { label: '更新时间', render: d => <span className="whitespace-nowrap text-xs text-muted-foreground">{formatTime(d.updateTime)}</span> },
         { label: '操作', render: d => <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => openDevice(d.deviceId)}>{d.lifecycle === 'DELETING' ? '查看并继续删除' : '查看详情'}</Button> },
       ]} />}</CursorList>
     </div></TabsContent>

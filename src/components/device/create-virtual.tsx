@@ -66,7 +66,7 @@ export default function CreateVirtualDevice({ projectId, done }: { projectId: st
             </> : <><Input id="virtual-product-id" value={productId} placeholder="输入完整产品 ID" maxLength={128} aria-invalid={invalid} aria-describedby={invalid ? 'virtual-product-error' : undefined} onChange={e => { setProductId(e.target.value); setInvalid(false); }} /><p className="text-sm text-muted-foreground">登记资格由服务端校验。</p></>}
             {invalid && <FieldError id="virtual-product-error">请选择产品或填写产品 ID</FieldError>}
           </div>
-          <div className="space-y-2"><Label htmlFor="virtual-device-name">设备名称（选填）</Label><Input id="virtual-device-name" value={name} maxLength={128} onChange={e => setName(e.target.value)} /><p className="text-sm text-muted-foreground">留空由平台生成；创建后设备名称固定，昵称可编辑。</p></div>
+          <div className="space-y-2"><Label htmlFor="virtual-device-name">设备名称（选填）</Label><Input id="virtual-device-name" value={name} maxLength={128} onChange={e => setName(e.target.value)} /><p className="text-sm text-muted-foreground">留空默认使用产品名称；设备名称可重复，创建后可修改。</p></div>
         </fieldset>
         <ErrorNotice error={error} />
         {uncertain && <p role="status" className="text-sm">创建结果未确认，设备可能已经建档。请关闭并查询设备列表，核对后再决定是否创建另一台设备。</p>}

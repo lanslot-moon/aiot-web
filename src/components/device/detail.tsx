@@ -73,14 +73,14 @@ export default function DeviceDetails({ projectId, id, back, openGroup, backLabe
           <div className="flex min-w-0 w-full flex-1 items-start gap-4">
             {product.isLoading ? <Skeleton className="size-14 shrink-0 rounded-lg" /> : <ProductIconPreview key={product.data?.iconUrl ?? device.productId} iconUrl={product.data?.iconUrl} productName={product.data?.productName ?? '所属产品'} />}
             <div className="min-w-0 space-y-2">
-              <div className="flex flex-wrap items-center gap-2"><h2 className="break-words text-lg font-semibold tracking-tight">{device.nickname || device.deviceName}</h2><LifecycleBadge value={device.lifecycle} /></div>
+              <div className="flex flex-wrap items-center gap-2"><h2 className="break-words text-lg font-semibold tracking-tight">{device.deviceName}</h2><LifecycleBadge value={device.lifecycle} /></div>
               <div className="text-sm text-muted-foreground"><DeviceProduct projectId={projectId} productId={device.productId} product={product} /></div>
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground"><span>{device.virtualDevice ? '虚拟设备' : '实体设备'}</span><span aria-hidden className="size-1 rounded-full bg-border" /><span>{nodeLabels[device.nodeType]}</span></div>
             </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-2" aria-label="设备管理操作">
-            {device.lifecycle !== 'DELETING' && <Action label="编辑资料" submitLabel="保存更改" permission="device:update" description="设备名称和产品归属固定。昵称和说明可以修改，留空表示清空。" initial={{ nickname: device.nickname ?? '', description: device.description ?? '' }} fields={[{ name: 'nickname', label: '昵称', maxLength: 128 }, { name: 'description', label: '说明', type: 'textarea', maxLength: 512 }]} run={async v => { await deviceRequest(projectId, `${devicePath(id)}/profile`, 'PUT', { nickname: v.nickname.trim() || null, description: v.description.trim() || null, customIconUrl: device.customIconUrl });  }} done={refresh} />}
+            {device.lifecycle !== 'DELETING' && <Action label="编辑资料" submitLabel="保存更改" permission="device:update" description="设备名称可以修改或重复，设备 ID 和产品归属保持不变。" initial={{ deviceName: device.deviceName ?? '', description: device.description ?? '' }} fields={[{ name: 'deviceName', label: '设备名称', required: true, maxLength: 128 }, { name: 'description', label: '说明', type: 'textarea', maxLength: 512 }]} run={async v => { await deviceRequest(projectId, `${devicePath(id)}/profile`, 'PUT', { deviceName: v.deviceName.trim(), description: v.description.trim() || null, customIconUrl: device.customIconUrl });  }} done={refresh} />}
           {device.lifecycle !== 'DELETING' && <Action label={device.lifecycle === 'DISABLED' ? '启用设备' : '停用设备'} submitLabel={device.lifecycle === 'DISABLED' ? '确认启用' : '确认停用'} permission="device:update" description={device.lifecycle === 'DISABLED' ? '启用后按已有激活事实恢复管理状态，不代表设备立即在线。' : '停用会限制设备接入，保留设备档案和首次激活记录。提交后不等待设备断线确认。'} fields={[{ name: 'reason', label: '操作说明（选填）', type: 'textarea', maxLength: 512 }]} run={async v => { try { await deviceRequest(projectId, `${devicePath(id)}/enabled`, 'PUT', { enabled: device.lifecycle === 'DISABLED', reason: v.reason.trim() || null });  } finally { refresh(); } }} />}
           <Action label={device.lifecycle === 'DELETING' ? '继续删除' : '删除设备'} submitLabel="确认删除" danger permission="device:delete" description={`删除「${device.deviceName}」将清理设备档案、凭证和拓扑关系，无法撤销。失败或超时可能已经进入删除中，请核对当前状态后继续删除同一设备。`} fields={[{ name: 'confirm', label: '输入设备名称确认', required: true, validate: value => value === device.deviceName ? undefined : '请输入完整设备名称' }, { name: 'reason', label: '操作说明（选填）', type: 'textarea', maxLength: 512 }]} run={async v => { try { await deviceRequest(projectId, devicePath(id) + (v.reason.trim() ? '?reason=' + encodeURIComponent(v.reason.trim()) : ''), 'DELETE');  } catch (e) { refresh(); throw e; } }} done={back} />
           </div>
@@ -96,7 +96,6 @@ export default function DeviceDetails({ projectId, id, back, openGroup, backLabe
               <CardTitle className="mb-4 text-base">设备资料</CardTitle>
               <dl className="grid gap-x-8 gap-y-6 sm:grid-cols-2">
                 <DetailField label="设备名称" fullWidth>{device.deviceName}</DetailField>
-                <DetailField label="设备昵称" fullWidth>{device.nickname || '未设置'}</DetailField>
                 <DetailField label="产品 ID" fullWidth><Link className="underline-offset-4 hover:underline" to={'/projects/' + encodeURIComponent(projectId) + '/products/' + encodeURIComponent(device.productId)}>{device.productId}</Link></DetailField>
                 <DetailField label="硬件标识" fullWidth>{device.hardwareUuid}</DetailField>
                 <DetailField label="设备说明" fullWidth>{device.description || '暂无说明'}</DetailField>
