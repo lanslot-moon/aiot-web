@@ -31,7 +31,7 @@ FROM nginx:alpine AS runner
 COPY --from=builder /app/dist /usr/share/nginx/html
 COPY deploy/nginx.conf.template /etc/nginx/templates/default.conf.template
 
-ENV AIOT_GATEWAY_URL=http://35.252.210.77:9080
+ENV AIOT_GATEWAY_URL=http://8.229.57.42:9080
 
 EXPOSE 80
 
