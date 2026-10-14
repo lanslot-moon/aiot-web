@@ -13,7 +13,7 @@ const __dirname = dirname(__filename);
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, __dirname, '');
-  const gateway = env.AIOT_GATEWAY_URL || 'http://35.252.210.77:9080';
+  const gateway = env.AIOT_GATEWAY_URL || 'http://8.229.57.42:9080';
   return {
     server: { proxy: { '/api/v1': { target: gateway, changeOrigin: true } } },
     preview: { proxy: { '/api/v1': { target: gateway, changeOrigin: true } } },
