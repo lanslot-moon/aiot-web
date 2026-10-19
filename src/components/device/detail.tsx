@@ -17,6 +17,7 @@ import { devicePath, groupPath, deviceRequest, formatTime, nodeLabels, type Devi
 import { Fact, CursorList, LifecycleBadge } from './shared';
 import { useDeviceResource } from './use-device-resource';
 import ResourceTags from './tags';
+import DeviceCommands from './commands';
 import { DeviceSection as Panel, DeviceTabsNav, DetailField } from './layout';
 
 function useDeviceProduct(projectId: string, productId?: string) {
@@ -117,7 +118,7 @@ export default function DeviceDetails({ projectId, id, back, openGroup, backLabe
         <TabsContent value="groups">{tab === 'groups' && <CursorList<DeviceMembership> projectId={projectId} path={`${devicePath(id)}/groups`} emptyTitle="尚未加入分组" emptyDescription="到静态分组的成员页添加设备，这里只显示直接所属组。">{(items, reload) => <DataTable rows={items} columns={[{ label: '分组', render: m => <Button variant="link" onClick={() => openGroup(m.group.groupId)}>{m.group.name}</Button> }, { label: '加入时间', render: m => formatTime(m.joinedAt) }, ...device.lifecycle !== 'DELETING' ? [{ label: '操作', render: (m: DeviceMembership) => <Action label="移出分组" permission="device:update" description={`只移除与「${m.group.name}」的直接关系，不删除设备，也不影响其他组。`} run={async () => { await deviceRequest(projectId, `${groupPath(m.group.groupId)}/devices/${encodeURIComponent(id)}`, 'DELETE');  }} done={reload} /> }] : []]} />}</CursorList>}</TabsContent>
         <TabsContent value="hardware">{tab === 'hardware' && <Hardware projectId={projectId} id={id} />}</TabsContent>
         <TabsContent value="simulation"><Empty className="min-h-64 rounded-lg border border-dashed"><EmptyHeader><EmptyMedia variant="icon"><FlaskConical /></EmptyMedia><EmptyTitle>设备模拟待开放</EmptyTitle><EmptyDescription>后续可在这里配置模拟数据、启动或停止模拟，并查看运行记录。</EmptyDescription></EmptyHeader></Empty></TabsContent>
-        <TabsContent value="commands"><Empty className="min-h-64 rounded-lg border border-dashed"><EmptyHeader><EmptyMedia variant="icon"><Send /></EmptyMedia><EmptyTitle>设备指令待开放</EmptyTitle><EmptyDescription>后续可在这里下发属性、调用设备动作，并查看指令执行结果。</EmptyDescription></EmptyHeader></Empty></TabsContent>
+        <TabsContent value="commands">{tab === 'commands' && <DeviceCommands key={id} projectId={projectId} device={device} />}</TabsContent>
       </Tabs>
     </>}
   </div>;
