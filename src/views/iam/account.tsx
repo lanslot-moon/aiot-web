@@ -146,7 +146,7 @@ export default function AccountPage() {
                 render: (row) => (
                   <div className="flex gap-2">
                     <SessionDetailsAction sessionId={row.sessionId} />
-                    <Action
+                    {row.status === 'ACTIVE' && <Action
                       label="退出设备"
                       danger
                       fields={reasonFields}
@@ -160,7 +160,7 @@ export default function AccountPage() {
                         if (row.sessionId === session?.sessionId) setSession(null);
                       }}
                       done={refresh}
-                    />
+                    />}
                   </div>
                 ),
               },
