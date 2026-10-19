@@ -1162,7 +1162,7 @@ function ResetProductSecretDialog({
         reason: '管理台手动重置产品密钥',
         expectedVersion: credential.securityVersion,
       });
-      toast.success('新产品密钥已签发，请立即保存。');
+      toast.success('产品密钥已强制重置，旧密钥已失效，请立即保存新密钥。');
       onOpenChange(false);
       if (delivery.secret) onDelivered(delivery);
       else toast.info('凭证已存在；重复签发不会再次交付明文。');
@@ -1176,16 +1176,16 @@ function ResetProductSecretDialog({
     <AlertDialog open={credential != null} onOpenChange={(next) => !busy && onOpenChange(next)}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>确认重置产品密钥？</AlertDialogTitle>
+          <AlertDialogTitle>确认强制重置产品密钥？</AlertDialogTitle>
           <AlertDialogDescription>
-            当前密钥会立即吊销，并签发同一凭证族的新版本。正在使用旧密钥的设备将无法继续认证，请确认已安排切换窗口。
+            适用于产品密钥泄露或存在安全风险时的紧急处置。旧产品密钥将立即失效，已烧录旧密钥但尚未入网的设备将无法完成新的注册认证，需更新密钥后重试。已取得设备密钥的设备不受本次重置影响。
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel disabled={busy}>取消</AlertDialogCancel>
-          <AlertDialogAction onClick={(event) => { event.preventDefault(); void submit(); }} disabled={busy}>
+          <AlertDialogAction variant="destructive" onClick={(event) => { event.preventDefault(); void submit(); }} disabled={busy}>
             {busy ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <RefreshCw className="size-4" aria-hidden />}
-            重置并交付新密钥
+            强制重置并获取新密钥
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -1468,7 +1468,7 @@ const ProductCredentialsPage = () => {
                 <div className="flex items-center gap-2"><span className="text-sm font-medium">产品密钥</span>{productSecret ? statusBadge(credentialStatusLabel[productSecret.credentialStatus] ?? productSecret.credentialStatus, getCredentialTone(productSecret.credentialStatus)) : statusBadge('未签发', 'warning')}</div>
                 {productSecret ? <p className="mt-1 break-all font-mono text-xs text-muted-foreground">{productSecret.credentialId} · v{productSecret.versionNo}</p> : <p className="mt-1 text-xs text-muted-foreground">用于设备首次接入。</p>}
               </div>
-              <Button type="button" variant="outline" size="sm" onClick={() => productSecret ? setResetCredential(productSecret) : setIssueCredentialKind('PRODUCT_SECRET')} disabled={!canProvision}>{productSecret ? '重置产品密钥' : '签发产品密钥'}</Button>
+              <Button type="button" variant={productSecret ? 'destructive' : 'outline'} size="sm" onClick={() => productSecret ? setResetCredential(productSecret) : setIssueCredentialKind('PRODUCT_SECRET')} disabled={!canProvision}>{productSecret ? '强制重置产品密钥' : '签发产品密钥'}</Button>
             </div>
           ) : null}
 
