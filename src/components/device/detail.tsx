@@ -1,12 +1,13 @@
 import { DeviceTable as DataTable } from './layout';
 import { useState } from 'react';
 import { Link } from 'react-router';
-import { ArrowLeft, RefreshCw, FlaskConical, Send, LayoutDashboard, Tags, FolderTree, Cpu } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronUp, RefreshCw, FlaskConical, Send, LayoutDashboard, Tags, FolderTree, Cpu } from 'lucide-react';
 import { ProductIconPreview } from '@/components/open-platform/product-icon-preview';
 import { CopyIdButton } from '@/components/open-platform/copy-id-button';
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from '@/components/ui/empty';
 import { Action, ErrorNotice, Loading } from '@/components/iam/shared';
 import { Button } from '@/components/ui/button';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useResource } from '@/components/iam/shared-utils';
@@ -57,24 +58,31 @@ function Hardware({ projectId, id }: { projectId: string; id: string }) {
 
 export default function DeviceDetails({ projectId, id, back, openGroup, backLabel = '返回设备列表' }: { projectId: string; id: string; back: () => void; openGroup: (id: string) => void; backLabel?: string }) {
   const [tab, setTab] = useState('profile');
+  const [summaryOpen, setSummaryOpen] = useState(true);
   const resource = useDeviceResource<DeviceDetail>(projectId, devicePath(id));
   const device = resource.data;
   const product = useDeviceProduct(projectId, device?.productId);
   const refresh = () => { void resource.mutate(); };
-  return <div className="min-w-0 space-y-4">
+  return <div className="min-w-0 space-y-2">
     <div className="flex flex-wrap items-center justify-between gap-3">
-      <Button variant="ghost" onClick={back}><ArrowLeft className="size-4" />{backLabel}</Button>
-      <Button variant="outline" disabled={resource.isValidating} onClick={refresh}><RefreshCw className="size-4" />刷新设备</Button>
+      <Button variant="ghost" size="sm" onClick={back}><ArrowLeft className="size-4" />{backLabel}</Button>
+      <Button variant="outline" size="sm" disabled={resource.isValidating} onClick={refresh}><RefreshCw className="size-4" />刷新设备</Button>
     </div>
     <ErrorNotice error={resource.error} retry={() => resource.mutate()} />
     {resource.isLoading && <Loading />}
     {device && <>
-      <header className="rounded-xl border bg-muted/15 p-4 sm:p-5">
-        <div className="flex flex-col items-start justify-between gap-4 lg:flex-row">
+      <Collapsible open={summaryOpen} onOpenChange={setSummaryOpen} render={<header />} className="rounded-xl border bg-muted/15 p-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 flex-wrap items-center gap-2"><h2 className="min-w-0 break-words text-lg font-semibold tracking-tight">{device.deviceName}</h2><LifecycleBadge value={device.lifecycle} /></div>
+          <CollapsibleTrigger render={<Button type="button" variant="ghost" size="sm" />} className="shrink-0" aria-label={summaryOpen ? '收起设备信息' : '展开设备信息'}>
+            {summaryOpen ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}{summaryOpen ? '收起' : '展开'}
+          </CollapsibleTrigger>
+        </div>
+        <CollapsibleContent>
+        <div className="mt-2 flex flex-col items-start justify-between gap-2 lg:flex-row">
           <div className="flex min-w-0 w-full flex-1 items-start gap-4">
             {product.isLoading ? <Skeleton className="size-14 shrink-0 rounded-lg" /> : <ProductIconPreview key={product.data?.iconUrl ?? device.productId} iconUrl={product.data?.iconUrl} productName={product.data?.productName ?? '所属产品'} />}
             <div className="min-w-0 space-y-2">
-              <div className="flex flex-wrap items-center gap-2"><h2 className="break-words text-lg font-semibold tracking-tight">{device.deviceName}</h2><LifecycleBadge value={device.lifecycle} /></div>
               <div className="text-sm text-muted-foreground"><DeviceProduct projectId={projectId} productId={device.productId} product={product} /></div>
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground"><span>{device.virtualDevice ? '虚拟设备' : '实体设备'}</span><span aria-hidden className="size-1 rounded-full bg-border" /><span>{nodeLabels[device.nodeType]}</span></div>
             </div>
@@ -86,11 +94,12 @@ export default function DeviceDetails({ projectId, id, back, openGroup, backLabe
           <Action label={device.lifecycle === 'DELETING' ? '继续删除' : '删除设备'} submitLabel="确认删除" danger permission="device:delete" description={`删除「${device.deviceName}」将清理设备档案、凭证和拓扑关系，无法撤销。失败或超时可能已经进入删除中，请核对当前状态后继续删除同一设备。`} fields={[{ name: 'confirm', label: '输入设备名称确认', required: true, validate: value => value === device.deviceName ? undefined : '请输入完整设备名称' }, { name: 'reason', label: '操作说明（选填）', type: 'textarea', maxLength: 512 }]} run={async v => { try { await deviceRequest(projectId, devicePath(id) + (v.reason.trim() ? '?reason=' + encodeURIComponent(v.reason.trim()) : ''), 'DELETE');  } catch (e) { refresh(); throw e; } }} done={back} />
           </div>
         </div>
-        <div className="mt-4 flex min-w-0 flex-col gap-1 border-t pt-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:gap-2"><span className="shrink-0">设备 ID</span><div className="flex min-w-0 items-center gap-1"><code className="truncate font-mono" title={id}>{id}</code><CopyIdButton value={id} label="设备 ID" /></div></div>
-      </header>
+        <div className="mt-2 flex min-w-0 flex-col gap-1 border-t pt-2 text-xs text-muted-foreground sm:flex-row sm:items-center sm:gap-2"><span className="shrink-0">设备 ID</span><div className="flex min-w-0 items-center gap-1"><code className="truncate font-mono" title={id}>{id}</code><CopyIdButton value={id} label="设备 ID" /></div></div>
+        </CollapsibleContent>
+      </Collapsible>
       {device.lifecycle === 'DELETING' && <p role="status" className="rounded-lg border bg-muted/30 p-3 text-sm">设备正在删除，资料和分类已停止编辑。若清理未完成，可继续删除同一设备。</p>}
-      <Tabs value={tab} onValueChange={v => setTab(String(v))} className="min-w-0 flex-col! gap-4">
-        <DeviceTabsNav variant="default" label="设备详情" items={[{ value: 'profile', label: '设备概览', icon: LayoutDashboard }, { value: 'tags', label: '标签', icon: Tags }, { value: 'groups', label: '所属分组', icon: FolderTree }, { value: 'hardware', label: '硬件资料', icon: Cpu }, { value: 'simulation', label: '设备模拟', icon: FlaskConical }, { value: 'commands', label: '设备指令', icon: Send }]} />
+      <Tabs value={tab} onValueChange={v => setTab(String(v))} className="min-w-0 flex-col! gap-2">
+        <DeviceTabsNav variant="default" label="设备详情" items={[{ value: 'profile', label: '设备概览', icon: LayoutDashboard }, { value: 'tags', label: '标签', icon: Tags }, { value: 'groups', label: '所属分组', icon: FolderTree }, { value: 'hardware', label: '硬件资料', icon: Cpu }, { value: 'simulation', label: '设备模拟', icon: FlaskConical }, { value: 'commands', label: '设备调试', icon: Send }]} />
         <TabsContent value="profile">
           <div className="grid overflow-hidden rounded-xl border xl:grid-cols-[minmax(0,1.7fr)_minmax(18rem,1fr)]">
             <section className="min-w-0 p-4 sm:p-5">

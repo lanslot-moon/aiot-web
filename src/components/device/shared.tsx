@@ -7,9 +7,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription } from '@/components/ui/empty';
 import { lifecycleLabels, type Lifecycle, type CursorPage } from '@/api/device/client';
 import { useDeviceResource } from './use-device-resource';
+import { cn } from '@/lib/utils';
 
 export function LifecycleBadge({ value }: { value: Lifecycle }) {
-  return <Badge variant="outline" className="whitespace-nowrap">{lifecycleLabels[value] ?? value}</Badge>;
+  return <Badge variant="outline" className={cn('whitespace-nowrap', value === 'ACTIVE' && 'border-transparent bg-chart-2/12 text-chart-2')}>{lifecycleLabels[value] ?? value}</Badge>;
 }
 export function DeviceSelect({ id, label, value, options, onChange }: {
   id?: string; label: string; value: string; options: { value: string; label: string }[]; onChange: (value: string) => void;

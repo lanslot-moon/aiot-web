@@ -79,9 +79,9 @@ function Workspace({ projectId }: { projectId: string }) {
         </label>}
       </form>
       <CursorList<DeviceSummary> key={path} projectId={projectId} path={path} emptyTitle={search || lifecycle || virtual || nodeType ? '没有符合条件的设备' : '当前项目尚无设备'} emptyDescription={search || lifecycle || virtual || nodeType ? '调整筛选条件后重新查询。' : '实体设备完成预配登记后会出现在这里，也可以创建虚拟设备档案。'}>{items => <DataTable stickyActions rows={items} columns={[
-        { label: '设备名称', render: d => <Button variant="link" className="h-auto! max-w-48 p-0! font-medium" onClick={() => openDevice(d.deviceId)}><span className="truncate" title={d.deviceName}>{d.deviceName}</span></Button> },
+        { label: '设备名称', render: d => <Button variant="link" className="h-auto! max-w-48 p-0! font-medium" onClick={() => openDevice(d.deviceId)}><span className="min-w-0 truncate py-1 underline-offset-4 group-hover/button:underline group-focus-visible/button:underline" title={d.deviceName}>{d.deviceName}</span></Button> },
         { label: '设备 ID', render: d => <div className="flex max-w-44 items-center gap-0.5"><code className="min-w-0 flex-1 truncate font-mono text-xs text-muted-foreground" title={d.deviceId}>{d.deviceId}</code><CopyIdButton value={d.deviceId} label="Device ID" /></div> },
-        { label: '产品 ID', render: d => <Link className="block max-w-40 truncate font-mono text-xs text-muted-foreground underline-offset-4 hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-ring" title={d.productId} to={'/projects/' + encodeURIComponent(projectId) + '/products/' + encodeURIComponent(d.productId)}>{d.productId}</Link> },
+        { label: '产品 ID', render: d => <Button variant="link" className="h-auto! max-w-40 p-0! font-mono text-xs text-muted-foreground" nativeButton={false} render={<Link to={'/projects/' + encodeURIComponent(projectId) + '/products/' + encodeURIComponent(d.productId)} />}><span className="min-w-0 truncate py-1 underline-offset-4 group-hover/button:underline group-focus-visible/button:underline" title={d.productId}>{d.productId}</span></Button> },
         { label: '管理状态', render: d => <LifecycleBadge value={d.lifecycle} /> },
         { label: '设备类型', render: d => d.virtualDevice ? '虚拟设备' : '实体设备' },
         { label: '节点类型', render: d => nodeLabels[d.nodeType] },

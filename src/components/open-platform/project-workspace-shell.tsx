@@ -377,7 +377,7 @@ export function ProjectWorkspaceShell({
   return (
     <div className="flex flex-col gap-px">
       <Collapsible open={projectHeaderOpen} onOpenChange={handleProjectHeaderOpenChange}>
-        <Card className="gap-0 px-5 py-3">
+        <Card className={cn('gap-0 px-5 py-3', primaryTab === 'devices' && 'py-2!')}>
           <div className="flex flex-wrap items-center gap-2">
             {navigationMode === 'tabs' && <Button
               variant="ghost"
@@ -569,7 +569,7 @@ export function ProjectWorkspaceShell({
           ) : null}
         </div>}
 
-        <section className="min-w-0 p-4 md:p-6">{children}</section>
+        <section className={cn('min-w-0 p-4 md:p-6', primaryTab === 'devices' && 'pt-2 md:pt-2')}>{children}</section>
       </Card>
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
