@@ -1,6 +1,5 @@
 import { CreateProjectWizard } from '@/components/open-platform/create-project-wizard';
 import StyleAwareWrapper from '@/components/shared/StyleAwareWrapper';
-import StyleDivider from '@/components/shared/StyleDivider';
 import BreadcrumbComp from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
 
 const BCrumb = [
@@ -15,7 +14,6 @@ const CreateProjectPage = () => {
       defaultClassName="flex flex-col gap-4"
     >
       <BreadcrumbComp title="创建项目" items={BCrumb} />
-      <StyleDivider />
       <CreateProjectWizard />
     </StyleAwareWrapper>
   );

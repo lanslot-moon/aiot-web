@@ -1,7 +1,6 @@
 import { get, put, remove, segment } from '@/api/iam/client';
 import type { PermissionDescriptorVO, PermissionModuleVO, RoleVO } from '@/api/iam/contracts';
 import { isProjectRoleCacheKey, ownerMenusPath } from '@/api/iam/authorization';
-import { SettingsNavigation } from '@/components/iam/settings-navigation';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useState } from 'react';
 import { useSWRConfig } from 'swr';
@@ -56,12 +55,11 @@ export default function RolesPage() {
     void mutate(isProjectRoleCacheKey);
   };
   return (
-    <Page breadcrumbs={[{ title: '控制台设置' }]} title="角色与权限" description="角色是可复用的权限组合：先定义职责与能力，再在项目邀请中选择角色。同一个角色可以授予多位成员。">
-      <SettingsNavigation />
-
+    <Page breadcrumbs={[{ title: '控制台设置' }]} title="角色与权限">
       {owner && (
         <>
           <Panel
+            className="pt-0! [&>[data-slot=card-header]]:pt-0"
             title="项目角色目录"
             description="项目角色可跨项目复用。修改模板会影响所有使用该角色的授权；仅调整某个项目时，请创建独立角色。"
             actions={

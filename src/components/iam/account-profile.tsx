@@ -5,7 +5,6 @@ import { useEffect } from 'react';
 import { useIam } from '../../context/iam-context/identity';
 
 import StyleAwareWrapper from '@/components/shared/StyleAwareWrapper';
-import StyleDivider from '@/components/shared/StyleDivider';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card } from '@/components/ui/card';
 import BreadcrumbComp from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
@@ -30,7 +29,6 @@ export function AccountProfile() {
   return (
     <StyleAwareWrapper lyraClassName="flex flex-col gap-px bg-border p-px" defaultClassName="flex flex-col gap-4">
       <BreadcrumbComp title="个人资料" items={[{ title: '全部项目', to: '/projects' }]} />
-      <StyleDivider />
       <div className="bg-background p-4 md:p-6">
         <Navigation links={links.filter((link) => canNavigate(link.to, codes))} />
       </div>

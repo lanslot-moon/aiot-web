@@ -3,7 +3,6 @@ import { Link, useParams } from 'react-router';
 
 import { ProjectWorkspaceShell } from '@/components/open-platform/project-workspace-shell';
 import StyleAwareWrapper from '@/components/shared/StyleAwareWrapper';
-import StyleDivider from '@/components/shared/StyleDivider';
 import { Button } from '@/components/ui/button';
 import {
 Card,
@@ -37,7 +36,6 @@ const ProjectSettingsPage = () => {
       defaultClassName="flex flex-col gap-4"
     >
       <BreadcrumbComp title="项目设置" items={BCrumb} />
-      <StyleDivider />
       <ProjectWorkspaceShell activePrimary="settings">
         <div className="grid gap-4 lg:grid-cols-3">
           <Card className="lg:col-span-2">

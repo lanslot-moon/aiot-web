@@ -35,7 +35,6 @@ export { GatewayDataTable as DataTable } from '@/components/tables/data-table/Da
 export { ErrorNotice } from './error-notice';
 
 import StyleAwareWrapper from '@/components/shared/StyleAwareWrapper';
-import StyleDivider from '@/components/shared/StyleDivider';
 import BreadcrumbComp from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
 import { cn } from '@/lib/utils';
 import { clearDraft, useDraftRegistration } from './drafts';
@@ -70,7 +69,6 @@ export function Page({
   return (
     <StyleAwareWrapper lyraClassName="flex flex-col gap-px bg-border p-px" defaultClassName="flex flex-col gap-4">
       <BreadcrumbComp title={title} items={breadcrumbs} />
-      <StyleDivider />
       <div className="space-y-5 bg-background p-4 md:p-6">
         {(description || actions) && <header className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -88,14 +86,16 @@ export function Panel({
   description,
   children,
   actions,
+  className,
 }: {
   title: string;
   description?: string;
   children: ReactNode;
   actions?: ReactNode;
+  className?: string;
 }) {
   return (
-      <Card className="gap-0 py-0">
+      <Card className={cn('gap-0 py-0', className)}>
         <CardHeader className="flex flex-wrap flex-row items-start justify-between gap-3 border-b py-4">
           <div className="space-y-1">
             <CardTitle>{title}</CardTitle>
