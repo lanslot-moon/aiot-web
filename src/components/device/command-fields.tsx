@@ -2,8 +2,7 @@ import { useId, useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Field, FieldContent, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field';
-import { Slider } from '@/components/ui/slider';
-import { InputGroup, InputGroupInput, InputGroupAddon, InputGroupText } from '@/components/ui/input-group';
+import { InputNumber, Slider, Switch as AntSwitch } from 'antd';
 import { CommandSelect } from './command-select';
 import { Switch } from '@/components/ui/switch';
 import { DeviceInput } from './layout';
@@ -26,7 +25,9 @@ export default function CommandField({ schema, value, onChange, label, disabled 
     const index = definition.enum.findIndex(item => Object.is(item, value));
     control = <CommandSelect id={id} label={label} value={index < 0 ? '' : String(index)} options={options} placeholder="请选择" disabled={disabled} onBlur={() => setTouched(true)} onValueChange={next => onChange((definition.enum as unknown[])[Number(next)])} />;
   }
-  else if (type === 'boolean') control = <div className="flex min-h-9 items-center gap-3"><Switch id={id} checked={value === true} disabled={disabled} onCheckedChange={onChange} aria-describedby={`${id}-hint`} /><span className="text-sm">{value === true ? '开启' : '关闭'}</span></div>;
+  else if (type === 'boolean') control = controlPanel
+    ? <div className="flex min-h-8 items-center justify-end"><AntSwitch id={id} checked={value === true} disabled={disabled} onChange={onChange} checkedChildren="开" unCheckedChildren="关" aria-describedby={`${id}-hint`} /></div>
+    : <div className="flex min-h-9 items-center gap-3"><Switch id={id} checked={value === true} disabled={disabled} onCheckedChange={onChange} aria-describedby={`${id}-hint`} /><span className="text-sm">{value === true ? '开启' : '关闭'}</span></div>;
   else if (type === 'object') {
     const object = schemaObject(value);
     const fields = Object.entries(fieldsOf(schema));
@@ -52,11 +53,8 @@ export default function CommandField({ schema, value, onChange, label, disabled 
     const max = typeof definition.maximum === 'number' ? definition.maximum : undefined;
     const step = typeof definition.multipleOf === 'number' && definition.multipleOf > 0 ? definition.multipleOf : type === 'integer' ? 1 : 0.1;
     control = <div className="flex min-h-8 items-center gap-3">
-      {min !== undefined && max !== undefined && max > min && <Slider className="h-8 min-w-0 flex-1 [&_[data-base-ui-slider-control]]:h-full [&_[data-slot=slider-track]]:h-1 [&_[data-slot=slider-track]]:w-full [&_[data-slot=slider-range]]:h-full" aria-label={`${label}滑块`} value={[numeric ?? min]} min={min} max={max} step={step} disabled={disabled} onValueChange={next => { const number = Array.isArray(next) ? next[0] : next; if (number !== undefined) onChange(number); }} />}
-      <InputGroup className={cn('h-8 shrink-0', min !== undefined && max !== undefined ? 'w-24' : 'w-full')}>
-        <InputGroupInput id={id} type="number" className="h-8! px-2 text-xs" value={typeof value === 'number' || typeof value === 'string' ? value : ''} min={min} max={max} step={type === 'integer' ? 1 : 'any'} disabled={disabled} onBlur={() => setTouched(true)} aria-invalid={touched && !!error} aria-describedby={`${id}-hint`} onChange={event => onChange(event.target.value === '' ? '' : Number(event.target.value))} />
-        {typeof definition.unit === 'string' && <InputGroupAddon align="inline-end"><InputGroupText className="text-[11px]">{definition.unit}</InputGroupText></InputGroupAddon>}
-      </InputGroup>
+      {min !== undefined && max !== undefined && max > min && <Slider className="min-w-0 flex-1" ariaLabelForHandle={`${label}滑块`} value={numeric ?? min} min={min} max={max} step={step} disabled={disabled} onChange={onChange} />}
+      <InputNumber id={id} className={cn('shrink-0', min !== undefined && max !== undefined ? 'w-24!' : 'w-full!')} value={numeric ?? null} placeholder="未设置" min={min} max={max} step={step} precision={type === 'integer' ? 0 : undefined} suffix={typeof definition.unit === 'string' ? definition.unit : undefined} disabled={disabled} onBlur={() => setTouched(true)} status={touched && error ? 'error' : undefined} aria-invalid={touched && !!error} aria-describedby={`${id}-hint`} onChange={next => onChange(next ?? '')} />
     </div>;
   }
   const titleParts = label.split(' · ');

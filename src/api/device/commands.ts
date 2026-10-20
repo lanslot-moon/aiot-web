@@ -12,11 +12,11 @@ export function commandRequest<T>(projectId: string, path: string, method = 'GET
 }
 export const deliveryLabels: Record<string, string> = { DISPATCHING: '正在投递', BROKER_ACCEPTED: '消息代理已接收', NOT_SENT: '未发送', UNKNOWN: '投递结果未知' };
 export const executionLabels: Record<string, string> = { PENDING: '等待设备结果', SUCCEEDED: '执行成功', FAILED: '执行失败', REJECTED: '设备拒绝', NOT_EXECUTED: '未执行' };
-export function parseCommandInput(text: string, type: string): Record<string, unknown> {
+export function parseCommandInput(text: string): Record<string, unknown> {
   if (text.length > 65536 || new TextEncoder().encode(text).length > 65536) throw new Error('参数不能超过 64 KiB。');
   let value: unknown;
   try { value = JSON.parse(text); } catch { throw new Error('请输入有效的 JSON，例如 {"power": true}。'); }
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('参数必须是 JSON 对象。');
-  if (type === 'PROPERTY' && (Object.keys(value).length < 1 || Object.keys(value).length > 100)) throw new Error('一次请填写 1 至 100 个属性。');
+  if (Object.keys(value).length < 1 || Object.keys(value).length > 100) throw new Error('一次请填写 1 至 100 个属性。');
   return value as Record<string, unknown>;
 }

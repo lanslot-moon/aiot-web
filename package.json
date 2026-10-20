@@ -23,6 +23,7 @@
     "@tiptap/extension-underline": "^3.22.3",
     "@tiptap/react": "^3.22.3",
     "@tiptap/starter-kit": "^3.22.3",
+    "antd": "^6.6.7",
     "chance": "^1.1.13",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
