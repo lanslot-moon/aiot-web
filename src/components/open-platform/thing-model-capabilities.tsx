@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Braces, ChevronRight, Plus, Trash2 } from 'lucide-react';
 
 import {
@@ -7,6 +8,9 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
+import { CopyIdButton } from '@/components/open-platform/copy-id-button';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -276,8 +280,10 @@ function RemoveCapabilityButton({
 
 function PropertyDetails({
   property,
+  showJsonControl = true,
 }: {
   property: ThingModelProperty;
+  showJsonControl?: boolean;
 }) {
   return (
     <div className="space-y-2">
@@ -286,7 +292,7 @@ function PropertyDetails({
         {property.required ? (
           <span className="text-[11px] text-muted-foreground">品类必选能力，不可移除</span>
         ) : null}
-        <CapabilityJsonDialog capabilityType="属性" code={property.code} value={property} />
+        {showJsonControl && <CapabilityJsonDialog capabilityType="属性" code={property.code} value={property} />}
       </div>
     </div>
   );
@@ -294,15 +300,17 @@ function PropertyDetails({
 
 function ActionDetails({
   action,
+  showJsonControl = true,
 }: {
   action: ThingModelAction;
+  showJsonControl?: boolean;
 }) {
   return (
     <div className="space-y-2">
       <SchemaDefinition title="输入参数" schema={action.inputSchema} />
       <SchemaDefinition title="输出参数" schema={action.outputSchema} />
       <div className="flex flex-wrap items-center justify-end gap-2">
-        <CapabilityJsonDialog capabilityType="动作" code={action.code} value={action} />
+        {showJsonControl && <CapabilityJsonDialog capabilityType="动作" code={action.code} value={action} />}
       </div>
     </div>
   );
@@ -310,14 +318,16 @@ function ActionDetails({
 
 function EventDetails({
   event,
+  showJsonControl = true,
 }: {
   event: ThingModelEvent;
+  showJsonControl?: boolean;
 }) {
   return (
     <div className="space-y-2">
       <SchemaDefinition title="输出参数" schema={event.outputSchema} />
       <div className="flex flex-wrap items-center justify-end gap-2">
-        <CapabilityJsonDialog capabilityType="事件" code={event.code} value={event} />
+        {showJsonControl && <CapabilityJsonDialog capabilityType="事件" code={event.code} value={event} />}
       </div>
     </div>
   );
@@ -553,4 +563,53 @@ export function ThingModelCapabilityTabs({
       </TabsContent>
     </Tabs>
   );
+}
+
+
+type BrowsableCapability =
+  | { kind: 'property'; value: ThingModelProperty }
+  | { kind: 'action'; value: ThingModelAction }
+  | { kind: 'event'; value: ThingModelEvent };
+
+/** Read-only version browser: selecting a capability reveals its definition directly. */
+export function ThingModelDefinitionBrowser({ definition }: { definition: ThingModelDefinition }) {
+  const [kind, setKind] = useState<ThingModelCapabilityKind>(() => definition.properties.length ? 'property' : definition.actions.length ? 'action' : 'event');
+  const [search, setSearch] = useState('');
+  const [selectedCode, setSelectedCode] = useState('');
+  const [showJson, setShowJson] = useState(false);
+  const capabilities: BrowsableCapability[] = [
+    ...definition.properties.map(value => ({ kind: 'property' as const, value })),
+    ...definition.actions.map(value => ({ kind: 'action' as const, value })),
+    ...definition.events.map(value => ({ kind: 'event' as const, value })),
+  ];
+  const items = capabilities.filter(item => item.kind === kind && `${item.value.title} ${item.value.code}`.toLowerCase().includes(search.trim().toLowerCase()));
+  const selected = items.find(item => item.value.code === selectedCode) ?? items[0];
+  const kinds = [
+    { value: 'property' as const, label: '属性', count: definition.properties.length },
+    { value: 'action' as const, label: '动作', count: definition.actions.length },
+    { value: 'event' as const, label: '事件', count: definition.events.length },
+  ];
+  return <div className="grid min-w-0 overflow-hidden rounded-lg border lg:max-h-[65dvh] lg:grid-cols-[17rem_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)]" aria-label="物模型版本定义浏览器">
+    <aside className="flex min-h-0 min-w-0 flex-col border-b bg-muted/10 lg:border-r lg:border-b-0">
+      <div className="space-y-3 border-b p-3">
+        <div className="flex gap-1" aria-label="能力类型">{kinds.map(item => <Button key={item.value} size="sm" variant={kind === item.value ? 'secondary' : 'ghost'} className="flex-1 gap-1 px-2 text-xs" aria-pressed={kind === item.value} onClick={() => { setKind(item.value); setSelectedCode(''); setSearch(''); setShowJson(false); }}>{item.label}<span className="text-muted-foreground">{item.count}</span></Button>)}</div>
+        <Input aria-label="搜索版本功能" placeholder="搜索名称或标识" value={search} onChange={event => { setSearch(event.target.value); setShowJson(false); }} className="h-8 text-xs" />
+      </div>
+      <nav className="min-h-0 max-h-64 flex-1 space-y-1 overflow-y-auto p-2 lg:max-h-none" aria-label="版本功能列表">
+        {items.map(item => <button key={`${item.kind}:${item.value.code}`} type="button" aria-pressed={selected?.value.code === item.value.code} className={cn('flex w-full items-center gap-2 rounded-md border border-transparent px-3 py-2 text-left outline-none hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring', selected?.value.code === item.value.code && 'border-border bg-muted')} onClick={() => { setSelectedCode(item.value.code); setShowJson(false); }}><span className="min-w-0 flex-1 truncate text-xs font-medium" title={item.value.title}>{item.value.title}</span><code className="max-w-[45%] shrink-0 truncate text-[10px] text-muted-foreground" title={item.value.code}>{item.value.code}</code></button>)}
+        {!items.length && <p className="px-3 py-8 text-center text-xs text-muted-foreground">{search ? '没有匹配的功能' : '此版本暂无该类功能'}</p>}
+      </nav>
+    </aside>
+    <section className="flex min-h-0 min-w-0 flex-col overflow-hidden" aria-label="选中功能定义">
+      {selected ? <div key={`${selected.kind}:${selected.value.code}`} className="flex min-h-0 flex-1 flex-col">
+        <header className="shrink-0 space-y-2 border-b bg-popover p-4 sm:p-5"><div className="flex flex-wrap items-center justify-between gap-2"><div className="flex min-w-0 flex-wrap items-center gap-2"><h2 className="text-base font-semibold">{selected.value.title}</h2><code className="break-all text-xs text-muted-foreground">{selected.value.code}</code></div><div className="flex shrink-0 items-center gap-2"><span className="inline-flex w-6 justify-center">{showJson && <CopyIdButton value={JSON.stringify(selected.value, null, 2)} label="JSON" />}</span><Button type="button" size="sm" variant="outline" className="w-32" onClick={() => setShowJson(previous => !previous)}>{showJson ? '返回详情' : '查看 JSON 配置'}</Button></div></div><div className="flex flex-wrap gap-2">
+          <Badge variant="secondary">{kinds.find(item => item.value === selected.kind)?.label}</Badge>
+          {selected.kind === 'property' && <><Badge variant="outline">{labelOf(PROPERTY_ACCESS_LABEL, selected.value.access)}</Badge>{selected.value.required && <Badge variant="outline">必选</Badge>}</>}
+          {selected.kind === 'action' && <Badge variant="outline">{labelOf(INVOKE_MODE_LABEL, selected.value.invokeMode)}</Badge>}
+          {selected.kind === 'event' && <Badge variant="outline">{labelOf(EVENT_TYPE_LABEL, selected.value.eventType)}</Badge>}
+        </div></header>
+        <div className="min-h-0 overflow-y-auto p-4 sm:p-5" role="region" aria-label="功能定义内容">{showJson ? <pre tabIndex={0} aria-label="功能定义 JSON" className="min-w-0 overflow-auto whitespace-pre-wrap break-words rounded-md border bg-muted/20 p-4 font-mono text-xs leading-relaxed">{JSON.stringify(selected.value, null, 2)}</pre> : selected.kind === 'property' ? <PropertyDetails property={selected.value} showJsonControl={false} /> : selected.kind === 'action' ? <ActionDetails action={selected.value} showJsonControl={false} /> : <EventDetails event={selected.value} showJsonControl={false} />}</div>
+      </div> : <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">请从左侧选择功能查看定义。</div>}
+    </section>
+  </div>;
 }

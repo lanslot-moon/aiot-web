@@ -29,6 +29,7 @@ import { ProjectWorkspaceShell } from '@/components/open-platform/project-worksp
 import {
 ThingModelCapabilitySummary,
 ThingModelCapabilityTabs,
+ThingModelDefinitionBrowser,
 type ThingModelCapabilityKind,
 } from '@/components/open-platform/thing-model-capabilities';
 import StyleAwareWrapper from '@/components/shared/StyleAwareWrapper';
@@ -528,7 +529,7 @@ const ProductModelPage = () => {
     projectId: string;
     productId: string;
   }>();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const publishedOnly = searchParams.get('view') === 'published';
   const { data: project } = useProjectDetail(projectId);
   const {
@@ -579,7 +580,16 @@ const ProductModelPage = () => {
   const [capabilityJsonError, setCapabilityJsonError] = useState<string | null>(null);
   const [mergeOpen, setMergeOpen] = useState(false);
   const [selectedMergeCodes, setSelectedMergeCodes] = useState<string[]>([]);
-  const [viewingRevision, setViewingRevision] = useState<number | null>(null);
+  const revisionParameter = Number(searchParams.get('revision'));
+  const viewingRevision = Number.isSafeInteger(revisionParameter) && revisionParameter > 0 ? revisionParameter : null;
+  function setViewingRevision(revision: number | null) {
+    setSearchParams(previous => {
+      const next = new URLSearchParams(previous);
+      if (revision == null) next.delete('revision');
+      else next.set('revision', String(revision));
+      return next;
+    });
+  }
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
   const [pendingCapabilityRemoval, setPendingCapabilityRemoval] =
     useState<PendingCapabilityRemoval>(null);
@@ -625,7 +635,7 @@ const ProductModelPage = () => {
   );
   const versionDetailKey =
     viewingRevision != null ? `${modelKey(productId)}/versions/${viewingRevision}` : null;
-  const { data: versionDetail, error: versionDetailError, isLoading: versionDetailLoading } = useSWR<ThingModelDefinition>(
+  const { data: versionDetail, error: versionDetailError, isLoading: versionDetailLoading, mutate: mutateVersionDetail } = useSWR<ThingModelDefinition>(
     versionDetailKey,
     openPlatformGetFetcher,
   );
@@ -958,6 +968,8 @@ const ProductModelPage = () => {
     { title: product?.productName ?? '物模型' },
   ];
 
+  const versionOptions = orderedVersions.slice().reverse().map(version => ({ value: String(version.modelRevision), label: modelRevisionLabel(version.modelRevision) }));
+
   return (
     <StyleAwareWrapper
       lyraClassName="flex flex-col gap-px bg-border p-px"
@@ -1278,34 +1290,25 @@ const ProductModelPage = () => {
               </div>
             </div>
 
-            {viewingRevision != null ? (
-              <Card className="border-dashed">
-                <CardHeader>
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div>
-                      <CardTitle className="text-base">{modelRevisionLabel(viewingRevision)} 定义</CardTitle>
-                      <CardDescription>历史版本只读查看，不会改变当前草稿。</CardDescription>
-                    </div>
-                    <Button type="button" variant="ghost" size="sm" onClick={() => setViewingRevision(null)}>
-                      关闭查看
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {versionDetailError ? <ApiErrorAlert message={(versionDetailError as Error).message} /> : versionDetailLoading ? (
-                    <RequestLoading label="正在加载版本定义…" />
-                  ) : versionDetail ? (
-                    <ThingModelCapabilityTabs definition={versionDetail} />
-                  ) : (
-                    <p className="text-sm text-muted-foreground">无法加载该版本定义。</p>
-                  )}
-                </CardContent>
-              </Card>
-            ) : null}
+
 
           </div>
         ) : null}
       </ProjectWorkspaceShell>
+
+      <Dialog open={viewingRevision != null} onOpenChange={(open) => { if (!open) setViewingRevision(null); }}>
+        <DialogContent className="flex! max-h-[85dvh] flex-col overflow-hidden sm:max-w-5xl!">
+          <DialogHeader className="shrink-0 pr-8">
+            <div className="flex flex-wrap items-center justify-between gap-3"><div><DialogTitle>{product?.productName ?? '物模型'} · {viewingRevision != null ? modelRevisionLabel(viewingRevision) : ''} 定义</DialogTitle><DialogDescription className="mt-1">只读查看此版本的属性、动作与事件。</DialogDescription></div>
+              <Select value={viewingRevision != null ? String(viewingRevision) : null} items={versionOptions} onValueChange={value => { if (value) setViewingRevision(Number(value)); }}><SelectTrigger aria-label="切换查看版本" className="w-32"><SelectValue /></SelectTrigger><SelectContent align="end" alignItemWithTrigger={false}>{versionOptions.map(option => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent></Select>
+            </div>
+          </DialogHeader>
+          <div className="min-h-0 overflow-y-auto">
+            {versionDetailError ? <ApiErrorAlert message={(versionDetailError as Error).message} onRetry={() => void mutateVersionDetail()} /> : versionDetailLoading ? <RequestLoading label="正在加载版本定义…" /> : versionDetail ? <ThingModelDefinitionBrowser key={viewingRevision} definition={versionDetail} /> : <p className="text-sm text-muted-foreground">无法加载该版本定义。</p>}
+          </div>
+          <DialogFooter className="shrink-0"><Button type="button" variant="outline" onClick={() => setViewingRevision(null)}>关闭查看</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={capabilityDialogKind != null}
