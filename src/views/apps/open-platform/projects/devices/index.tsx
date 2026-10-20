@@ -87,7 +87,7 @@ function Workspace({ projectId }: { projectId: string }) {
         { label: '节点类型', render: d => nodeLabels[d.nodeType] },
         { label: '激活时间', render: d => <span className="whitespace-nowrap text-xs text-muted-foreground">{d.activation ? formatTime(d.activation.activatedAt) : '尚无激活记录'}</span> },
         { label: '创建时间', render: d => <span className="whitespace-nowrap text-xs text-muted-foreground">{formatTime(d.createTime)}</span> },
-        { label: '操作', render: d => <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => openDevice(d.deviceId)}>{d.lifecycle === 'DELETING' ? '查看并继续删除' : '查看详情'}</Button> },
+        { label: '操作', render: d => <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => openDevice(d.deviceId)}>{d.lifecycle === 'DELETING' ? '查看并继续处理' : '查看详情'}</Button> },
       ]} />}</CursorList>
     </div></TabsContent>
     <TabsContent value="groups">{section === 'groups' && <GroupList projectId={projectId} openGroup={openGroup} showCreate={false} />}</TabsContent>
