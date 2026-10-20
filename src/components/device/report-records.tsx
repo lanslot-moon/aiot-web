@@ -117,12 +117,11 @@ export function ReportRecords({ projectId, device, model }: { projectId: string;
           setPreset(value); setValidation('');
           if (value !== 'custom') { const to = Math.floor(Date.now() / 1000) * 1000; setStart(localDateTime(to - Number(value) * 3600000)); setEnd(localDateTime(to)); }
         }} options={[{ value: '1', label: '最近 1 小时' }, { value: '24', label: '最近 24 小时' }, { value: '168', label: '最近七天' }, { value: 'custom', label: '自定义时间' }]} placeholder="时间范围" /></div>
-        <div className="space-y-1"><Label htmlFor="report-start" className="text-xs">开始时间</Label><Input id="report-start" className="h-9 w-56" type="datetime-local" step="1" value={start} onInput={event => { setStart(event.currentTarget.value); setPreset('custom'); setValidation(''); }} aria-invalid={!!validation} aria-describedby="report-range-hint" /></div>
-        <div className="space-y-1"><Label htmlFor="report-end" className="text-xs">结束时间</Label><Input id="report-end" className="h-9 w-56" type="datetime-local" step="1" value={end} onInput={event => { setEnd(event.currentTarget.value); setPreset('custom'); setValidation(''); }} aria-invalid={!!validation} aria-describedby="report-range-hint" /></div>
+        <div className="space-y-1"><Label htmlFor="report-start" className="text-xs">开始时间</Label><Input id="report-start" className="h-9 w-56" type="datetime-local" step="1" value={start} onInput={event => { setStart(event.currentTarget.value); setPreset('custom'); setValidation(''); }} aria-invalid={!!validation} /></div>
+        <div className="space-y-1"><Label htmlFor="report-end" className="text-xs">结束时间</Label><Input id="report-end" className="h-9 w-56" type="datetime-local" step="1" value={end} onInput={event => { setEnd(event.currentTarget.value); setPreset('custom'); setValidation(''); }} aria-invalid={!!validation} /></div>
         <Button size="sm" disabled={data.isValidating} onClick={applyQuery}>查询</Button>
         <Button size="sm" variant="outline" disabled={data.isValidating} onClick={resetFilters}>重置</Button>
       </div>
-      <p id="report-range-hint" className="text-xs text-muted-foreground">按浏览器本地时间选择，开始时间包含、结束时间不包含；单次查询跨度最多七天。</p>
       {validation && <p role="alert" className="text-xs text-destructive">{validation}</p>}
     </header>
     <div className="space-y-3 p-4">

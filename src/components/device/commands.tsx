@@ -151,8 +151,9 @@ export default function DeviceCommands({ projectId, device }: { projectId: strin
               const changed = Object.prototype.hasOwnProperty.call(formValue, item.code);
               const writableProperty = writable.some(property => property.code === item.code);
               const point = latest.data?.[item.code];
-              const recent = <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 text-xs leading-5"><div className="flex min-w-0 flex-wrap items-baseline gap-x-2"><span className="text-muted-foreground">最近上报值{!writableProperty ? ' · 只读' : ''}</span><span className="max-w-full break-all font-mono">{latest.error ? '读取失败' : latest.isLoading ? '读取中…' : point?.value === null || point?.value === undefined ? '暂无有效上报值' : typeof point.value === 'object' ? pretty(point.value) : String(point.value)}</span></div><p className="text-muted-foreground">{point?.timestamp ? `上报时间：${formatTime(point.timestamp)}` : '尚无上报时间'}</p></div>;
-              if (!writableProperty) return <div key={item.code} className="rounded-md border px-3 py-2"><h4 className="mb-1 break-words text-sm font-medium">{item.title} <span className="font-mono text-xs font-normal text-muted-foreground">{item.code}</span></h4>{recent}</div>;
+              const accessBadge = <span className={cn('inline-flex h-5 w-12 shrink-0 items-center justify-center rounded border text-[10px] font-medium leading-none', writableProperty ? 'border-teal-500/20 bg-teal-500/5 text-teal-700 dark:text-teal-300' : 'border-border bg-background/50 text-muted-foreground')}>{writableProperty ? '可下发' : '只读'}</span>;
+              const recent = <div className="mb-1 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 rounded-sm border-b border-border bg-zinc-200/60 px-2 py-1 text-xs leading-5 dark:border-zinc-700/70 dark:bg-zinc-800/80"><div className="flex min-w-0 flex-wrap items-baseline gap-x-2"><span className="text-[11px] font-medium text-muted-foreground">最近上报值</span><span className="max-w-full break-all font-mono font-medium tabular-nums text-foreground">{latest.error ? '读取失败' : latest.isLoading ? '读取中…' : point?.value === null || point?.value === undefined ? '暂无有效上报值' : typeof point.value === 'object' ? pretty(point.value) : String(point.value)}</span></div><div className="flex shrink-0 items-center gap-2">{showAllProperties && accessBadge}<p className="text-[11px] text-muted-foreground">{point?.timestamp ? `上报时间：${formatTime(point.timestamp)}` : '尚无上报时间'}</p></div></div>;
+              if (!writableProperty) return <div key={item.code} role="group" aria-label={`${item.title}，只读`} className="flex flex-col rounded-md border bg-muted/10 px-3 py-2">{recent}<h4 className="mt-auto flex min-h-10 flex-wrap items-center gap-x-1.5 break-words text-sm font-medium">{item.title} <span className="font-mono text-xs font-normal text-muted-foreground">{item.code}</span></h4></div>;
               const displayedValue = changed ? formValue[item.code] : Object.prototype.hasOwnProperty.call(retainedValues, item.code) ? retainedValues[item.code] : point?.value !== null && point?.value !== undefined && canRepresent(item.schema, point.value) ? point.value : initialValue(item.schema);
               function toggleProperty() {
                 if (busy) return;
@@ -167,7 +168,7 @@ export default function DeviceCommands({ projectId, device }: { projectId: strin
               }} onKeyDown={event => {
                 if (event.target !== event.currentTarget || !['Enter', ' '].includes(event.key)) return;
                 event.preventDefault(); toggleProperty();
-              }}>{recent}<p className="mb-1 mt-0.5 text-xs leading-5 text-muted-foreground">{changed ? '本次设置 · 已选择下发' : '本次设置 · 尚未选择下发'}</p><CommandField controlPanel inline schema={item.schema} label={`${item.title} · ${item.code}`} value={displayedValue} disabled={busy} onChange={value => {
+              }}>{recent}<CommandField controlPanel inline schema={item.schema} label={`${item.title} · ${item.code}`} value={displayedValue} disabled={busy} onChange={value => {
                 setRetainedValues(previous => ({ ...previous, [item.code]: value }));
                 setText(pretty({ ...formValue, [item.code]: value })); setValidation('');
               }} /></div>;
@@ -193,12 +194,12 @@ export default function DeviceCommands({ projectId, device }: { projectId: strin
             <Button size="icon" variant="ghost" className="size-8!" aria-label="刷新响应" disabled={history.isValidating} onClick={resetHistory}><RefreshCw className="size-3.5" /></Button>
           </div>
         </header>
-        <div ref={responseList} onScroll={event => { const list = event.currentTarget; followLatest.current = list.scrollHeight - list.scrollTop - list.clientHeight < 64; }} className="h-96 min-h-0 min-w-0 flex-1 space-y-5 overflow-y-auto p-4 lg:h-auto">
+        <div ref={responseList} onScroll={event => { const list = event.currentTarget; followLatest.current = list.scrollHeight - list.scrollTop - list.clientHeight < 64; }} className="flex h-96 min-h-0 min-w-0 flex-1 flex-col gap-5 overflow-y-auto p-4 lg:h-auto [&>*]:shrink-0">
           {notice && <p role="status" className="rounded border bg-background p-3 text-xs leading-5">{notice}</p>}
           <ErrorNotice error={sendError} /><ErrorNotice error={history.error} retry={history.refresh} />
           {!!history.streamError && <div className="rounded-md border p-3 text-xs text-muted-foreground"><p>{history.streamError instanceof Error ? history.streamError.message : '实时连接暂不可用。'}</p><p>{history.status === 'blocked' ? '请检查登录状态或访问权限后重新连接。' : '已显示的记录会保留，连接恢复后自动补查。'}</p>{history.status === 'blocked' && <Button variant="outline" size="sm" className="mt-2" onClick={history.refresh}>重新连接</Button>}</div>}
           {history.isLoading && <Loading />}
-          {!history.isLoading && !history.error && liveRecords.length === 0 && <div className="flex min-h-60 flex-col items-center justify-center gap-3 text-center"><Terminal className="size-7 text-muted-foreground/40" /><p className="text-sm font-medium">本次调试暂无指令</p><p className="max-w-64 text-xs leading-5 text-muted-foreground">在左侧下发属性或调用动作，这里实时显示请求和设备回复。历史记录请到「指令记录」查看。</p></div>}
+          {!history.isLoading && !history.error && liveRecords.length === 0 && <div className="flex min-h-60 flex-1 flex-col items-center justify-center gap-3 text-center"><Terminal className="size-7 text-muted-foreground/40" /><p className="text-sm font-medium">本次调试暂无指令</p><p className="max-w-64 text-xs leading-5 text-muted-foreground">在左侧下发属性或调用动作，这里实时显示请求和设备回复。历史记录请到「指令记录」查看。</p></div>}
           {liveRecords.map(row => <CommandExchange key={row.requestId} record={row} onDetails={setSelected} />)}
 
         </div>
