@@ -58,8 +58,8 @@ export default function CommandField({ schema, value, onChange, label, disabled 
     </div>;
   }
   const titleParts = label.split(' · ');
-  return <Field orientation={inline ? 'horizontal' : 'vertical'} data-invalid={touched && !!error} className={cn('min-w-0 gap-2', inline && 'grid! grid-cols-[minmax(0,0.85fr)_minmax(0,1.4fr)] items-center gap-x-4')}>
-    {(type !== 'object' || inline) && <div className="min-w-0 space-y-0.5"><FieldLabel className="text-sm font-medium" htmlFor={type === 'array' ? undefined : id}>{titleParts[0]}</FieldLabel>{titleParts[1] && <FieldDescription className="truncate font-mono text-[11px] leading-4">{titleParts[1]}</FieldDescription>}</div>}
+  return <Field orientation={inline ? 'horizontal' : 'vertical'} data-invalid={touched && !!error} className={cn('min-w-0 gap-2', inline && 'grid! grid-cols-[minmax(0,0.85fr)_minmax(0,1.4fr)] items-center gap-x-4', controlPanel && 'mt-auto min-h-10 items-center! gap-x-2')}>
+    {(type !== 'object' || inline) && <div className={cn('min-w-0 space-y-0.5', controlPanel && 'flex flex-wrap items-baseline gap-x-1.5 gap-y-0')}><FieldLabel className="text-sm font-medium" htmlFor={type === 'array' ? undefined : id}>{titleParts[0]}</FieldLabel>{titleParts[1] && <FieldDescription className={cn('font-mono text-[11px] leading-4', controlPanel ? 'break-all' : 'truncate')}>{titleParts[1]}</FieldDescription>}</div>}
     <FieldContent title={controlPanel ? hint : undefined} className={cn('min-w-0', type === 'object' && 'col-span-full')}>
       {control}
       <div id={`${id}-hint`}>{hint && (controlPanel ? <span className="sr-only">{hint}</span> : <FieldDescription className="text-xs">{hint}</FieldDescription>)}{touched && error && !['object', 'array'].includes(type) && canRepresent(schema, value) && <FieldError className="text-xs">{error}</FieldError>}</div>

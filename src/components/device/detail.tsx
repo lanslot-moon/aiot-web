@@ -85,6 +85,8 @@ export default function DeviceDetails({ projectId, id, back, openGroup, backLabe
   }, [device?.lifecycle, revalidateDevice, back]);
   const product = useDeviceProduct(projectId, device?.productId);
   const refresh = () => { void resource.mutate(); };
+  const debugAllowed = device?.lifecycle === 'ACTIVE';
+  const debugUnavailableReason = device?.lifecycle === 'PENDING_ACTIVATION' ? '设备尚未激活，激活后才能使用设备调试。' : device?.lifecycle === 'DISABLED' ? '设备已停用，启用且已激活后才能使用设备调试。' : '设备当前状态不支持调试。';
   return <div className="min-w-0 space-y-2">
     <div className="flex flex-wrap items-center justify-between gap-3">
       <Button variant="ghost" size="sm" onClick={back}><ArrowLeft className="size-4" />{backLabel}</Button>
@@ -120,8 +122,9 @@ export default function DeviceDetails({ projectId, id, back, openGroup, backLabe
         </CollapsibleContent>
       </Collapsible>
       {device.lifecycle === 'DELETING' && <p role="status" className="rounded-lg border bg-muted/30 p-3 text-sm">设备正在解绑或清理数据，资料和分类已停止编辑。若处理未完成，请对同一设备重试原操作；不要将部分失败视为操作未执行。</p>}
-      <Tabs value={tab} onValueChange={v => setTab(String(v))} className="min-w-0 flex-col! gap-2">
-        <DeviceTabsNav variant="default" label="设备详情" items={[{ value: 'profile', label: '设备概览', icon: LayoutDashboard }, { value: 'hardware', label: '硬件资料', icon: Cpu }, { value: 'tags', label: '标签', icon: Tags }, { value: 'groups', label: '所属分组', icon: FolderTree }, { value: 'simulation', label: '设备模拟', icon: FlaskConical }, { value: 'commands', label: '设备调试', icon: Send }]} />
+      <Tabs value={tab} onValueChange={value => { const next = String(value); if (next === 'commands' && !debugAllowed) return; setTab(next); if (next === 'commands') setSummaryOpen(false); }} className="min-w-0 flex-col! gap-2">
+        <DeviceTabsNav variant="default" label="设备详情" items={[{ value: 'profile', label: '设备概览', icon: LayoutDashboard }, { value: 'hardware', label: '硬件资料', icon: Cpu }, { value: 'tags', label: '标签', icon: Tags }, { value: 'groups', label: '所属分组', icon: FolderTree }, { value: 'simulation', label: '设备模拟', icon: FlaskConical }, { value: 'commands', label: '设备调试', icon: Send, disabled: !debugAllowed, disabledReason: debugAllowed ? undefined : debugUnavailableReason }]} />
+        {!debugAllowed && <p role="status" className="px-1 text-xs text-muted-foreground">{debugUnavailableReason}</p>}
         <TabsContent value="profile">
           <div className="grid overflow-hidden rounded-xl border xl:grid-cols-[minmax(0,1.7fr)_minmax(18rem,1fr)]">
             <section className="min-w-0 p-4 sm:p-5">
@@ -149,7 +152,7 @@ export default function DeviceDetails({ projectId, id, back, openGroup, backLabe
         <TabsContent value="groups">{tab === 'groups' && <CursorList<DeviceMembership> projectId={projectId} path={`${devicePath(id)}/groups`} emptyTitle="尚未加入分组" emptyDescription="到静态分组的成员页添加设备，这里只显示直接所属组。">{(items, reload) => <DataTable rows={items} columns={[{ label: '分组', render: m => <Button variant="link" onClick={() => openGroup(m.group.groupId)}>{m.group.name}</Button> }, { label: '加入时间', render: m => formatTime(m.joinedAt) }, ...device.lifecycle !== 'DELETING' ? [{ label: '操作', render: (m: DeviceMembership) => <Action label="移出分组" permission="device:update" description={`只移除与「${m.group.name}」的直接关系，不删除设备，也不影响其他组。`} run={async () => { await deviceRequest(projectId, `${groupPath(m.group.groupId)}/devices/${encodeURIComponent(id)}`, 'DELETE');  }} done={reload} /> }] : []]} />}</CursorList>}</TabsContent>
         <TabsContent value="hardware">{tab === 'hardware' && <Hardware projectId={projectId} id={id} />}</TabsContent>
         <TabsContent value="simulation"><Empty className="min-h-64 rounded-lg border border-dashed"><EmptyHeader><EmptyMedia variant="icon"><FlaskConical /></EmptyMedia><EmptyTitle>设备模拟待开放</EmptyTitle><EmptyDescription>后续可在这里配置模拟数据、启动或停止模拟，并查看运行记录。</EmptyDescription></EmptyHeader></Empty></TabsContent>
-        <TabsContent value="commands">{tab === 'commands' && <DeviceCommands key={id} projectId={projectId} device={device} />}</TabsContent>
+        <TabsContent value="commands">{tab === 'commands' && (debugAllowed ? <DeviceCommands key={id} projectId={projectId} device={device} /> : <p role="status" className="rounded-lg border bg-muted/20 p-4 text-sm">{debugUnavailableReason}</p>)}</TabsContent>
       </Tabs>
     </>}
   </div>;

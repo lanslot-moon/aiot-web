@@ -46,12 +46,12 @@ export function DeviceSection({ title, description, actions, children }: {
 }
 
 export function DeviceTabsNav({ label, items, actions, variant = 'line' }: {
-  label: string; items: { value: string; label: string; icon?: LucideIcon }[]; actions?: ReactNode; variant?: 'line' | 'default';
+  label: string; items: { value: string; label: string; icon?: LucideIcon; disabled?: boolean; disabledReason?: string }[]; actions?: ReactNode; variant?: 'line' | 'default';
 }) {
   return <div className={cn('flex min-w-0 flex-wrap items-center justify-between gap-x-4 gap-y-2', variant === 'line' ? 'border-b pb-1' : 'rounded-lg border bg-muted/20 p-1')}>
     <div className={cn('min-w-0 max-w-full overflow-x-auto', variant === 'line' && 'pb-1')}>
       <TabsList variant={variant} aria-label={label} className={cn('h-auto! w-max justify-start bg-transparent', variant === 'default' && 'gap-1 p-0!')}>
-        {items.map(item => <TabsTrigger key={item.value} value={item.value} className={cn(variant === 'default' && 'h-7! flex-none gap-1.5 rounded-md px-2.5 text-xs! font-medium data-active:bg-background data-active:shadow-sm')}>
+        {items.map(item => <TabsTrigger key={item.value} value={item.value} disabled={item.disabled} title={item.disabledReason} className={cn(variant === 'default' && 'h-7! flex-none gap-1.5 rounded-md px-2.5 text-xs! font-medium data-active:bg-background data-active:shadow-sm')}>
           {item.icon && <item.icon className="size-3.5" aria-hidden />}{item.label}
         </TabsTrigger>)}
       </TabsList>
