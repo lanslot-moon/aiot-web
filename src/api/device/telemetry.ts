@@ -72,3 +72,13 @@ export async function reportStreamPage(projectId: string, device: DeviceDetail, 
   }
   return { items, next, hasMore: Object.values(next).some(source => source.hasMore || source.buffer.length > 0) };
 }
+
+/** Load a bounded, independent chart sample; table pagination never changes the chart. */
+export function propertyChartPage(projectId: string, device: DeviceDetail, code: string, from: number, to: number) {
+  if (!code || !Number.isSafeInteger(from) || !Number.isSafeInteger(to) || from < 0 || to <= from || to - from > MAX_REPORT_RANGE_MS) {
+    throw new Error('请选择单个属性及最多七天的有效时间范围。');
+  }
+  return request<CursorPage<PropertyReport>>(`/api/v1/telemetry/devices/${encodeURIComponent(device.deviceId)}/properties/history:query`, 'POST', {
+    ...telemetryScope(device), codes: [code], from, to, pageSize: 1000, cursor: null,
+  }, { projectId, successCode: '200' });
+}
