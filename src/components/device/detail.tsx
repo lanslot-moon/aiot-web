@@ -99,7 +99,7 @@ export default function DeviceDetails({ projectId, id, back, openGroup, backLabe
       </Collapsible>
       {device.lifecycle === 'DELETING' && <p role="status" className="rounded-lg border bg-muted/30 p-3 text-sm">设备正在删除，资料和分类已停止编辑。若清理未完成，可继续删除同一设备。</p>}
       <Tabs value={tab} onValueChange={v => setTab(String(v))} className="min-w-0 flex-col! gap-2">
-        <DeviceTabsNav variant="default" label="设备详情" items={[{ value: 'profile', label: '设备概览', icon: LayoutDashboard }, { value: 'tags', label: '标签', icon: Tags }, { value: 'groups', label: '所属分组', icon: FolderTree }, { value: 'hardware', label: '硬件资料', icon: Cpu }, { value: 'simulation', label: '设备模拟', icon: FlaskConical }, { value: 'commands', label: '设备调试', icon: Send }]} />
+        <DeviceTabsNav variant="default" label="设备详情" items={[{ value: 'profile', label: '设备概览', icon: LayoutDashboard }, { value: 'hardware', label: '硬件资料', icon: Cpu }, { value: 'tags', label: '标签', icon: Tags }, { value: 'groups', label: '所属分组', icon: FolderTree }, { value: 'simulation', label: '设备模拟', icon: FlaskConical }, { value: 'commands', label: '设备调试', icon: Send }]} />
         <TabsContent value="profile">
           <div className="grid overflow-hidden rounded-xl border xl:grid-cols-[minmax(0,1.7fr)_minmax(18rem,1fr)]">
             <section className="min-w-0 p-4 sm:p-5">
