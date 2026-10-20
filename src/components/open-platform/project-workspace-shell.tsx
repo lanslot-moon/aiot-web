@@ -377,7 +377,7 @@ export function ProjectWorkspaceShell({
   return (
     <div className="flex flex-col gap-px">
       <Collapsible open={projectHeaderOpen} onOpenChange={handleProjectHeaderOpenChange}>
-        <Card className={cn('gap-0 px-5 py-3', primaryTab === 'devices' && 'py-2!')}>
+        <Card className="gap-0 px-5 py-3">
           <div className="flex flex-wrap items-center gap-2">
             {navigationMode === 'tabs' && <Button
               variant="ghost"
