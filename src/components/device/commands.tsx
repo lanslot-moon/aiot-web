@@ -150,12 +150,19 @@ export default function DeviceCommands({ projectId, device }: { projectId: strin
           </div>
         </header>
         <div ref={responseList} onScroll={event => { const list = event.currentTarget; followLatest.current = list.scrollHeight - list.scrollTop - list.clientHeight < 64; }} className="max-h-[36rem] min-h-0 min-w-0 flex-1 space-y-5 overflow-y-auto p-4 lg:max-h-none">
+          {(history.hasMore || history.historyLoaded) && <div className="flex items-center justify-center gap-3 py-1">
+            <span aria-hidden className="h-px w-10 bg-border/70" />
+            {history.hasMore ? <button type="button" disabled={history.isValidating} title="加载本次打开调试页前 24 小时的指令记录" onClick={() => { followLatest.current = false; history.loadMore(); }} className="inline-flex items-center gap-1.5 rounded-sm px-1 py-0.5 text-xs text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-wait disabled:opacity-60">
+              {history.isValidating && history.historyLoaded ? <RefreshCw aria-hidden className="size-3 animate-spin" /> : <History aria-hidden className="size-3" />}
+              {history.isValidating && history.historyLoaded ? '正在加载历史指令…' : history.historyLoaded ? '加载更早的历史指令' : '加载历史指令'}
+            </button> : <span className="text-xs text-muted-foreground">最近 24 小时的历史记录已全部加载</span>}
+            <span aria-hidden className="h-px w-10 bg-border/70" />
+          </div>}
           {notice && <p role="status" className="rounded border bg-background p-3 text-xs leading-5">{notice}</p>}
           <ErrorNotice error={sendError} /><ErrorNotice error={history.error} retry={history.refresh} />
           {!!history.streamError && <div className="rounded-md border p-3 text-xs text-muted-foreground"><p>{history.streamError instanceof Error ? history.streamError.message : '实时连接暂不可用。'}</p><p>{history.status === 'blocked' ? '请检查登录状态或访问权限后重新连接。' : '已显示的记录会保留，连接恢复后自动补查。'}</p>{history.status === 'blocked' && <Button variant="outline" size="sm" className="mt-2" onClick={history.refresh}>重新连接</Button>}</div>}
           {history.isLoading && <Loading />}
-          {!history.isLoading && !history.error && records.length === 0 && <div className="flex min-h-72 flex-col items-center justify-center gap-3 text-center"><History className="size-7 text-muted-foreground/40" /><p className="text-sm font-medium">等待发送指令</p><p className="max-w-56 text-xs leading-5 text-muted-foreground">发送后，请求参数显示在左侧，设备回复显示在右侧。</p></div>}
-          {history.hasMore && <Button variant="outline" disabled={history.isValidating} onClick={() => { followLatest.current = false; history.loadMore(); }}>加载更早的记录</Button>}
+          {!history.isLoading && !history.error && records.length === 0 && <div className="flex min-h-72 flex-col items-center justify-center gap-3 text-center"><History className="size-7 text-muted-foreground/40" /><p className="text-sm font-medium">{history.historyLoaded ? '暂无指令记录' : '本次调试暂无指令'}</p><p className="max-w-56 text-xs leading-5 text-muted-foreground">{history.historyLoaded ? '当前筛选下没有本次调试或打开页面前 24 小时的记录。' : '这里只显示本次打开调试页后的指令。之前的记录可按需加载。'}</p></div>}
           {records.map(row => <CommandExchange key={row.requestId} record={row} onDetails={setSelected} />)}
 
         </div>

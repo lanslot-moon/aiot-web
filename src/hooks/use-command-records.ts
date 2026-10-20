@@ -6,9 +6,9 @@ import { query, type CursorPage } from '@/api/device/client';
 import { useIam } from '@/context/iam-context/identity';
 
 type StreamStatus = 'connecting' | 'live' | 'reconnecting' | 'paused' | 'blocked';
-type Store = { scope: string; records: Map<string, CommandRecord>; boundary: string | null; cursor: string | null; hasMore: boolean };
+type Store = { scope: string; records: Map<string, CommandRecord>; boundary: string | null; cursor: string | null; hasMore: boolean; historyLoaded: boolean };
 type View = {
-  store: Store; records: CommandRecord[]; hasMore: boolean; isLoading: boolean;
+  store: Store; records: CommandRecord[]; hasMore: boolean; historyLoaded: boolean; isLoading: boolean;
   isValidating: boolean; error?: unknown; streamError?: unknown; status: StreamStatus;
 };
 const subscribeVisibility = (listener: () => void) => {
@@ -34,7 +34,12 @@ export function useCommandRecords(projectId: string, deviceId: string, filter: s
   const accessToken = session?.accessToken;
   const visible = useSyncExternalStore(subscribeVisibility, isVisible, visibleOnServer);
   const [epoch, setEpoch] = useState(0);
-  const store = useMemo<Store>(() => ({ scope: JSON.stringify([projectId, deviceId, filter, sessionId]), records: new Map(), boundary: null, cursor: null, hasMore: false }),
+  // The session boundary survives filters, token renewal, visibility changes and reconnects.
+  const sessionWindow = useMemo(() => ({ scope: JSON.stringify([projectId, deviceId, sessionId]), startedAt: Date.now() }),
+    [projectId, deviceId, sessionId]);
+  const startedAt = sessionWindow.startedAt;
+  const historyFrom = Math.max(0, startedAt - 24 * 60 * 60 * 1000);
+  const store = useMemo<Store>(() => ({ scope: JSON.stringify([projectId, deviceId, filter, sessionId]), records: new Map(), boundary: null, cursor: null, hasMore: true, historyLoaded: false }),
     [projectId, deviceId, filter, sessionId]);
   const [view, setView] = useState<View>();
   const loadMore = useRef<(() => void) | null>(null);
@@ -43,7 +48,7 @@ export function useCommandRecords(projectId: string, deviceId: string, filter: s
     const controller = new AbortController();
     const { signal } = controller;
     let status: StreamStatus = 'connecting';
-    let loading = store.records.size === 0;
+    let loading = false;
     let validating = false;
     let error: unknown;
     let streamError: unknown;
@@ -56,18 +61,20 @@ export function useCommandRecords(projectId: string, deviceId: string, filter: s
       if (signal.aborted) return;
       setView({ store, records: [...store.records.values()].sort((a, b) =>
         a.createTime - b.createTime || a.requestId.localeCompare(b.requestId)),
-      hasMore: store.hasMore, isLoading: loading, isValidating: validating, error, streamError, status });
+      hasMore: store.hasMore, historyLoaded: store.historyLoaded, isLoading: loading, isValidating: validating, error, streamError, status });
     };
     const merge = (rows: CommandRecord[]) => {
       for (const row of rows) {
         if (!isRecord(row, deviceId)) throw new Error('指令记录格式异常，无法合并实时版本。');
         if (filter && row.commandType !== filter) continue;
+        if (row.createTime < startedAt && (!store.historyLoaded || row.createTime < historyFrom)) continue;
         const current = store.records.get(row.requestId);
         if (!current || row.version > current.version) store.records.set(row.requestId, row);
+        if (row.createTime < startedAt && (!store.boundary || row.requestId < store.boundary)) store.boundary = row.requestId;
       }
     };
-    const page = (cursor: string | null) => request<CursorPage<CommandRecord>>(
-      base + '/commands' + query({ pageSize: 20, commandType: filter, cursor }),
+    const page = (cursor: string | null, createdFrom: number, createdTo: number) => request<CursorPage<CommandRecord>>(
+      base + '/commands' + query({ pageSize: 20, commandType: filter, cursor, createdFrom, createdTo }),
       'GET', undefined, { projectId, signal },
     );
     const recover = (): Promise<void> => {
@@ -76,13 +83,29 @@ export function useCommandRecords(projectId: string, deviceId: string, filter: s
       if (loadingMore) return loadingMore.then(recover);
       initialSnapshotAttempted = true;
       validating = true; error = undefined; publish();
-      // History is ordered by requestId, not time. Walk through the previously
-      // loaded lowest ID so updates on every visible page are repaired.
       const boundary = store.boundary;
       recovering = (async () => {
+        // Repair only commands created during this debugging session. Split long
+        // sessions into the API's maximum seven-day windows and exhaust each one.
+        const end = Math.max(startedAt + 1, Date.now());
+        for (let from = startedAt; from < end; from += 7 * 24 * 60 * 60 * 1000) {
+          const to = Math.min(end, from + 7 * 24 * 60 * 60 * 1000);
+          let cursor: string | null = null;
+          do {
+            const result = await page(cursor, from, to);
+            if (signal.aborted) return;
+            merge(result.items); publish();
+            if (!result.hasMore || !result.nextCursor) break;
+            if (result.nextCursor === cursor) throw new Error('本次调试记录游标未前进，请重新连接。');
+            cursor = result.nextCursor;
+          } while (!signal.aborted);
+        }
+        if (!store.historyLoaded) return;
+        // Older history stays opt-in. Once requested, repair all loaded pages by
+        // their ID boundary; it is independent from the current-session window.
         let cursor: string | null = null;
         do {
-          const result = await page(cursor);
+          const result = await page(cursor, historyFrom, startedAt);
           if (signal.aborted) return;
           merge(result.items);
           store.cursor = result.nextCursor;
@@ -100,9 +123,10 @@ export function useCommandRecords(projectId: string, deviceId: string, filter: s
       return recovering;
     };
     loadMore.current = () => {
-      if (validating || !store.hasMore || !store.cursor || signal.aborted) return;
+      if (validating || !store.hasMore || signal.aborted) return;
+      store.historyLoaded = true;
       validating = true; error = undefined; publish();
-      loadingMore = page(store.cursor).then(result => {
+      loadingMore = page(store.cursor, historyFrom, startedAt).then(result => {
         if (signal.aborted) return;
         merge(result.items);
         store.cursor = result.nextCursor; store.hasMore = result.hasMore;
@@ -115,7 +139,7 @@ export function useCommandRecords(projectId: string, deviceId: string, filter: s
 
     if (!allowed || !accessToken || !visible) {
       if (!allowed || !accessToken) {
-        store.records.clear(); store.boundary = null; store.cursor = null; store.hasMore = false;
+        store.records.clear(); store.boundary = null; store.cursor = null; store.hasMore = true; store.historyLoaded = false;
       }
       status = !visible ? 'paused' : 'blocked'; loading = false; publish();
       loadMore.current = null;
@@ -166,8 +190,8 @@ export function useCommandRecords(projectId: string, deviceId: string, filter: s
             status = 'blocked'; loading = false; publish(); return;
           }
           status = 'reconnecting'; publish();
-          // When the initial stream cannot open, still show a one-time snapshot.
-          // Subsequent history repair is driven by ready, never by polling.
+          // Failure recovery also respects the session boundary. It never opts
+          // the user into older history or starts a polling loop.
           if (!initialSnapshotAttempted) void recover();
         } finally {
           await reader?.cancel().catch(() => undefined);
@@ -184,12 +208,13 @@ export function useCommandRecords(projectId: string, deviceId: string, filter: s
     };
     void run();
     return () => { controller.abort(); clearTimeout(retryTimer); loadMore.current = null; };
-  }, [store, projectId, deviceId, filter, allowed, accessToken, visible, epoch]);
+  }, [store, projectId, deviceId, filter, allowed, accessToken, visible, epoch, startedAt, historyFrom]);
 
   const current = view?.store === store ? view : undefined;
   return {
     records: allowed && sessionId ? current?.records ?? [] : [], hasMore: allowed && !!sessionId && (current?.hasMore ?? false),
-    isLoading: current?.isLoading ?? !!(allowed && sessionId), isValidating: current?.isValidating ?? false,
+    historyLoaded: current?.historyLoaded ?? false,
+    isLoading: current?.isLoading ?? false, isValidating: current?.isValidating ?? false,
     error: current?.error, streamError: current?.streamError, status: current?.status ?? 'connecting',
     refresh: () => setEpoch(value => value + 1), loadMore: () => loadMore.current?.(),
   };
