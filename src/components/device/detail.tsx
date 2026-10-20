@@ -1,5 +1,5 @@
 import { DeviceTable as DataTable } from './layout';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { ArrowLeft, ChevronDown, ChevronUp, RefreshCw, FlaskConical, Send, LayoutDashboard, Tags, FolderTree, Cpu } from 'lucide-react';
 import { ProductIconPreview } from '@/components/open-platform/product-icon-preview';
@@ -62,6 +62,27 @@ export default function DeviceDetails({ projectId, id, back, openGroup, backLabe
   const [summaryOpen, setSummaryOpen] = useState(true);
   const resource = useDeviceResource<DeviceDetail>(projectId, devicePath(id));
   const device = resource.data;
+  const revalidateDevice = resource.mutate;
+  useEffect(() => {
+    if (device?.lifecycle !== 'DELETING') return;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout>;
+    async function checkProgress() {
+      try {
+        const latest = await revalidateDevice();
+        if (cancelled || latest?.lifecycle !== 'DELETING') return;
+      } catch (error) {
+        if (cancelled) return;
+        if (error instanceof OpenPlatformApiError) {
+          if (error.status === 404) { back(); return; }
+          if (error.status === 401 || error.status === 403) return;
+        }
+      }
+      if (!cancelled) timer = setTimeout(() => void checkProgress(), 3000);
+    }
+    timer = setTimeout(() => void checkProgress(), 3000);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [device?.lifecycle, revalidateDevice, back]);
   const product = useDeviceProduct(projectId, device?.productId);
   const refresh = () => { void resource.mutate(); };
   return <div className="min-w-0 space-y-2">
