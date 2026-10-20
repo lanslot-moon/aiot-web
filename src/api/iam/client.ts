@@ -163,12 +163,12 @@ export async function renewSession(): Promise<TokenVO> {
   })();
   return renewal;
 }
-export async function request<T>(
+export async function requestResponse(
   path: string,
   method = 'GET',
   body?: unknown,
-  options: { anonymous?: boolean; signal?: AbortSignal; projectId?: string; successCode?: '200' | 'OK' } = {},
-): Promise<T> {
+  options: { anonymous?: boolean; signal?: AbortSignal; projectId?: string; accept?: string } = {},
+): Promise<Response> {
   if (!path.startsWith('/api/v1/')) throw new Error('Only gateway API paths are accepted');
   // 项目协作与凭证接口同时传递路径项目和候选项目头，供网关与 IAM 核对。
   // 项目基本资料属于平台作用域，加入申请创建发生在入项前，不附带项目授权上下文。
@@ -186,6 +186,7 @@ export async function request<T>(
       method,
       signal: options.signal,
       headers: {
+        ...(options.accept ? { Accept: options.accept } : {}),
         ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
         ...(projectId ? { 'X-Project-Id': projectId } : {}),
         ...(!options.anonymous && session?.accessToken
@@ -198,11 +199,13 @@ export async function request<T>(
     const initialToken = session?.accessToken;
     let response = await send();
     if (response.status === 401 && !options.anonymous && session?.refreshToken) {
+      await response.body?.cancel();
       if (session.accessToken === initialToken) await renewSession();
+      options.signal?.throwIfAborted();
       response = await send();
     }
     if (response.status === 401 && !options.anonymous) setSession(null);
-    return await parseResponse<T>(response, options.successCode);
+    return response;
   } catch (error) {
     if (
       error instanceof OpenPlatformApiError ||
@@ -211,6 +214,15 @@ export async function request<T>(
       throw error;
     throw new OpenPlatformApiError('NETWORK_ERROR', '无法连接服务，请检查网络后重试。');
   }
+}
+export async function request<T>(
+  path: string,
+  method = 'GET',
+  body?: unknown,
+  options: { anonymous?: boolean; signal?: AbortSignal; projectId?: string; successCode?: '200' | 'OK' } = {},
+): Promise<T> {
+  const response = await requestResponse(path, method, body, options);
+  return parseResponse<T>(response, options.successCode);
 }
 export const get = <T>(path: string) => request<T>(path);
 export const post = <T>(path: string, body?: unknown) => request<T>(path, 'POST', body);

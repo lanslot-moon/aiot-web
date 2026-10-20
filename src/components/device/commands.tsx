@@ -2,26 +2,27 @@ import { useEffect, useRef, useState } from 'react';
 import { Braces, History, RefreshCw, Send, Terminal, RotateCcw, Search, X, SlidersHorizontal, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 import { request } from '@/api/iam/client';
-import { type CursorPage, type DeviceDetail, formatTime, query } from '@/api/device/client';
+import { type DeviceDetail, formatTime } from '@/api/device/client';
 import { commandPath, commandRequest, deliveryLabels, executionLabels, parseCommandInput, type CommandRecord } from '@/api/device/commands';
 import type { ThingModelDefinition } from '@/types/apps/open-platform';
 import { usePermission } from '@/context/iam-context/identity';
 import { useResource } from '@/components/iam/shared-utils';
 import { ErrorNotice, Loading } from '@/components/iam/shared';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '@/components/ui/input-group';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { CommandSelect } from './command-select';
+import { CommandExchange } from './command-exchange';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DeviceInput } from './layout';
 import { cn } from '@/lib/utils';
 import CommandField from './command-fields';
 import { canRepresent, fieldError, initialValue, schemaObject, supportsForm } from './command-schema';
+import { useCommandRecords } from '@/hooks/use-command-records';
 
 const pretty = (value: unknown) => JSON.stringify(value, null, 2);
 function JsonBlock({ text }: { text: string | null }) {
@@ -32,6 +33,7 @@ function JsonBlock({ text }: { text: string | null }) {
 
 export default function DeviceCommands({ projectId, device }: { projectId: string; device: DeviceDetail }) {
   const allowed = usePermission('device:command');
+  const canView = usePermission('device:view');
   const [mode, setMode] = useState('PROPERTY');
   const [functionSearch, setFunctionSearch] = useState('');
   const [code, setCode] = useState('');
@@ -45,20 +47,16 @@ export default function DeviceCommands({ projectId, device }: { projectId: strin
   const [sendError, setSendError] = useState<unknown>();
   const [notice, setNotice] = useState('');
   const [filter, setFilter] = useState('');
-  const [autoRefresh, setAutoRefresh] = useState(true);
-  const [cursor, setCursor] = useState<string | null>(null);
-  const [previous, setPrevious] = useState<CommandRecord[]>([]);
   const [selected, setSelected] = useState<CommandRecord | null>(null);
-  const history = useResource<CursorPage<CommandRecord>>(
-    commandPath(device.deviceId) + '/commands' + query({ pageSize: 20, commandType: filter, cursor }),
-    'device:view', path => commandRequest(projectId, path), `commands:${projectId}`,
-  );
-  const refreshResponses = history.mutate;
+  const responseList = useRef<HTMLDivElement>(null);
+  const followLatest = useRef(true);
+  const history = useCommandRecords(projectId, device.deviceId, filter, canView);
+  const records = history.records;
+  const selectedRecord = selected ? records.find(row => row.requestId === selected.requestId) ?? null : null;
   useEffect(() => {
-    if (!autoRefresh || cursor) return;
-    const timer = window.setInterval(() => { void refreshResponses(); }, 5000);
-    return () => window.clearInterval(timer);
-  }, [autoRefresh, cursor, refreshResponses]);
+    const list = responseList.current;
+    if (list && followLatest.current) list.scrollTop = list.scrollHeight;
+  }, [records]);
   const model = useResource<ThingModelDefinition | null>(
     `/api/v1/products/${encodeURIComponent(device.productId)}/model/published`, 'product:view',
     path => request(path, 'GET', undefined, { projectId }), `command-model:${projectId}`,
@@ -83,8 +81,7 @@ export default function DeviceCommands({ projectId, device }: { projectId: strin
     setValidation(''); setEditor(next);
   }
   const blocked = !allowed ? '当前账号没有下发指令的权限。' : device.lifecycle !== 'ACTIVE' ? '设备已激活且未停用时才能下发指令。' : '';
-  const records = [...previous, ...(history.data?.items ?? [])];
-  const resetHistory = () => { setPrevious([]); setCursor(null); void history.mutate(); };
+  const resetHistory = () => { followLatest.current = true; history.refresh(); };
   function validate() {
     try {
       const value = parseCommandInput(text, mode);
@@ -109,7 +106,7 @@ export default function DeviceCommands({ projectId, device }: { projectId: strin
       });
       const message = result === true ? '指令已投递，请在右侧查看设备执行结果。' : '指令未确认投递，请先刷新记录核对结果。';
       if (result === true && mode === 'PROPERTY') setText('{}');
-      setNotice(message); toast.message(message); setConfirm(false); resetHistory();
+      setNotice(message); toast.message(message); setConfirm(false); followLatest.current = true;
     } catch (error) {
       setSendError(error); setConfirm(false);
       setNotice('本次请求未能确认结果，请先刷新指令记录核对，避免重复执行。'); resetHistory();
@@ -117,22 +114,15 @@ export default function DeviceCommands({ projectId, device }: { projectId: strin
   }
   function selectCapability(next: string) {
     setCode(next); setValidation('');
-    if (mode === 'PROPERTY' && next) {
-      const item = properties.find(property => property.code === next);
-      setText(pretty({ ...formValue, [next]: Object.prototype.hasOwnProperty.call(formValue, next) ? formValue[next] : initialValue(item?.schema) }));
-    } else {
-      const item = actions.find(action => action.code === next);
-      setText(pretty(initialValue(item?.inputSchema) ?? {}));
-    }
+    const item = actions.find(action => action.code === next);
+    setText(pretty(initialValue(item?.inputSchema) ?? {}));
   }
   return <div className="min-w-0 space-y-4">
-    <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-4"><div className="space-y-1"><h3 className="text-base font-semibold">设备控制台</h3><p className="text-xs text-muted-foreground">{device.deviceName}<span className="mx-2 text-border">/</span><code>{device.deviceId}</code></p></div><Badge variant="outline">即时指令</Badge></div>
-    <div className="grid min-w-0 overflow-hidden rounded-lg border lg:h-[38rem] lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+    <div className="grid min-w-0 overflow-hidden rounded-lg border lg:h-[38rem] lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
       <section className="flex min-h-0 min-w-0 flex-col">
         <header className="flex flex-wrap items-center justify-between gap-2 border-b px-5 py-3"><ToggleGroup value={[mode]} multiple={false} disabled={busy} onValueChange={values => { if (!values.length) return; setMode(String(values[0])); setCode(''); setText('{}'); setValidation(''); }} size="sm" spacing={1} className="bg-muted/60 p-0.5" aria-label="指令类型"><ToggleGroupItem value="PROPERTY" className="aria-pressed:bg-background aria-pressed:shadow-sm"><SlidersHorizontal className="size-3.5" />属性控制</ToggleGroupItem><ToggleGroupItem value="ACTION" className="aria-pressed:bg-background aria-pressed:shadow-sm"><Zap className="size-3.5" />服务调用</ToggleGroupItem></ToggleGroup><Button size="sm" variant="ghost" disabled={busy} onClick={() => changeEditor(editor === 'visual' ? 'json' : 'visual')}><Braces className="size-3.5" />{editor === 'visual' ? 'JSON 编辑' : '可视化控制'}</Button></header>
         <ScrollArea className="h-[28rem] min-h-0 min-w-0 flex-1 lg:h-auto"><div className="space-y-3 p-4" role="region" aria-label="设备功能操作区">
-          <div className="flex items-center justify-between gap-2"><p className="text-sm font-medium">{mode === 'PROPERTY' ? '控制设备功能' : '调用设备服务'}</p><Badge variant="secondary" className="text-[11px] font-normal">{mode === 'PROPERTY' && editor === 'visual' ? `${Object.keys(formValue).length} 项待发送` : '单次调用'}</Badge></div>
-          {(mode === 'ACTION' || editor === 'json') && <div className="space-y-2"><Label htmlFor="command-capability">{mode === 'ACTION' ? '选择服务' : '添加属性到指令'}</Label><CommandSelect id="command-capability" value={code} disabled={busy} onValueChange={selectCapability} placeholder={mode === 'ACTION' ? '请选择要调用的服务' : '选择属性'} options={(mode === 'ACTION' ? actions : properties).map(item => ({ value: item.code, label: `${item.title} · ${item.code}` }))} /></div>}
+          {mode === 'ACTION' && <div className="space-y-2"><Label htmlFor="command-capability">选择服务</Label><CommandSelect id="command-capability" value={code} disabled={busy} onValueChange={selectCapability} placeholder="请选择要调用的服务" options={actions.map(item => ({ value: item.code, label: `${item.title} · ${item.code}` }))} /></div>}
           {model.isLoading && <Loading />}
           {model.error && <ErrorNotice error={model.error} retry={() => model.mutate()} />}
           {editor === 'visual' ? mode === 'PROPERTY' && model.data ? <div className="space-y-1">
@@ -152,19 +142,26 @@ export default function DeviceCommands({ projectId, device }: { projectId: strin
         <footer className="shrink-0 space-y-2 border-t bg-muted/10 px-4 py-3"><details><summary className="cursor-pointer text-xs text-muted-foreground">发送选项</summary><div className="mt-3 flex items-center gap-2"><Label htmlFor="command-ttl" className="text-xs">投递有效期</Label><DeviceInput id="command-ttl" type="number" min="0.001" max="30" step="0.001" className="w-20" value={ttl} disabled={busy} onChange={event => setTtl(event.target.value)} /><span className="text-xs text-muted-foreground">秒</span></div></details><div className="flex flex-wrap items-center justify-between gap-3"><span className="text-xs text-muted-foreground">发送后在右侧查看设备响应</span><div className="flex gap-2"><Button variant="outline" disabled={busy} onClick={() => { setText(pretty(mode === 'ACTION' ? initialValue(inputSchema) ?? {} : {})); setValidation(''); }}><RotateCcw className="size-3.5" />重置</Button><Button disabled={!!blocked || busy} onClick={() => { if (validate()) setConfirm(true); }}><Send className="size-3.5" />发送指令</Button></div></div></footer>
       </section>
       <section className="flex min-h-0 min-w-0 flex-col border-t bg-muted/10 lg:border-t-0 lg:border-l" aria-label="指令响应">
-        <header className="flex flex-wrap items-center justify-between gap-2 border-b bg-background px-5 py-3"><h3 className="flex items-center gap-2 text-sm font-medium"><Terminal className="size-4" />指令响应</h3><div className="flex items-center gap-1"><Button size="sm" variant="ghost" aria-pressed={autoRefresh} disabled={!!cursor} onClick={() => setAutoRefresh(!autoRefresh)}>{autoRefresh && !cursor ? '5 秒刷新 · 暂停' : '自动刷新已暂停'}</Button><Button size="icon" variant="ghost" className="size-8!" aria-label="刷新响应" disabled={history.isValidating} onClick={resetHistory}><RefreshCw className="size-3.5" /></Button></div></header>
-        <div className="flex items-center justify-between gap-3 border-b px-5 py-2"><span className="text-xs text-muted-foreground">最近 24 小时 · 时间倒序</span><CommandSelect label="响应类型筛选" className="w-28 text-xs" value={filter || 'ALL'} onValueChange={value => { setFilter(value === 'ALL' ? '' : value); setPrevious([]); setCursor(null); }} placeholder="全部指令" options={[{value:'ALL',label:'全部指令'},{value:'PROPERTY',label:'属性控制'},{value:'ACTION',label:'服务调用'}]} /></div>
-        <div className="min-h-0 min-w-0 flex-1 space-y-4 p-5 lg:overflow-y-auto">
+        <header className="flex flex-wrap items-center justify-between gap-2 border-b bg-background px-5 py-3">
+          <div className="flex flex-wrap items-center gap-2"><h3 className="flex items-center gap-2 text-sm font-medium"><Terminal className="size-4" />指令响应</h3><span role="status" className="text-xs text-muted-foreground">{history.status === 'live' ? '实时更新中' : history.status === 'paused' ? '后台已暂停' : history.status === 'reconnecting' ? '正在重连' : history.status === 'blocked' ? '实时连接已停止' : '正在连接'}</span></div>
+          <div className="flex items-center gap-1">
+            <CommandSelect label="响应类型筛选" className="w-28 text-xs" value={filter || 'ALL'} onValueChange={value => { followLatest.current = true; setFilter(value === 'ALL' ? '' : value); setSelected(null); }} placeholder="全部指令" options={[{ value: 'ALL', label: '全部指令' }, { value: 'PROPERTY', label: '属性控制' }, { value: 'ACTION', label: '服务调用' }]} />
+            <Button size="icon" variant="ghost" className="size-8!" aria-label="刷新响应" disabled={history.isValidating} onClick={resetHistory}><RefreshCw className="size-3.5" /></Button>
+          </div>
+        </header>
+        <div ref={responseList} onScroll={event => { const list = event.currentTarget; followLatest.current = list.scrollHeight - list.scrollTop - list.clientHeight < 64; }} className="max-h-[36rem] min-h-0 min-w-0 flex-1 space-y-5 overflow-y-auto p-4 lg:max-h-none">
           {notice && <p role="status" className="rounded border bg-background p-3 text-xs leading-5">{notice}</p>}
-          <ErrorNotice error={sendError} /><ErrorNotice error={history.error} retry={() => history.mutate()} />
+          <ErrorNotice error={sendError} /><ErrorNotice error={history.error} retry={history.refresh} />
+          {!!history.streamError && <div className="rounded-md border p-3 text-xs text-muted-foreground"><p>{history.streamError instanceof Error ? history.streamError.message : '实时连接暂不可用。'}</p><p>{history.status === 'blocked' ? '请检查登录状态或访问权限后重新连接。' : '已显示的记录会保留，连接恢复后自动补查。'}</p>{history.status === 'blocked' && <Button variant="outline" size="sm" className="mt-2" onClick={history.refresh}>重新连接</Button>}</div>}
           {history.isLoading && <Loading />}
-          {!history.isLoading && !history.error && records.length === 0 && <div className="flex min-h-72 flex-col items-center justify-center gap-3 text-center"><History className="size-7 text-muted-foreground/40" /><p className="text-sm font-medium">等待发送指令</p><p className="max-w-56 text-xs leading-5 text-muted-foreground">在左侧调整设备功能并发送，投递状态与设备回复将在这里展示。</p></div>}
-          {records.map(row => <article key={row.requestId} className="space-y-3 rounded-lg border bg-background p-4"><div className="flex flex-wrap items-center justify-between gap-2"><h4 className="text-sm font-medium">{row.commandType === 'PROPERTY' ? '属性控制' : `服务调用 · ${row.code}`}</h4><time className="text-[11px] text-muted-foreground">{formatTime(row.createTime)}</time></div><div className="flex flex-wrap gap-2"><Badge variant="outline">{deliveryLabels[row.deliveryStatus] ?? row.deliveryStatus}</Badge><Badge variant="outline" className={cn(['FAILED', 'REJECTED'].includes(row.executionStatus) && 'text-destructive')}>{executionLabels[row.executionStatus] ?? row.executionStatus}</Badge></div><details><summary className="cursor-pointer text-xs text-muted-foreground">查看请求参数</summary><div className="mt-2"><JsonBlock text={row.properties ?? row.inputParams} /></div></details>{row.deviceResult ? <div className="space-y-2 border-t pt-3"><p className="text-xs font-medium">设备回复 <span className="ml-1 font-normal text-muted-foreground">{row.deviceResult.code}</span></p><p className="break-all text-xs">{row.deviceResult.message}</p>{row.deviceResult.outputParams && <JsonBlock text={row.deviceResult.outputParams} />}</div> : <p className="border-t pt-3 text-xs text-muted-foreground">{row.executionStatus === 'NOT_EXECUTED' ? '未执行，无设备回复。' : '尚未收到设备回复。'}</p>}<Button size="sm" variant="link" className="h-auto! p-0! text-xs" onClick={() => setSelected(row)}>完整记录</Button></article>)}
-          {history.data?.hasMore && <Button variant="outline" disabled={history.isValidating} onClick={() => { if (!history.data?.nextCursor) return; setAutoRefresh(false); setPrevious(records); setCursor(history.data.nextCursor); }}>加载更多记录</Button>}
+          {!history.isLoading && !history.error && records.length === 0 && <div className="flex min-h-72 flex-col items-center justify-center gap-3 text-center"><History className="size-7 text-muted-foreground/40" /><p className="text-sm font-medium">等待发送指令</p><p className="max-w-56 text-xs leading-5 text-muted-foreground">发送后，请求参数显示在左侧，设备回复显示在右侧。</p></div>}
+          {history.hasMore && <Button variant="outline" disabled={history.isValidating} onClick={() => { followLatest.current = false; history.loadMore(); }}>加载更早的记录</Button>}
+          {records.map(row => <CommandExchange key={row.requestId} record={row} onDetails={setSelected} />)}
+
         </div>
       </section>
     </div>
     <Dialog open={confirm} onOpenChange={open => { if (!busy) setConfirm(open); }}><DialogContent className="max-h-[90dvh] overflow-auto" showCloseButton={!busy}><DialogHeader><DialogTitle>确认下发{mode === 'PROPERTY' ? '属性' : '动作'}</DialogTitle><DialogDescription>将立即控制设备「{device.deviceName}」。请核对目标和参数。</DialogDescription></DialogHeader><p className="break-all text-xs text-muted-foreground">设备 ID：{device.deviceId}{mode === 'ACTION' ? ` · 动作：${code}` : ''} · 有效期 {ttl} 秒</p>{editor === 'visual' ? <dl className="space-y-2 rounded-md border bg-muted/20 p-3">{Object.keys(formValue).length ? Object.entries(formValue).map(([key, value]) => <div key={key} className="flex flex-wrap justify-between gap-2 text-sm"><dt className="text-muted-foreground">{mode === 'PROPERTY' ? properties.find(item => item.code === key)?.title ?? key : String(schemaObject(schemaObject(schemaObject(inputSchema).properties)[key]).title ?? key)}</dt><dd className="max-w-full break-all">{typeof value === 'boolean' ? value ? '开启' : '关闭' : typeof value === 'object' ? pretty(value) : String(value)}</dd></div>) : <p className="text-sm text-muted-foreground">此动作无需输入参数。</p>}</dl> : <JsonBlock text={text} />}<DialogFooter><Button variant="outline" disabled={busy} onClick={() => setConfirm(false)}>返回修改</Button><Button disabled={busy || !!blocked} onClick={() => void send()}>{busy ? '正在下发…' : '确认下发'}</Button></DialogFooter></DialogContent></Dialog>
-    <Dialog open={!!selected} onOpenChange={open => { if (!open) setSelected(null); }}><DialogContent className="max-h-[90dvh] overflow-auto"><DialogHeader><DialogTitle>指令详情</DialogTitle><DialogDescription>查看原始参数、投递证据与设备回复。</DialogDescription></DialogHeader>{selected && <div className="space-y-4 text-sm"><p className="break-all font-mono text-xs">{selected.requestId}</p><p>{deliveryLabels[selected.deliveryStatus] ?? selected.deliveryStatus} · {executionLabels[selected.executionStatus] ?? selected.executionStatus}</p><p className="text-xs text-muted-foreground">创建：{formatTime(selected.createTime)}<br />投递截止：{formatTime(selected.deliveryExpiresAt)}</p><h4 className="font-medium">{selected.code ? `动作：${selected.code}` : '属性设置'}</h4><JsonBlock text={selected.properties ?? selected.inputParams} /><h4 className="font-medium">设备回复</h4>{selected.deviceResult ? <><p className="break-all">{selected.deviceResult.code} · {selected.deviceResult.message}</p><p className="text-xs text-muted-foreground">接收：{formatTime(selected.deviceResult.receivedAt)}</p><JsonBlock text={selected.deviceResult.outputParams} /></> : <p className="text-muted-foreground">尚未收到设备回复，关闭后刷新记录查看。</p>}</div>}</DialogContent></Dialog>
+    <Dialog open={!!selectedRecord} onOpenChange={open => { if (!open) setSelected(null); }}><DialogContent className="max-h-[90dvh] overflow-auto"><DialogHeader><DialogTitle>指令详情</DialogTitle><DialogDescription>查看原始参数、投递证据与设备回复。</DialogDescription></DialogHeader>{selectedRecord && <div className="space-y-4 text-sm"><p className="break-all font-mono text-xs">{selectedRecord.requestId}</p><p>{deliveryLabels[selectedRecord.deliveryStatus] ?? selectedRecord.deliveryStatus} · {executionLabels[selectedRecord.executionStatus] ?? selectedRecord.executionStatus}</p><p className="text-xs text-muted-foreground">创建：{formatTime(selectedRecord.createTime)}<br />投递截止：{formatTime(selectedRecord.deliveryExpiresAt)}</p><h4 className="font-medium">{selectedRecord.code ? `动作：${selectedRecord.code}` : '属性设置'}</h4><JsonBlock text={selectedRecord.properties ?? selectedRecord.inputParams} /><h4 className="font-medium">设备回复</h4>{selectedRecord.deviceResult ? <><p className="break-all">{selectedRecord.deviceResult.code} · {selectedRecord.deviceResult.message}</p><p className="text-xs text-muted-foreground">接收：{formatTime(selectedRecord.deviceResult.receivedAt)}</p><JsonBlock text={selectedRecord.deviceResult.outputParams} /></> : <p className="text-muted-foreground">尚未收到设备回复，收到后将在此自动更新。</p>}</div>}</DialogContent></Dialog>
   </div>;
 }

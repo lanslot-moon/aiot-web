@@ -1,5 +1,6 @@
 import { request } from '@/api/iam/client';
 export interface CommandRecord {
+  version: number; responseDeadlineAt: number | null;
   requestId: string; deviceId: string; commandType: 'PROPERTY' | 'ACTION'; code: string | null;
   properties: string | null; inputParams: string | null; deliveryStatus: string; executionStatus: string;
   createTime: number; deliveryExpiresAt: number;
