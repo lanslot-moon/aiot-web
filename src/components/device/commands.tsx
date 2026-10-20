@@ -22,6 +22,7 @@ import { CommandControlTheme } from './command-control-theme';
 import { canRepresent, fieldError, initialValue, schemaObject, supportsForm } from './command-schema';
 import { latestProperties } from '@/api/device/telemetry';
 import { ActionControl } from './action-control';
+import { ReportRecords } from './report-records';
 import { useCommandRecords } from '@/hooks/use-command-records';
 
 const pretty = (value: unknown) => JSON.stringify(value, null, 2);
@@ -34,7 +35,7 @@ function JsonBlock({ text }: { text: string | null }) {
 export default function DeviceCommands({ projectId, device }: { projectId: string; device: DeviceDetail }) {
   const allowed = usePermission('device:command');
   const canView = usePermission('device:view');
-  const [workspace, setWorkspace] = useState<'control' | 'records'>('control');
+  const [workspace, setWorkspace] = useState<'control' | 'records' | 'reports'>('control');
   const [mode, setMode] = useState<'properties' | 'actions'>('properties');
   const [functionSearch, setFunctionSearch] = useState('');
   const [showAllProperties, setShowAllProperties] = useState(false);
@@ -126,7 +127,7 @@ export default function DeviceCommands({ projectId, device }: { projectId: strin
   }
   return <div className="min-w-0 space-y-4">
     <nav aria-label="调试工作区" className="flex flex-wrap items-center gap-1 rounded-lg border bg-muted/20 p-1">
-      {([{ value: 'control', label: '调试台', icon: SlidersHorizontal }, { value: 'records', label: '指令记录', icon: History }] as const).map(item => <Button key={item.value} size="sm" variant={workspace === item.value ? 'secondary' : 'ghost'} aria-pressed={workspace === item.value} disabled={busy} onClick={() => { setWorkspace(item.value); if (item.value === 'records' && !history.historyLoaded) history.loadMore(); }}><item.icon className="size-3.5" />{item.label}{item.value === 'records' && records.length > 0 && <span className="rounded bg-muted px-1.5 text-xs tabular-nums">{records.length}</span>}</Button>)}
+      {([{ value: 'control', label: '调试台', icon: SlidersHorizontal }, { value: 'records', label: '指令记录', icon: History }, { value: 'reports', label: '上报记录', icon: History }] as const).map(item => <Button key={item.value} size="sm" variant={workspace === item.value ? 'secondary' : 'ghost'} aria-pressed={workspace === item.value} disabled={busy} onClick={() => { setWorkspace(item.value); if (item.value === 'records' && !history.historyLoaded) history.loadMore(); }}><item.icon className="size-3.5" />{item.label}{item.value === 'records' && records.length > 0 && <span className="rounded bg-muted px-1.5 text-xs tabular-nums">{records.length}</span>}</Button>)}
       <span role="status" className="ml-auto px-2 text-xs text-muted-foreground">{history.status === 'live' ? '设备响应实时连接中' : history.status === 'paused' ? '后台已暂停' : history.status === 'reconnecting' ? '设备响应正在重连' : history.status === 'blocked' ? '实时连接已停止' : '正在连接设备响应'}</span>
     </nav>
     <div hidden={workspace !== 'control'}>
@@ -221,6 +222,7 @@ export default function DeviceCommands({ projectId, device }: { projectId: strin
       ]} />
       {history.hasMore && <div className="flex justify-end"><Button size="sm" variant="outline" disabled={history.isValidating} onClick={history.loadMore}>{history.historyLoaded ? '加载更早记录' : '加载历史记录'}</Button></div>}
     </section>
+    <div hidden={workspace !== 'reports'}>{model.data ? <ReportRecords key={`${device.deviceId}:${model.data.modelRevision}`} projectId={projectId} device={device} model={model.data} /> : <><ErrorNotice error={model.error} retry={() => model.mutate()} />{model.isLoading && <Loading />}</>}</div>
     <Dialog open={confirm} onOpenChange={open => { if (!busy) setConfirm(open); }}><DialogContent className="max-h-[90dvh] overflow-auto" showCloseButton={!busy}><DialogHeader><DialogTitle>确认下发属性</DialogTitle><DialogDescription>将立即控制设备「{device.deviceName}」。请核对目标和参数。</DialogDescription></DialogHeader><p className="break-all text-xs text-muted-foreground">设备 ID：{device.deviceId} · 有效期 {ttl} 秒</p>{editor === 'visual' ? <dl className="space-y-2 rounded-md border bg-muted/20 p-3">{Object.keys(formValue).length ? Object.entries(formValue).map(([key, value]) => <div key={key} className="flex flex-wrap justify-between gap-2 text-sm"><dt className="text-muted-foreground">{properties.find(item => item.code === key)?.title ?? key}</dt><dd className="max-w-full break-all">{typeof value === 'boolean' ? value ? '开启' : '关闭' : typeof value === 'object' ? pretty(value) : String(value)}</dd></div>) : <p className="text-sm text-muted-foreground">请先填写需要下发的属性。</p>}</dl> : <JsonBlock text={text} />}<DialogFooter><Button variant="outline" disabled={busy} onClick={() => setConfirm(false)}>返回修改</Button><Button disabled={busy || !!blocked} onClick={() => void send()}>{busy ? '正在下发…' : '确认下发'}</Button></DialogFooter></DialogContent></Dialog>
     <Dialog open={!!selectedRecord} onOpenChange={open => { if (!open) setSelected(null); }}><DialogContent className="max-h-[90dvh] overflow-auto"><DialogHeader><DialogTitle>指令详情</DialogTitle><DialogDescription>查看原始参数、投递证据与设备回复。</DialogDescription></DialogHeader>{selectedRecord && <div className="space-y-4 text-sm"><p className="break-all font-mono text-xs">{selectedRecord.requestId}</p><p>{deliveryLabels[selectedRecord.deliveryStatus] ?? selectedRecord.deliveryStatus} · {executionLabels[selectedRecord.executionStatus] ?? selectedRecord.executionStatus}</p><p className="text-xs text-muted-foreground">创建：{formatTime(selectedRecord.createTime)}<br />投递截止：{formatTime(selectedRecord.deliveryExpiresAt)}</p><h4 className="font-medium">{selectedRecord.code ? `动作：${selectedRecord.code}` : '属性设置'}</h4><JsonBlock text={selectedRecord.properties ?? selectedRecord.inputParams} /><h4 className="font-medium">设备回复</h4>{selectedRecord.deviceResult ? <><p className="break-all">{selectedRecord.deviceResult.code} · {selectedRecord.deviceResult.message}</p><p className="text-xs text-muted-foreground">接收：{formatTime(selectedRecord.deviceResult.receivedAt)}</p><JsonBlock text={selectedRecord.deviceResult.outputParams} /></> : <p className="text-muted-foreground">尚未收到设备回复，收到后将在此自动更新。</p>}</div>}</DialogContent></Dialog>
   </div>;
