@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { CheckCheck, Clock3, MoreHorizontal } from 'lucide-react';
 import type { CommandRecord } from '@/api/device/commands';
 import { deliveryLabels, executionLabels } from '@/api/device/commands';
@@ -17,14 +18,24 @@ export function CommandExchange({ record, onDetails }: {
   record: CommandRecord;
   onDetails: (record: CommandRecord) => void;
 }) {
+  const [clock, setClock] = useState({ evaluatedAt: record.evaluatedAt, elapsed: 0 });
+  const elapsed = clock.evaluatedAt === record.evaluatedAt ? clock.elapsed : 0;
+  useEffect(() => {
+    const started = performance.now();
+    const timer = window.setInterval(() => setClock({ evaluatedAt: record.evaluatedAt, elapsed: performance.now() - started }), 1000);
+    return () => window.clearInterval(timer);
+  }, [record.evaluatedAt]);
   const result = record.deviceResult;
+  const timedOut = !result && record.executionStatus === 'PENDING' && record.deliveryStatus !== 'NOT_SENT'
+    && (record.responseStatus === 'TIMED_OUT' || (record.responseDeadlineAt !== null && record.evaluatedAt + elapsed >= record.responseDeadlineAt));
   const failed = ['FAILED', 'REJECTED', 'NOT_EXECUTED'].includes(record.executionStatus);
-  const status = result ? '已回复'
+  const status = result ? (record.responseStatus === 'RECEIVED_LATE' ? '迟到回复' : '已回复')
+    : timedOut ? '应答超时 · 结果未确认'
     : record.deliveryStatus === 'NOT_SENT' ? '未发送'
       : record.executionStatus === 'PENDING' ? '待回复'
         : executionLabels[record.executionStatus] ?? record.executionStatus;
   const statusDetail = `${deliveryLabels[record.deliveryStatus] ?? record.deliveryStatus} · ${executionLabels[record.executionStatus] ?? record.executionStatus}`;
-  const commandLabel = record.commandType === 'PROPERTY' ? '属性控制' : `服务调用 · ${record.code ?? '—'}`;
+  const commandLabel = record.commandType === 'PROPERTY' ? '属性控制' : `动作调用 · ${record.code ?? '—'}`;
 
   return (
     <article className="flex min-w-0 flex-col gap-3" aria-label={`指令 ${record.requestId}`}>
@@ -58,7 +69,7 @@ export function CommandExchange({ record, onDetails }: {
       )}
       {!result && record.executionStatus === 'PENDING' && record.deliveryStatus !== 'NOT_SENT' && (
         <p className="flex items-center gap-1.5 self-end text-[11px] text-muted-foreground" role="status">
-          <Clock3 className="size-3 shrink-0" aria-hidden />等待设备回复
+          <Clock3 className="size-3 shrink-0" aria-hidden />{timedOut ? '应答超时，结果未确认；迟到回复仍会更新' : '等待设备回复'}
         </p>
       )}
     </article>

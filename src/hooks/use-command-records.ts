@@ -69,7 +69,7 @@ export function useCommandRecords(projectId: string, deviceId: string, filter: s
         if (filter && row.commandType !== filter) continue;
         if (row.createTime < startedAt && (!store.historyLoaded || row.createTime < historyFrom)) continue;
         const current = store.records.get(row.requestId);
-        if (!current || row.version > current.version) store.records.set(row.requestId, row);
+        if (!current || row.version > current.version || (row.version === current.version && row.evaluatedAt > current.evaluatedAt)) store.records.set(row.requestId, row);
         if (row.createTime < startedAt && (!store.boundary || row.requestId < store.boundary)) store.boundary = row.requestId;
       }
     };
@@ -213,7 +213,7 @@ export function useCommandRecords(projectId: string, deviceId: string, filter: s
   const current = view?.store === store ? view : undefined;
   return {
     records: allowed && sessionId ? current?.records ?? [] : [], hasMore: allowed && !!sessionId && (current?.hasMore ?? false),
-    historyLoaded: current?.historyLoaded ?? false,
+    startedAt, historyLoaded: current?.historyLoaded ?? false,
     isLoading: current?.isLoading ?? false, isValidating: current?.isValidating ?? false,
     error: current?.error, streamError: current?.streamError, status: current?.status ?? 'connecting',
     refresh: () => setEpoch(value => value + 1), loadMore: () => loadMore.current?.(),
