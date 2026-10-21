@@ -5,7 +5,7 @@ import { commandPath, type CommandRecord } from '@/api/device/commands';
 import { query, type CursorPage } from '@/api/device/client';
 import { useIam } from '@/context/iam-context/identity';
 
-type StreamStatus = 'connecting' | 'live' | 'reconnecting' | 'paused' | 'blocked';
+export type StreamStatus = 'connecting' | 'live' | 'reconnecting' | 'paused' | 'blocked';
 type Store = { scope: string; records: Map<string, CommandRecord>; boundary: string | null; cursor: string | null; hasMore: boolean; historyLoaded: boolean };
 type View = {
   store: Store; records: CommandRecord[]; hasMore: boolean; historyLoaded: boolean; isLoading: boolean;

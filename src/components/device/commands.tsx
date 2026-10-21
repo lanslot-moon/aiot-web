@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '@/components/ui/input-group';
 import { CommandSelect } from './command-select';
 import { CommandExchange } from './command-exchange';
+import { CommandConnectionStatus } from './command-connection-status';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DeviceInput, DeviceTable } from './layout';
@@ -128,7 +129,7 @@ export default function DeviceCommands({ projectId, device }: { projectId: strin
   return <div className="min-w-0 space-y-4">
     <nav aria-label="调试工作区" className="flex flex-wrap items-center gap-1 rounded-lg border bg-muted/20 p-1">
       {([{ value: 'control', label: '调试台', icon: SlidersHorizontal }, { value: 'records', label: '指令记录', icon: History }, { value: 'reports', label: '上报记录', icon: History }] as const).map(item => <Button key={item.value} size="sm" variant={workspace === item.value ? 'secondary' : 'ghost'} aria-pressed={workspace === item.value} disabled={busy} onClick={() => { setWorkspace(item.value); if (item.value === 'records' && !history.historyLoaded) history.loadMore(); }}><item.icon className="size-3.5" />{item.label}</Button>)}
-      <span role="status" className="ml-auto px-2 text-xs text-muted-foreground">{history.status === 'live' ? '设备响应实时连接中' : history.status === 'paused' ? '后台已暂停' : history.status === 'reconnecting' ? '设备响应正在重连' : history.status === 'blocked' ? '实时连接已停止' : '正在连接设备响应'}</span>
+      <CommandConnectionStatus status={history.status} />
     </nav>
     <div hidden={workspace !== 'control'}>
     <div className="grid min-w-0 overflow-hidden rounded-lg border lg:h-[clamp(26rem,calc(100dvh-21rem),46rem)] lg:grid-cols-[minmax(0,1fr)_minmax(20rem,1fr)]">
