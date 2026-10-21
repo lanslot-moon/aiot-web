@@ -2,6 +2,7 @@ import { cn } from "@/lib/utils";
 import { Link, useLocation } from "react-router";
 import { useSidebar } from '../../../../../components/ui/sidebar-hooks';
 import NavItem from "../nav-items/index";
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 import { ChildItem, MenuItem } from "../sidebaritems";
 
@@ -13,7 +14,7 @@ interface NavCollapseProps {
 export default function NavCollapse({ menu, className }: NavCollapseProps) {
   const { pathname } = useLocation();
   const { state, isMobile, setOpenMobile } = useSidebar();
-  const isCollapse = state === "collapsed";
+  const isCollapse = state === "collapsed" && !isMobile;
 
   const isActiveRoute = (item: ChildItem): boolean => {
     if (item.activePaths?.some((path) => pathname === path || pathname.startsWith(`${path}/`))) return true;
@@ -30,18 +31,8 @@ export default function NavCollapse({ menu, className }: NavCollapseProps) {
           {/* Heading */}
 
 
-          {section.heading && <span className={cn(
-            "text-xs uppercase block font-semibold text-muted-foreground mb-2 transition-all duration-200",
-            isCollapse ? "text-center group-hover:text-start group-data-[state=expanded]:text-start" : ""
-          )}>
-            {isCollapse ? (
-              <>
-                <span className="group-hover:hidden group-data-[state=expanded]:hidden">...</span>
-                <span className="hidden group-hover:inline group-data-[state=expanded]:inline">{section.heading ?? ""}</span>
-              </>
-            ) : (
-              section.heading ?? ""
-            )}
+          {section.heading && !isCollapse && <span className="mb-2 block text-xs font-semibold uppercase text-muted-foreground">
+            {section.heading}
           </span>}
 
           {section.items?.map((item: ChildItem, index) => {
@@ -52,14 +43,13 @@ export default function NavCollapse({ menu, className }: NavCollapseProps) {
             // 👉 No children → direct link
             if (!hasChildren)
               return (
-                <Link
-                  key={index}
+                <Tooltip key={index}><TooltipTrigger render={<Link
                   onClick={() => { if (isMobile) setOpenMobile(false); }}
                   aria-label={item.name}
                   aria-current={active ? "page" : undefined}
                   to={item.url || "#"}
                   target={item.external ? "_blank" : undefined}
-                  className={cn(
+                />} className={cn(
                     "flex cursor-pointer items-center gap-3 rounded-md transition-all duration-200 ease-in-out focus-visible:outline focus-visible:outline-ring",
 
                     className,
@@ -68,7 +58,7 @@ export default function NavCollapse({ menu, className }: NavCollapseProps) {
                 >
 
                   <NavItem item={item} hasChildren={false} isActive={active} />
-                </Link>
+                </TooltipTrigger>{isCollapse && <TooltipContent side="right">{item.name}</TooltipContent>}</Tooltip>
 
 
 

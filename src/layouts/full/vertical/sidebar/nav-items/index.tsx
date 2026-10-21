@@ -4,6 +4,7 @@ import { ChildItem } from "../sidebaritems";
 import { motion, AnimatePresence } from "motion/react";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { useSidebar } from '@/components/ui/sidebar-hooks';
 
 interface NavItemProps {
   item: ChildItem;
@@ -19,10 +20,12 @@ export default function NavItem({
   isActive,
 }: NavItemProps) {
   const [isHovered, setIsHovered] = useState(false);
+  const { state, isMobile } = useSidebar();
+  const compact = state === 'collapsed' && !isMobile;
 
   return (
 
-    <motion.div className={cn("flex items-center gap-3 w-full group relative group-data-[state=collapsed]:px-2.5 px-3 py-2 my-0.5 transition-all duration-200 rounded-md",
+    <motion.div className={cn("flex items-center gap-3 w-full group relative py-2 my-0.5 transition-all duration-200 rounded-md", compact ? 'justify-center px-0' : 'px-3',
       isActive && "bg-primary text-background font-medium", className)}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -41,17 +44,17 @@ export default function NavItem({
         )}
       </AnimatePresence>
 
-      <span className={"relative flex items-center gap-2 w-full  rounded-md "}>
+      <span className={cn('relative flex items-center gap-2 rounded-md', compact ? 'justify-center' : 'w-full')}>
         {/* Icon */}
         {item.icon && (
-          <item.icon className={`h-4 w-4 ${item.color ?? ""}`} />
+          <item.icon className={cn('size-4 shrink-0', item.color)} />
         )}
 
         {/* Name */}
-        <span className="font-medium hide-menu">{item.name}</span>
+        <span className={cn('font-medium', compact && 'hidden')}>{item.name}</span>
 
         {/* Badge */}
-        {item.badge && (
+        {item.badge && !compact && (
           <span
             className={`ms-auto  hide-menu text-xs rounded-full px-2 py-0.5 ${item.badgeType === "filled"
               ? "bg-primary text-white dark:text-black"
@@ -63,14 +66,14 @@ export default function NavItem({
         )}
 
         {/* Pro Badge */}
-        {item.isPro && (
+        {item.isPro && !compact && (
           <Badge className="ms-auto hide-menu text-[10px]! px-1.5 py-0.5 h-auto! bg-primary! text-background! rounded-md">
             Pro
           </Badge>
         )}
 
         {/* Chevron only if it has children */}
-        {hasChildren && (
+        {hasChildren && !compact && (
           <ChevronRight className="ms-auto h-4 w-4 transition-transform duration-200 group-open/nav:rotate-90 hide-menu" />
         )}
       </span>

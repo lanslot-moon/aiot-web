@@ -17,7 +17,9 @@ import Profile from './Profile';
 import Search from './Search';
 
 const Header = () => {
-  const { toggleSidebar } = useSidebar();
+  const { toggleSidebar, open, isMobile, openMobile } = useSidebar();
+  const sidebarOpen = isMobile ? openMobile : open;
+  const sidebarLabel = sidebarOpen ? '收起侧边栏' : '展开侧边栏';
   const { platformAuthorization: authorization } = useIam();
   const { pathname } = useLocation();
   const settings = authorizedNavigation([{ items: settingsNavigation }], authorization.data?.menus ?? [], authorization.data?.permissionCodes ?? []).flatMap((group) => group.items ?? []);
@@ -28,9 +30,9 @@ const Header = () => {
         <div className="mx-auto flex items-center justify-between gap-2 p-2">
           <div className="flex min-w-0 items-center gap-2">
             <div className="block shrink-0 lg:hidden"><FullLogo /></div>
-            <Button variant="ghost" size="icon" aria-label="切换导航菜单"
+            <Tooltip><TooltipTrigger render={<Button variant="ghost" size="icon" />} aria-label={sidebarLabel} aria-expanded={sidebarOpen}
               className="shrink-0 cursor-pointer rounded-full p-2 transition hover:bg-primary/5"
-              onClick={toggleSidebar}><PanelLeft size={21} /></Button>
+              onClick={toggleSidebar}><PanelLeft size={21} /></TooltipTrigger><TooltipContent>{sidebarLabel}</TooltipContent></Tooltip>
             <Separator orientation="vertical" className="ml-2 mr-4 h-4 w-px self-center bg-border max-lg:hidden" />
             <ProjectSwitcher />
             <div className="hidden xl:block"><Search /></div>

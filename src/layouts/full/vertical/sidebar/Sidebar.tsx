@@ -9,6 +9,7 @@ import { Badge } from 'src/components/ui/badge';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarHeader } from 'src/components/ui/sidebar';
 import { useResource } from '../../../../components/iam/shared-utils';
 import { useSidebar } from '../../../../components/ui/sidebar-hooks';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 import type { ProjectDetailVO } from '@/api/iam/contracts';
 
@@ -19,7 +20,7 @@ import { useIam } from '../../../../context/iam-context/identity';
 import { authorizedNavigation, personalCenterNavigation, platformMainNavigation, projectIdFromPath, projectNavigation } from '@/components/iam/menu-navigation';
 
 const SidebarLayout = ({ ...props }: React.ComponentProps<typeof Sidebar>) => {
-  const { isMobile, setOpenMobile } = useSidebar();
+  const { state, isMobile, setOpenMobile } = useSidebar();
   const { authorization, platformAuthorization } = useIam();
   const { pathname } = useLocation();
   const projectId = projectIdFromPath(pathname);
@@ -43,7 +44,7 @@ const SidebarLayout = ({ ...props }: React.ComponentProps<typeof Sidebar>) => {
       variant="inset"
       collapsible="icon"
       {...props}
-      className="sidebar-box **:data-[slot=sidebar-inner]:bg-background **:data-[slot=sidebar-inner]:border **:data-[slot=sidebar-inner]:border-border group-data-[state=collapsed]:hover:shadow-xl"
+      className="sidebar-box **:data-[slot=sidebar-inner]:bg-background **:data-[slot=sidebar-inner]:border **:data-[slot=sidebar-inner]:border-border"
       side="left"
     >
       <SidebarHeader className="p-3 group-data-[state=collapsed]:px-2.5 flex flex-row items-center justify-between border-b border-border">
@@ -53,6 +54,7 @@ const SidebarLayout = ({ ...props }: React.ComponentProps<typeof Sidebar>) => {
 
       <SidebarContent className="overflow-hidden">
         <SimpleBar style={{ height: '100%' }}>
+          {projectId && state === 'collapsed' && !isMobile && <div className="border-b p-2"><Tooltip><TooltipTrigger render={<Link to="/projects" aria-label="返回全部项目" />} className="flex h-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted focus-visible:outline focus-visible:outline-ring"><ArrowLeft className="size-4" /></TooltipTrigger><TooltipContent side="right">返回全部项目</TooltipContent></Tooltip></div>}
           {projectId && <div className="border-b p-3 group-data-[state=collapsed]:hidden">
               <Link to="/projects" onClick={() => { if (isMobile) setOpenMobile(false); }} className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-muted focus-visible:outline focus-visible:outline-ring"><ArrowLeft className="size-4" />返回全部项目</Link>
               <div className="mt-2 flex items-start gap-2 px-2 py-2">
@@ -68,7 +70,7 @@ const SidebarLayout = ({ ...props }: React.ComponentProps<typeof Sidebar>) => {
         </SimpleBar>
       </SidebarContent>
 
-      {accountMenu.length > 0 && <SidebarFooter className="border-t p-4">
+      {accountMenu.length > 0 && <SidebarFooter className="border-t p-4 group-data-[state=collapsed]:p-2">
         <NavCollapse menu={accountMenu} className="text-sm" />
       </SidebarFooter>}
     </Sidebar>
