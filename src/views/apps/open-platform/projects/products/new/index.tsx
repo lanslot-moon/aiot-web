@@ -47,7 +47,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { OpenPlatformApiError, openPlatformGetFetcher, openPlatformPost, useProjectDetail } from '../../../../../../context/open-platform-context/project-resources';
 
 import StyleAwareWrapper from '@/components/shared/StyleAwareWrapper';
-import BreadcrumbComp from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
+import { BreadcrumbTrail } from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
 import { categoryLabel } from '@/lib/open-platform-category';
 import {
 PRODUCT_DATA_MODE_LABEL,
@@ -338,8 +338,7 @@ const CreateProductPage = () => {
       lyraClassName="flex flex-col gap-px bg-border p-px"
       defaultClassName="flex flex-col gap-4"
     >
-      <BreadcrumbComp title="创建产品" items={breadcrumbItems} />
-      <ProjectWorkspaceShell activePrimary="products">
+      <ProjectWorkspaceShell activePrimary="products" breadcrumbs={<BreadcrumbTrail title="创建产品" items={breadcrumbItems} />}>
         <Card className="!gap-0 !py-0">
           <CardHeader className="border-b py-4">
             <Button

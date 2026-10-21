@@ -1,7 +1,7 @@
 import { ProjectWorkspaceShell } from '@/components/open-platform/project-workspace-shell';
 import StyleAwareWrapper from '@/components/shared/StyleAwareWrapper';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import BreadcrumbComp from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
+import { BreadcrumbTrail } from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
 
 const ProjectUsagePage = () => {
   return (
@@ -9,8 +9,7 @@ const ProjectUsagePage = () => {
       lyraClassName="flex flex-col p-px gap-px bg-border"
       defaultClassName="flex flex-col gap-4"
     >
-      <BreadcrumbComp title="用量" />
-      <ProjectWorkspaceShell activePrimary="settings">
+      <ProjectWorkspaceShell activePrimary="settings" breadcrumbs={<BreadcrumbTrail title="用量" />}>
         <Card>
           <CardHeader>
             <CardTitle className="text-base">用量</CardTitle>

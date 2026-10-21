@@ -196,11 +196,13 @@ type LifecycleAction = 'activate' | 'suspend' | 'archive' | 'close';
 
 export function ProjectWorkspaceShell({
   children,
+  breadcrumbs,
   activePrimary,
   settingsNavigation,
   navigationMode = 'sidebar',
 }: {
   children: React.ReactNode;
+  breadcrumbs?: React.ReactNode;
   activePrimary?: PrimaryTab;
   settingsNavigation?: SettingsTab[];
   navigationMode?: 'tabs' | 'sidebar';
@@ -390,9 +392,9 @@ export function ProjectWorkspaceShell({
               全部项目
             </Button>}
             <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-              <h2 className="truncate text-lg font-semibold tracking-tight">
+              <h1 className="truncate text-lg font-semibold tracking-tight">
                 {project.projectName}
-              </h2>
+              </h1>
               <ProjectStatusBadge status={project.status} />
               <span className="inline-flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
                 <span>ID</span>
@@ -409,6 +411,7 @@ export function ProjectWorkspaceShell({
               </span>
             </div>
 
+            {breadcrumbs && <div className="ml-auto min-w-0 max-w-full">{breadcrumbs}</div>}
             {onSettings && navigationMode === 'tabs' ? (
               <div className="flex shrink-0 flex-wrap gap-2">
                 {canEdit ? (

@@ -3,7 +3,7 @@ import { Link, useParams, useSearchParams } from 'react-router';
 import { useIam } from '@/context/iam-context/identity';
 import { ProjectWorkspaceShell } from '@/components/open-platform/project-workspace-shell';
 import StyleAwareWrapper from '@/components/shared/StyleAwareWrapper';
-import BreadcrumbComp from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
+import { BreadcrumbTrail } from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
 
 import { Button } from '@/components/ui/button';
 import { CopyIdButton } from '@/components/open-platform/copy-id-button';
@@ -98,5 +98,5 @@ export default function ProjectDevicesPage() {
   const { projectId = '' } = useParams();
   const { session } = useIam();
   useEffect(() => { document.title = '设备 · AIoT'; }, []);
-  return <StyleAwareWrapper lyraClassName="flex flex-col gap-px bg-border p-px" defaultClassName="flex flex-col gap-4"><BreadcrumbComp title="设备" items={[{ to: '/projects', title: '项目' }]} /><ProjectWorkspaceShell activePrimary="devices"><Workspace key={`${projectId}:${session?.sessionId ?? ''}`} projectId={projectId} /></ProjectWorkspaceShell></StyleAwareWrapper>;
+  return <StyleAwareWrapper lyraClassName="flex flex-col gap-px bg-border p-px" defaultClassName="flex flex-col gap-4"><ProjectWorkspaceShell activePrimary="devices" breadcrumbs={<BreadcrumbTrail title="设备" items={[{ to: '/projects', title: '项目' }]} />}><Workspace key={`${projectId}:${session?.sessionId ?? ''}`} projectId={projectId} /></ProjectWorkspaceShell></StyleAwareWrapper>;
 }

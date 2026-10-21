@@ -44,7 +44,7 @@ import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetT
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { OpenPlatformApiError, openPlatformDelete, openPlatformGetFetcher, openPlatformPost } from '../../../../../../context/open-platform-context/project-resources';
 
-import BreadcrumbComp from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
+import { BreadcrumbTrail } from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
 import { cn } from '@/lib/utils';
 import type {
 CredentialDistributionView as DistributionView,
@@ -1376,8 +1376,7 @@ const ProductCredentialsPage = () => {
   if (productLoading && !product) {
     return (
       <StyleAwareWrapper lyraClassName="flex flex-col gap-px bg-border p-px" defaultClassName="flex flex-col gap-4">
-        <BreadcrumbComp title="凭证与量产" items={breadcrumbItems} />
-        <ProjectWorkspaceShell activePrimary="products"><CredentialsPageSkeleton /></ProjectWorkspaceShell>
+        <ProjectWorkspaceShell activePrimary="products" breadcrumbs={<BreadcrumbTrail title="凭证与量产" items={breadcrumbItems} />}><CredentialsPageSkeleton /></ProjectWorkspaceShell>
       </StyleAwareWrapper>
     );
   }
@@ -1385,8 +1384,7 @@ const ProductCredentialsPage = () => {
   if (!product) {
     return (
       <StyleAwareWrapper lyraClassName="flex flex-col gap-px bg-border p-px" defaultClassName="flex flex-col gap-4">
-        <BreadcrumbComp title="凭证与量产" items={breadcrumbItems} />
-        <ProjectWorkspaceShell activePrimary="products">
+        <ProjectWorkspaceShell activePrimary="products" breadcrumbs={<BreadcrumbTrail title="凭证与量产" items={breadcrumbItems} />}>
           <ApiErrorAlert code={(productError as OpenPlatformApiError | undefined)?.code} message={productError?.message ?? '产品不存在。'} />
         </ProjectWorkspaceShell>
       </StyleAwareWrapper>
@@ -1395,8 +1393,7 @@ const ProductCredentialsPage = () => {
 
   return (
     <StyleAwareWrapper lyraClassName="flex flex-col gap-px bg-border p-px" defaultClassName="flex flex-col gap-4">
-      <BreadcrumbComp title="凭证与量产" items={breadcrumbItems} />
-      <ProjectWorkspaceShell activePrimary="products">
+      <ProjectWorkspaceShell activePrimary="products" breadcrumbs={<BreadcrumbTrail title="凭证与量产" items={breadcrumbItems} />}>
         <div className="space-y-4">
           {hasErrors ? <ApiErrorAlert code="CREDENTIAL_DATA_ERROR" message="凭证数据加载失败，请刷新后重试。" /> : null}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">

@@ -34,7 +34,7 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/in
 import { Skeleton } from '@/components/ui/skeleton';
 import { OpenPlatformApiError, openPlatformDelete, openPlatformGetFetcher, openPlatformPost, openPlatformPut } from '../../../../context/open-platform-context/project-resources';
 
-import BreadcrumbComp from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
+import { BreadcrumbTrail } from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
 import type { CursorResult, ParserProfileView } from '@/types/apps/open-platform';
 
 function formatDate(value: number) {
@@ -130,11 +130,10 @@ const ParserProfilesPage = () => {
       lyraClassName="flex flex-col gap-px bg-border p-px"
       defaultClassName="flex flex-col gap-4"
     >
-      <BreadcrumbComp
+      <ProjectWorkspaceShell activePrimary="parserProfiles" breadcrumbs={<BreadcrumbTrail
         title="协议解析"
         items={[{ to: '/projects', title: '项目' }, { title: '协议解析' }]}
-      />
-      <ProjectWorkspaceShell activePrimary="parserProfiles">
+      />}>
         <div className="flex flex-col gap-4">
         <Alert className="rounded-xl! border-primary/20 bg-primary/5 px-3 py-2.5 [&>svg]:text-primary">
           <Info className="size-4" aria-hidden />

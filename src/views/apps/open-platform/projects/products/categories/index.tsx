@@ -14,7 +14,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { OpenPlatformApiError, openPlatformGetFetcher } from '../../../../../../context/open-platform-context/project-resources';
 
-import BreadcrumbComp from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
+import { BreadcrumbTrail } from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
 import { categoryLabel, flattenCategoryTree } from '@/lib/open-platform-category';
 import type { CategoryVersionView, CategoryView } from '@/types/apps/open-platform';
 
@@ -79,15 +79,14 @@ const CategoryCatalogPage = () => {
       lyraClassName="flex flex-col gap-px bg-border p-px"
       defaultClassName="flex flex-col gap-4"
     >
-      <BreadcrumbComp
+      <ProjectWorkspaceShell activePrimary="categories" breadcrumbs={<BreadcrumbTrail
         title="品类"
         items={[
           { to: '/projects', title: '项目' },
           { to: `/projects/${projectId}/categories`, title: '品类' },
           ...(category ? [{ title: categoryLabel(category) }] : []),
         ]}
-      />
-      <ProjectWorkspaceShell activePrimary="categories">
+      />}>
         <div className="min-h-[28rem]">
           <div className="grid min-h-0 gap-4 xl:grid-cols-[minmax(18rem,0.8fr)_minmax(0,1.2fr)]">
             <Card className="gap-0 py-0">

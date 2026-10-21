@@ -50,7 +50,7 @@ import { RequestLoading } from '@/components/shared/request-feedback';
 import { Textarea } from '@/components/ui/textarea';
 import { OpenPlatformApiError, openPlatformDelete, openPlatformGetFetcher, openPlatformPost, openPlatformPut } from '../../../../../context/open-platform-context/project-resources';
 
-import BreadcrumbComp from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
+import { BreadcrumbTrail } from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
 import type {
 ParserProfileDiffView,
 ParserProfileDirection,
@@ -397,8 +397,7 @@ const ParserProfileDetailPage = () => {
       lyraClassName="flex flex-col gap-px bg-border p-px"
       defaultClassName="flex flex-col gap-4"
     >
-      <BreadcrumbComp title="协议解析详情" items={[{ to: profileListPath, title: '协议解析' }, { title: profile?.profileName ?? '详情' }]} />
-      <ProjectWorkspaceShell activePrimary="parserProfiles">
+      <ProjectWorkspaceShell activePrimary="parserProfiles" breadcrumbs={<BreadcrumbTrail title="协议解析详情" items={[{ to: profileListPath, title: '协议解析' }, { title: profile?.profileName ?? '详情' }]} />}>
         {apiError ? <ApiErrorAlert code={apiError.code} message={apiError.message} /> : null}
         {profileLoading ? <RequestLoading label="正在加载 Profile…" /> : profile ? (
         <div className="space-y-4">

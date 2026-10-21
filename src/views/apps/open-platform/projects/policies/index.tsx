@@ -7,7 +7,7 @@ import { Plus, RefreshCw, Search, ShieldCheck, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { ProjectWorkspaceShell } from '@/components/open-platform/project-workspace-shell';
 import StyleAwareWrapper from '@/components/shared/StyleAwareWrapper';
-import BreadcrumbComp from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
+import { BreadcrumbTrail } from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
 import { GatewayDataTable } from '@/components/tables/data-table/DataTable';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -121,5 +121,5 @@ export default function ProjectPolicies() {
   const { projectId = '' } = useParams();
   const { session } = useIam();
   useEffect(() => { document.title = '策略与授权 · AIoT'; }, []);
-  return <StyleAwareWrapper lyraClassName="flex flex-col gap-px bg-border p-px" defaultClassName="flex flex-col gap-4"><BreadcrumbComp title="策略与授权" items={[{ title: '项目', to: '/projects' }]} /><ProjectWorkspaceShell navigationMode="sidebar" activePrimary="policies"><SWRConfig key={projectId + (session?.sessionId ?? 'anonymous')} value={{ provider: () => new Map() }}><Workspace key={projectId} projectId={projectId} /></SWRConfig></ProjectWorkspaceShell></StyleAwareWrapper>;
+  return <StyleAwareWrapper lyraClassName="flex flex-col gap-px bg-border p-px" defaultClassName="flex flex-col gap-4"><ProjectWorkspaceShell navigationMode="sidebar" activePrimary="policies" breadcrumbs={<BreadcrumbTrail title="策略与授权" items={[{ title: '项目', to: '/projects' }]} />}><SWRConfig key={projectId + (session?.sessionId ?? 'anonymous')} value={{ provider: () => new Map() }}><Workspace key={projectId} projectId={projectId} /></SWRConfig></ProjectWorkspaceShell></StyleAwareWrapper>;
 }

@@ -29,7 +29,7 @@ TableRow,
 } from '@/components/ui/table';
 import { OpenPlatformApiError, openPlatformGetFetcher, useProjectDetail } from '../../../../../context/open-platform-context/project-resources';
 
-import BreadcrumbComp from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
+import { BreadcrumbTrail } from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
 import {
 PRODUCT_LIFECYCLE_LABEL,
 PROJECT_STATUS_LABEL,
@@ -109,8 +109,7 @@ const ProjectProductsPage = () => {
       lyraClassName="flex flex-col gap-px bg-border p-px"
       defaultClassName="flex flex-col gap-4"
     >
-      <BreadcrumbComp title="产品" items={BCrumb} />
-      <ProjectWorkspaceShell activePrimary="products">
+      <ProjectWorkspaceShell activePrimary="products" breadcrumbs={<BreadcrumbTrail title="产品" items={BCrumb} />}>
         <div className="flex h-full min-h-[28rem] flex-col gap-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap gap-2">

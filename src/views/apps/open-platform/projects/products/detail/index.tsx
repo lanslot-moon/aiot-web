@@ -66,7 +66,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
 import { OpenPlatformApiError, openPlatformDelete, openPlatformGetFetcher, openPlatformPost, openPlatformPut, useProjectDetail } from '../../../../../../context/open-platform-context/project-resources';
 
-import BreadcrumbComp from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
+import { BreadcrumbTrail } from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
 import {
 labelOf,
 PRODUCT_AUTH_MODE_LABEL,
@@ -610,8 +610,7 @@ const ProductDetailPage = () => {
       lyraClassName="flex flex-col gap-px bg-border p-px"
       defaultClassName="flex flex-col gap-4"
     >
-      <BreadcrumbComp title="产品详情" items={breadcrumbItems} />
-      <ProjectWorkspaceShell activePrimary="products">
+      <ProjectWorkspaceShell activePrimary="products" breadcrumbs={<BreadcrumbTrail title="产品详情" items={breadcrumbItems} />}>
         {productError ? (
           <ApiErrorAlert
             code={error?.code}

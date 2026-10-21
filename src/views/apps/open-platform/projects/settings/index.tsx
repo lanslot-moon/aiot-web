@@ -14,7 +14,7 @@ CardTitle,
 import { Skeleton } from '@/components/ui/skeleton';
 import { useProjectDetail } from '../../../../../context/open-platform-context/project-resources';
 
-import BreadcrumbComp from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
+import { BreadcrumbTrail } from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
 import {
 PROJECT_ROLE_LABEL,
 PROJECT_STATUS_LABEL,
@@ -35,8 +35,7 @@ const ProjectSettingsPage = () => {
       lyraClassName="flex flex-col p-px gap-px bg-border"
       defaultClassName="flex flex-col gap-4"
     >
-      <BreadcrumbComp title="项目设置" items={BCrumb} />
-      <ProjectWorkspaceShell activePrimary="settings">
+      <ProjectWorkspaceShell activePrimary="settings" breadcrumbs={<BreadcrumbTrail title="项目设置" items={BCrumb} />}>
         <div className="grid gap-4 lg:grid-cols-3">
           <Card className="lg:col-span-2">
             <CardHeader>

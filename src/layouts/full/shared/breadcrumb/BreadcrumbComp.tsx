@@ -2,6 +2,14 @@ import { Card } from '@/components/ui/card';
 import { Link } from 'react-router';
 interface BreadcrumbItem { to?: string; title: string }
 interface BreadCrumbType { subtitle?: string; items?: BreadcrumbItem[]; title: string }
+export function BreadcrumbTrail({ title, items }: BreadCrumbType) {
+  const parents = (items ?? (title === '全部项目' ? [] : [{ title: '全部项目', to: '/projects' }]))
+    .filter((item, index, list) => index !== list.length - 1 || item.title !== title);
+  return <nav aria-label="当前位置"><ol className="flex flex-wrap items-center justify-end gap-2 text-xs text-muted-foreground">
+    {parents.map((item) => <li key={item.title} className="flex items-center gap-2">{item.to ? <Link className="hover:text-foreground hover:underline focus-visible:outline focus-visible:outline-ring" to={item.to}>{item.title}</Link> : item.title}<span aria-hidden="true">/</span></li>)}
+    <li aria-current="page" className="text-foreground">{title}</li>
+  </ol></nav>;
+}
 const BreadcrumbComp = ({ title, items }: BreadCrumbType) => {
   const parents = items ?? (title === '全部项目' ? [] : [{ title: '全部项目', to: '/projects' }]);
   return <Card className="overflow-hidden rounded-xl border bg-background px-6 py-5">

@@ -64,7 +64,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { OpenPlatformApiError, openPlatformDelete, openPlatformGetFetcher, openPlatformPost, openPlatformPut, useProjectDetail } from '../../../../../../context/open-platform-context/project-resources';
 
-import BreadcrumbComp from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
+import { BreadcrumbTrail } from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
 import {
 labelOf,
 MODEL_DRAFT_STATUS_LABEL,
@@ -975,8 +975,7 @@ const ProductModelPage = () => {
       lyraClassName="flex flex-col gap-px bg-border p-px"
       defaultClassName="flex flex-col gap-4"
     >
-      <BreadcrumbComp title="物模型" items={breadcrumbItems} />
-      <ProjectWorkspaceShell activePrimary="products">
+      <ProjectWorkspaceShell activePrimary="products" breadcrumbs={<BreadcrumbTrail title="物模型" items={breadcrumbItems} />}>
         {productError ? (
           <ApiErrorAlert
             code={error?.code}

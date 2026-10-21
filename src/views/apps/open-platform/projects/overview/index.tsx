@@ -22,7 +22,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { RequestLoading } from '@/components/shared/request-feedback';
 import { OpenPlatformApiError, openPlatformGetFetcher, useProjectDetail } from '../../../../../context/open-platform-context/project-resources';
 
-import BreadcrumbComp from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
+import { BreadcrumbTrail } from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
 import {
 AUTHORIZATION_STATUS_LABEL,
 PROJECT_STATUS_LABEL,
@@ -94,8 +94,7 @@ const ProjectOverviewPage = () => {
       lyraClassName="flex flex-col p-px gap-px bg-border"
       defaultClassName="flex flex-col gap-4"
     >
-      <BreadcrumbComp title="概览" items={BCrumb} />
-      <ProjectWorkspaceShell activePrimary="overview">
+      <ProjectWorkspaceShell activePrimary="overview" breadcrumbs={<BreadcrumbTrail title="概览" items={BCrumb} />}>
         <div className="space-y-4">
           <div className="grid gap-4 lg:grid-cols-3">
             <div className="space-y-4">
