@@ -4,6 +4,7 @@ import type { CommandRecord } from '@/api/device/commands';
 import { deliveryLabels, executionLabels } from '@/api/device/commands';
 import { formatTime } from '@/api/device/client';
 import { Button } from '@/components/ui/button';
+import { CopyIdButton } from '@/components/open-platform/copy-id-button';
 import { cn } from '@/lib/utils';
 
 function Payload({ text }: { text: string | null }) {
@@ -43,7 +44,7 @@ export function CommandExchange({ record, onDetails }: {
         <div className="flex flex-wrap items-center gap-x-2 text-[11px] text-muted-foreground">
           <span>我 · {commandLabel}</span>
           <time title={formatTime(record.createTime)}>{formatTime(record.createTime).split(' ').pop()}</time>
-          <span className="min-w-0 break-all font-mono text-[10px]" title="消息 ID">{record.requestId}</span>
+          <span className="inline-flex min-w-0 items-center gap-1"><span className="min-w-0 break-all font-mono text-[10px]" title="请求 ID">{record.requestId}</span><CopyIdButton value={record.requestId} label="请求 ID" className="shrink-0" /></span>
           <Button variant="ghost" size="icon-xs" aria-label={`查看指令 ${record.requestId} 详情`} title="查看记录详情" onClick={() => onDetails(record)}><MoreHorizontal /></Button>
         </div>
         <div className="space-y-1 rounded-lg rounded-tl-none bg-muted/70 px-3 py-2">
@@ -59,7 +60,7 @@ export function CommandExchange({ record, onDetails }: {
           <div className="flex flex-wrap items-center justify-end gap-x-2 text-[11px] text-muted-foreground">
             <span>设备</span>
             <time title={formatTime(result.receivedAt)}>{formatTime(result.receivedAt).split(' ').pop()}</time>
-            <span className="min-w-0 break-all font-mono text-[10px]" title="消息 ID">{record.requestId}</span>
+            <span className="inline-flex min-w-0 items-center gap-1"><span className="min-w-0 break-all font-mono text-[10px]" title="请求 ID">{record.requestId}</span><CopyIdButton value={record.requestId} label="请求 ID" className="shrink-0" /></span>
           </div>
           <div className={cn('space-y-1 rounded-lg rounded-tr-none bg-chart-2/10 px-3 py-2', failed && 'bg-destructive/10')}>
             <p className="whitespace-pre-wrap break-words text-xs leading-5">{result.code}{result.message ? ` · ${result.message}` : ''}</p>
