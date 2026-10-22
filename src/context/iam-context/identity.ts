@@ -14,12 +14,12 @@ export function useIdentity() {
   const account = useSWR(
     session ? ['/api/v1/authenticated-account', session.sessionId] : null,
     ([path]) => get<AccountVO>(path),
-    { shouldRetryOnError: false },
+    { shouldRetryOnError: false, revalidateIfStale: false },
   );
   const authorization = useSWR<CurrentAuthorizationVO>(
     session ? ['/api/v1/current-authorization', session.sessionId] : null,
     () => getCurrentAuthorization(),
-    { shouldRetryOnError: false },
+    { shouldRetryOnError: false, revalidateIfStale: false },
   );
   return { session, account, authorization, platformAuthorization: authorization };
 }

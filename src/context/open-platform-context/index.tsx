@@ -32,7 +32,7 @@ export const OpenPlatformProvider = ({ children }: { children: ReactNode }) => {
       ? [listKey, session?.sessionId]
       : null,
     ([path]) => openPlatformGetFetcher(path),
-    { shouldRetryOnError: false },
+    { shouldRetryOnError: false, revalidateIfStale: false },
   );
 
   const setSession = useCallback((tokens: TokenVO | null) => {

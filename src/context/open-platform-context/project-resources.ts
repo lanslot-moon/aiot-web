@@ -94,7 +94,7 @@ export function useProjectDetail(projectId: string | undefined | null) {
   const resource = useSWR<ProjectDetailVO>(session && allowed && projectId
     ? [projectDetailKey(projectId), session.sessionId, 'resource'] : null,
     ([path]) => get<ProjectDetailVO>(path),
-    { shouldRetryOnError: false },
+    { shouldRetryOnError: false, revalidateIfStale: false },
   );
   const project: ProjectView | undefined = resource.data?.project;
   return {
