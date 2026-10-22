@@ -547,7 +547,7 @@ export function GatewayDataTable<T>({
     getCoreRowModel: getCoreRowModel(),
   });
   return (
-    <div className="min-h-40 overflow-x-auto rounded-lg border">
+    <div className="overflow-x-auto rounded-lg border">
       <Table>
         <TableHeader>
           {table.getHeaderGroups().map((group) => (

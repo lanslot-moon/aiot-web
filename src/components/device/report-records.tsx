@@ -19,19 +19,21 @@ import { CopyIdButton } from '@/components/open-platform/copy-id-button';
 
 function formatReportValue(value: unknown): string {
   if (value === null || value === undefined) return '—';
-  if (Array.isArray(value)) return value.map(formatReportValue).join('、');
-  if (typeof value === 'object') return Object.entries(value).map(([key, item]) => `${key}：${formatReportValue(item)}`).join(' · ');
+  if (Array.isArray(value)) return `${value.length} 项数组`;
+  if (typeof value === 'object') return `${Object.keys(value).length} 个字段`;
   return String(value);
 }
 
 function reportFields(value: unknown, schema: unknown) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return formatReportValue(value);
   const properties = schema && typeof schema === 'object' && 'properties' in schema ? schema.properties : null;
-  return <div className="flex flex-wrap gap-x-5 gap-y-1">{Object.entries(value).map(([key, item]) => {
+  const entries = Object.entries(value);
+  if (!entries.length) return <span className="text-muted-foreground">暂无上报内容</span>;
+  return <p className="line-clamp-2 text-xs leading-5 [overflow-wrap:anywhere]">{entries.map(([key, item], index) => {
     const field = properties && typeof properties === 'object' ? (properties as Record<string, unknown>)[key] : null;
     const label = field && typeof field === 'object' && 'title' in field && typeof field.title === 'string' ? field.title : key;
-    return <span key={key}><span className="text-muted-foreground">{label}：</span><span className="font-medium tabular-nums">{formatReportValue(item)}</span></span>;
-  })}</div>;
+    return <span key={key}>{index > 0 && <span className="mx-2 text-muted-foreground">·</span>}<span className="text-muted-foreground">{label}：</span><span className="font-medium tabular-nums">{formatReportValue(item)}</span></span>;
+  })}</p>;
 }
 
 const MAX_RANGE_MS = 7 * 24 * 60 * 60 * 1000;
@@ -140,7 +142,7 @@ export function ReportRecords({ projectId, device, model }: { projectId: string;
         { label: '上报时间', render: row => <time className="whitespace-nowrap tabular-nums text-muted-foreground">{formatDateTime(reportTimestamp(row))}</time> },
         { label: '类型', render: row => <Badge variant="outline" className={row.kind === 'property' ? 'border-blue-200 bg-blue-50 text-blue-700! dark:border-blue-400/50 dark:bg-blue-500/20 dark:text-blue-300!' : 'border-amber-200 bg-amber-50 text-amber-800! dark:border-amber-400/50 dark:bg-amber-500/20 dark:text-amber-300!'}>{row.kind === 'property' ? '属性上报' : '事件上报'}</Badge> },
         { label: 'Message ID', render: row => { const messageId = reportMessageId(row); return <div className="flex items-center gap-1"><code className="whitespace-nowrap font-mono text-xs">{messageId}</code><CopyIdButton value={messageId} label="Message ID" /></div>; } },
-        { label: '上报内容', render: row => <div className="flex items-start justify-between gap-3"><div className="min-w-0">{row.kind === 'property' ? reportFields(row.data.properties, propertySchema) : <div className="space-y-1"><p className="text-xs font-medium">{model.events.find(item => item.code === row.data.eventCode)?.title ?? row.data.eventCode}<span className="ml-2 font-normal text-muted-foreground">{row.data.eventCode} · {({ INFO: '信息', WARN: '告警', ERROR: '故障' }[row.data.eventType] ?? row.data.eventType)}</span></p>{reportFields(row.data.output, model.events.find(item => item.code === row.data.eventCode)?.outputSchema)}</div>}</div><Button variant="ghost" size="sm" className="h-6 shrink-0 px-2 text-xs" aria-label={`查看${row.kind === 'property' ? '属性' : '事件'}上报 JSON ${reportMessageId(row)}`} onClick={() => setSelectedReport(row)}>查看 JSON</Button></div> },
+        { label: '上报内容', render: row => <div className="flex items-center justify-between gap-3"><div className="line-clamp-2 w-72 min-w-0 max-w-80 text-xs leading-5">{row.kind === 'property' ? reportFields(row.data.properties, propertySchema) : <div className="line-clamp-2 text-xs leading-5"><p className="truncate text-xs font-medium">{model.events.find(item => item.code === row.data.eventCode)?.title ?? row.data.eventCode}<span className="ml-2 font-normal text-muted-foreground">{row.data.eventCode} · {({ INFO: '信息', WARN: '告警', ERROR: '故障' }[row.data.eventType] ?? row.data.eventType)}</span></p>{reportFields(row.data.output, model.events.find(item => item.code === row.data.eventCode)?.outputSchema)}</div>}</div><Button variant="ghost" size="sm" className="h-6 shrink-0 px-2 text-xs" aria-label={`查看${row.kind === 'property' ? '属性' : '事件'}上报 JSON ${reportMessageId(row)}`} onClick={() => setSelectedReport(row)}>查看 JSON</Button></div> },
       ]} />}
       <div className="flex flex-wrap items-center justify-between gap-2"><span className="text-xs text-muted-foreground">第 {page.previous.length + 1} 页 · 每页最多 20 条上报</span><div className="flex gap-2"><Button size="sm" variant="outline" disabled={data.isValidating || !page.previous.length} onClick={() => setPage(previous => ({ ...previous, cursor: previous.previous[previous.previous.length - 1] ?? null, previous: previous.previous.slice(0, -1) }))}>上一页</Button><Button size="sm" variant="outline" disabled={data.isValidating || !!data.error || !data.data?.hasMore} onClick={() => { const next = data.data?.next; if (next) setPage(previous => ({ ...previous, cursor: next, previous: [...previous.previous, previous.cursor] })); }}>下一页</Button></div></div>
     </div>
