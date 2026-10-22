@@ -4,6 +4,7 @@ import { ChevronDown, ChevronRight, RefreshCw } from 'lucide-react';
 import { type DeviceDetail } from '@/api/device/client';
 import { reportStreamPage, reportTimestamp, reportMessageId, type ReportRow, type ReportStreamCursor, type ReportStreamQuery, type ReportStreamPage } from '@/api/device/telemetry';
 import type { ThingModelDefinition } from '@/types/apps/open-platform';
+import { telemetryProperties } from '@/api/device/telemetry-model';
 import { useResource } from '@/components/iam/shared-utils';
 import { ErrorNotice, Loading } from '@/components/iam/shared';
 import { Button } from '@/components/ui/button';
@@ -42,6 +43,7 @@ function localDateTime(timestamp: number) {
 }
 
 export function ReportRecords({ projectId, device, model }: { projectId: string; device: DeviceDetail; model: ThingModelDefinition }) {
+  const properties = telemetryProperties(model.properties);
   const [initialRange] = useState(() => { const to = Math.floor(Date.now() / 1000) * 1000; return { from: to - 3600000, to }; });
   const [kind, setKind] = useState<ReportStreamQuery['kind']>('all');
   const [propertyCode, setPropertyCode] = useState('');
@@ -55,11 +57,11 @@ export function ReportRecords({ projectId, device, model }: { projectId: string;
   const [end, setEnd] = useState(() => localDateTime(initialRange.to));
   const [validation, setValidation] = useState('');
   const [selectedReport, setSelectedReport] = useState<ReportRow | null>(null);
-  const [query, setQuery] = useState<ReportStreamQuery>(() => ({ kind: 'all', propertyCodes: model.properties.slice(0, 10).map(item => item.code), eventCodes: [], ...initialRange }));
+  const [query, setQuery] = useState<ReportStreamQuery>(() => ({ kind: 'all', propertyCodes: properties.slice(0, 10).map(item => item.code), eventCodes: [], ...initialRange }));
   const [page, setPage] = useState<{ cursor: ReportStreamCursor | null; previous: (ReportStreamCursor | null)[]; revision: number }>({ cursor: null, previous: [], revision: 0 });
   const data = useResource<ReportStreamPage>(JSON.stringify([device.deviceId, query, page.cursor, page.revision]), 'device:view',
     () => reportStreamPage(projectId, device, query, page.cursor), `device-reports:${projectId}`);
-  const propertySchema = { properties: Object.fromEntries(model.properties.map(item => [item.code, { title: item.title }])) };
+  const propertySchema = { properties: Object.fromEntries(properties.map(item => [item.code, { title: item.title }])) };
   function resetPage() { setPage(previous => ({ cursor: null, previous: [], revision: previous.revision + 1 })); }
   function applyQuery() {
     const to = preset === 'custom' ? new Date(end).getTime() : Math.floor(Date.now() / 1000) * 1000;
@@ -71,7 +73,7 @@ export function ReportRecords({ projectId, device, model }: { projectId: string;
     setValidation(''); setAppliedPreset(preset); setStart(localDateTime(from)); setEnd(localDateTime(to));
     setChartExpanded(false); setChartOriginalRange(null);
     setChartPropertyCode(kind !== 'event' ? propertyCode : '');
-    setQuery({ kind, propertyCodes: propertyCode ? [propertyCode] : model.properties.slice(0, 10).map(item => item.code), eventCodes: eventCode ? [eventCode] : [], from, to });
+    setQuery({ kind, propertyCodes: propertyCode ? [propertyCode] : properties.slice(0, 10).map(item => item.code), eventCodes: eventCode ? [eventCode] : [], from, to });
     resetPage();
   }
   function resetFilters() {
@@ -80,7 +82,7 @@ export function ReportRecords({ projectId, device, model }: { projectId: string;
     setKind('all'); setPropertyCode(''); setEventCode('');
     setPreset('1'); setAppliedPreset('1'); setStart(localDateTime(from)); setEnd(localDateTime(to));
     setValidation(''); setChartPropertyCode(''); setChartExpanded(false); setChartOriginalRange(null); setSelectedReport(null);
-    setQuery({ kind: 'all', propertyCodes: model.properties.slice(0, 10).map(item => item.code), eventCodes: [], from, to });
+    setQuery({ kind: 'all', propertyCodes: properties.slice(0, 10).map(item => item.code), eventCodes: [], from, to });
     resetPage();
   }
   function refreshQuery() {
@@ -105,14 +107,14 @@ export function ReportRecords({ projectId, device, model }: { projectId: string;
     setStart(localDateTime(from)); setEnd(localDateTime(to)); setPreset('custom'); setAppliedPreset('custom');
     setChartOriginalRange(null); resetPage();
   }
-  const chartProperty = chartPropertyCode && query.kind !== 'event' && query.propertyCodes.length === 1 ? model.properties.find(item => item.code === chartPropertyCode) : undefined;
-  const defaultPropertyLabel = model.properties.length > 10 ? '默认属性（前 10 项）' : '全部属性';
+  const chartProperty = chartPropertyCode && query.kind !== 'event' && query.propertyCodes.length === 1 ? properties.find(item => item.code === chartPropertyCode) : undefined;
+  const defaultPropertyLabel = properties.length > 10 ? '默认属性（前 10 项）' : '全部属性';
   return <section className="min-w-0 rounded-lg border" aria-label="设备上报记录">
     <header className="space-y-3 border-b p-4">
       <div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="text-sm font-medium">设备上报记录</h3><p className="mt-1 text-xs text-muted-foreground">属性与事件按上报时间倒序展示，与指令 ACK 独立。筛选单个属性可查看图表，调整筛选后点击查询。</p></div><Button variant="outline" size="sm" disabled={data.isValidating} onClick={refreshQuery}><RefreshCw className="size-3.5" />刷新记录</Button></div>
       <div className="flex flex-wrap items-end gap-3">
         <div className="space-y-1"><Label className="text-xs">上报类型</Label><CommandSelect label="上报类型" className="w-32" value={kind} onValueChange={value => setKind(value as ReportStreamQuery['kind'])} options={[{ value: 'all', label: '全部上报' }, { value: 'property', label: '属性上报' }, { value: 'event', label: '事件上报' }]} placeholder="上报类型" /></div>
-        {kind !== 'event' && <div className="space-y-1"><Label className="text-xs">属性筛选</Label><CommandSelect label="属性筛选" className="w-48" value={propertyCode || 'ALL'} onValueChange={value => setPropertyCode(value === 'ALL' ? '' : value)} options={[{ value: 'ALL', label: defaultPropertyLabel }, ...model.properties.map(item => ({ value: item.code, label: `${item.title} · ${item.code}` }))]} placeholder="选择属性" /></div>}
+        {kind !== 'event' && <div className="space-y-1"><Label className="text-xs">属性筛选</Label><CommandSelect label="属性筛选" className="w-48" value={propertyCode || 'ALL'} onValueChange={value => setPropertyCode(value === 'ALL' ? '' : value)} options={[{ value: 'ALL', label: defaultPropertyLabel }, ...properties.map(item => ({ value: item.code, label: `${item.title} · ${item.code}` }))]} placeholder="选择属性" /></div>}
         {kind !== 'property' && <div className="space-y-1"><Label className="text-xs">事件筛选</Label><CommandSelect label="事件筛选" className="w-48" value={eventCode || 'ALL'} onValueChange={value => setEventCode(value === 'ALL' ? '' : value)} options={[{ value: 'ALL', label: '全部事件' }, ...model.events.map(item => ({ value: item.code, label: `${item.title} · ${item.code}` }))]} placeholder="选择事件" /></div>}
         <div className="space-y-1"><Label className="text-xs">快捷时间</Label><CommandSelect label="快捷时间" className="w-32" value={preset} onValueChange={value => {
           setPreset(value); setValidation('');
@@ -126,7 +128,7 @@ export function ReportRecords({ projectId, device, model }: { projectId: string;
       {validation && <p role="alert" className="text-xs text-destructive">{validation}</p>}
     </header>
     <div className="space-y-3 p-4">
-      {query.kind !== 'event' && query.propertyCodes.length === Math.min(10, model.properties.length) && model.properties.length > 10 && <p role="status" className="rounded-md border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">此设备共 {model.properties.length} 个属性，默认仅查询物模型中的前 10 个属性。其余属性请通过「属性筛选」单独查看。</p>}
+      {query.kind !== 'event' && query.propertyCodes.length === Math.min(10, properties.length) && properties.length > 10 && <p role="status" className="rounded-md border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">此设备共 {properties.length} 个遥测字段，默认仅查询前 10 个字段。其余字段请通过「属性筛选」单独查看。</p>}
       <div className="flex items-center justify-between gap-3">
         <p className="min-w-0 flex-1 text-xs text-muted-foreground">当前结果：{query.kind === 'all' ? '全部上报' : query.kind === 'property' ? '属性上报' : '事件上报'} · {formatDateTime(query.from)} — {formatDateTime(query.to)}</p>
         {chartProperty && <div className="flex shrink-0 items-center gap-2">{chartOriginalRange && <Button size="sm" variant="ghost" onClick={restoreChartRange}>返回原时间范围</Button>}<Button size="sm" variant="outline" aria-expanded={chartExpanded} aria-controls="property-report-chart" onClick={() => setChartExpanded(previous => !previous)}>{chartExpanded ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}{chartExpanded ? '收起属性图表' : '展开属性图表'}</Button></div>}

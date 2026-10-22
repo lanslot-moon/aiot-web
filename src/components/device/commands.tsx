@@ -74,7 +74,7 @@ export default function DeviceCommands({ projectId, device }: { projectId: strin
   const visibleProperties = showAllProperties ? properties : writable;
   const matchingProperties = visibleProperties.filter(item => `${item.title} ${item.code}`.toLowerCase().includes(functionSearch.trim().toLowerCase()));
   const latest = useResource(model.data && properties.length ? JSON.stringify([device.deviceId, model.data.modelRevision, properties.map(item => item.code)]) : null,
-    'device:view', () => latestProperties(projectId, device, properties.map(item => item.code)), `device-latest:${projectId}`);
+    'device:view', () => latestProperties(projectId, device, properties), `device-latest:${projectId}`);
   function submitted(result: CommandSubmission) {
     if (!result || typeof result.requestId !== 'string' || !result.requestId) throw new Error('提交响应缺少请求编号，请核对指令记录。');
     const message = `已提交 ${result.requestId}，等待设备处理结果。`;

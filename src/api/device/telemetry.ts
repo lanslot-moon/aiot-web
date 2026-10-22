@@ -1,11 +1,14 @@
 import { request } from '@/api/iam/client';
 import type { DeviceDetail, CursorPage } from './client';
+import type { ThingModelProperty } from '@/types/apps/open-platform';
+import { latestPropertyValue, telemetryProperties } from './telemetry-model';
 export interface TelemetryPoint { timestamp: number | null; value: unknown }
 export interface PropertyReport { timestamp: number; recordKey: string; properties: Record<string, unknown> }
 export interface EventReport { recordId: string; messageId: string; eventCode: string; eventType: string; ts: number; receivedAt: number; output: unknown }
 export const telemetryScope = (device: DeviceDetail) => ({ productId: device.productId, sourceSpace: device.virtualDevice ? 'simulation' : 'production' });
-export async function latestProperties(projectId: string, device: DeviceDetail, codes: string[]) {
+export async function latestProperties(projectId: string, device: DeviceDetail, properties: ThingModelProperty[]) {
   const values: Record<string, TelemetryPoint> = {};
+  const codes = telemetryProperties(properties).map(property => property.code);
   // Respect the provider's 50-code boundary without silently hiding additional properties.
   for (let offset = 0; offset < codes.length; offset += 50) {
     const page = await request<{ values: Record<string, TelemetryPoint> }>('/api/v1/telemetry/properties/latest:query', 'POST', {
@@ -13,7 +16,7 @@ export async function latestProperties(projectId: string, device: DeviceDetail, 
     }, { projectId, successCode: '200' });
     Object.assign(values, page.values);
   }
-  return values;
+  return Object.fromEntries(properties.map(property => [property.code, latestPropertyValue(property, values)]));
 }
 export function reportPage(projectId: string, device: DeviceDetail, kind: 'property' | 'event', codes: string[], from: number, to: number, cursor: string | null) {
   if (kind === 'property' && (codes.length === 0 || codes.length > 10)) throw new Error('上报记录每次须查询 1 至 10 个属性。');
