@@ -1,4 +1,6 @@
 import { formatDateTime } from '@/lib/date-time';
+import { cn } from '@/lib/utils';
+import { HardwareObservationDetails } from './hardware-observation';
 import { DeviceTable as DataTable } from './layout';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
@@ -15,8 +17,8 @@ import { useResource } from '@/components/iam/shared-utils';
 import { request, OpenPlatformApiError } from '@/api/iam/client';
 import type { ProductDetailView } from '@/types/apps/open-platform';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
-import { devicePath, groupPath, deviceRequest, nodeLabels, type DeviceDetail, type DeviceMembership, type HardwareProfile, type HardwareObservation } from '@/api/device/client';
-import { Fact, CursorList, LifecycleBadge } from './shared';
+import { devicePath, groupPath, deviceRequest, nodeLabels, type DeviceDetail, type DeviceMembership, type HardwareProfile } from '@/api/device/client';
+import { CursorList, LifecycleBadge } from './shared';
 import { useDeviceResource } from './use-device-resource';
 import ResourceTags from './tags';
 import DeviceCommands from './commands';
@@ -52,10 +54,11 @@ function DeviceProduct({ projectId, productId, product }: { projectId: string; p
 
 function Hardware({ projectId, id }: { projectId: string; id: string }) {
   const resource = useDeviceResource<HardwareProfile>(projectId, `${devicePath(id)}/hardware-profile`);
-  function observation(label: string, value: HardwareObservation | null) {
-    return <Panel title={label}>{value ? <dl><Fact label="序列号">{value.serialNumber}</Fact><Fact label="硬件版本">{value.hardwareVersion}</Fact><Fact label="来源">{value.source}</Fact><Fact label="接收时间">{formatDateTime(value.receivedAt)}</Fact><Fact label="网卡地址">{value.macAddresses?.length ? value.macAddresses.map((m, i) => <div key={i}>{m.interfaceName ?? '未命名网卡'} · {m.address}</div>) : '—'}</Fact></dl> : <p className="text-sm text-muted-foreground">尚未收到此来源的硬件资料。</p>}</Panel>;
-  }
-  return <div className="space-y-4"><ErrorNotice error={resource.error} retry={() => resource.mutate()} />{resource.isLoading && <Loading />}{resource.data && <div className="grid gap-4 lg:grid-cols-2">{observation('可信登记资料', resource.data.verified)}{observation('设备自报资料', resource.data.reported)}</div>}</div>;
+  return <div className="space-y-4"><ErrorNotice error={resource.error} retry={() => resource.mutate()} />{resource.isLoading && <Loading />}{resource.data && <div className={cn('grid gap-4', resource.data.verified && resource.data.reported && 'lg:grid-cols-2')}>
+    {resource.data.verified && <HardwareObservationDetails title="可信登记资料" value={resource.data.verified} />}
+    {resource.data.reported && <HardwareObservationDetails title="设备自报资料" value={resource.data.reported} />}
+    {!resource.data.verified && !resource.data.reported && <p className="text-sm text-muted-foreground">尚未收到硬件资料。</p>}
+  </div>}</div>;
 }
 
 export default function DeviceDetails({ projectId, id, back, openGroup, backLabel = '返回设备列表' }: { projectId: string; id: string; back: () => void; openGroup: (id: string) => void; backLabel?: string }) {

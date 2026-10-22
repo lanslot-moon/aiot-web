@@ -22,6 +22,10 @@ export interface GroupMember { device: DeviceSummary }
 export interface DeviceMembership { group: DeviceGroup; joinedAt: number }
 export interface Tags { tags: Record<string, string>; updateTime: number }
 export interface HardwareObservation {
+  schemaVersion: number | null; hardwareModel: string | null; hardwareUuid: string | null;
+  firmwareVersion: string | null; firmwareBuild: string | null; sdkVersion: string | null; platformVersion: string | null;
+  chipModel: string | null; chipRevision: string | null; chipCores: number | null; flashSizeBytes: number | null;
+  simulated: boolean | null; reportedAt: number | null; messageId: string | null; deviceMessageId: string | null;
   serialNumber: string | null; hardwareVersion: string | null; source: string; receivedAt: number;
   macAddresses: { interfaceName: string | null; address: string }[];
 }
