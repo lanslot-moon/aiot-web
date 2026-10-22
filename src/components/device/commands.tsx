@@ -22,7 +22,7 @@ import { DeviceInput, DeviceTable } from './layout';
 import { cn } from '@/lib/utils';
 import CommandField from './command-fields';
 import { CommandControlTheme } from './command-control-theme';
-import { canRepresent, fieldError, initialValue, schemaObject, supportsForm } from './command-schema';
+import { canRepresent, fieldError, initialValue, schemaObject, schemaType, supportsForm } from './command-schema';
 import { latestProperties } from '@/api/device/telemetry';
 import { ActionControl } from './action-control';
 import { ReportRecords } from './report-records';
@@ -165,7 +165,7 @@ export default function DeviceCommands({ projectId, device }: { projectId: strin
                 else delete next[item.code];
                 setText(pretty(next)); setValidation('');
               }
-              return <div key={item.code} role="group" aria-label={`${item.title}，${changed ? '已选择下发' : '未选择下发'}`} aria-disabled={busy} tabIndex={busy ? -1 : 0} className={cn('flex flex-col cursor-pointer rounded-md border bg-muted/10 px-3 py-2 transition-colors focus-visible:outline-2 focus-visible:outline-ring', changed && 'border-blue-500/50')} onClick={event => {
+              return <div key={item.code} role="group" aria-label={`${item.title}，${changed ? '已选择下发' : '未选择下发'}`} aria-disabled={busy} tabIndex={busy ? -1 : 0} className={cn('flex flex-col cursor-pointer rounded-md border bg-muted/10 px-3 py-2 transition-colors focus-visible:outline-2 focus-visible:outline-ring', changed && 'border-blue-500/50', ['object', 'array'].includes(schemaType(item.schema)) && '2xl:col-span-2')} onClick={event => {
                 if ((event.target as Element).closest('[data-slot="field-content"], button, input, textarea, select, label')) return;
                 toggleProperty();
               }} onKeyDown={event => {
