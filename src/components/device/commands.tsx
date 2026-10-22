@@ -15,6 +15,7 @@ import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '
 import { CommandSelect } from './command-select';
 import { CommandExchange } from './command-exchange';
 import { CommandConnectionStatus } from './command-connection-status';
+import { commandNoticeText, type CommandNotice } from './command-notice';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DeviceInput, DeviceTable } from './layout';
@@ -50,13 +51,14 @@ export default function DeviceCommands({ projectId, device }: { projectId: strin
   const [busy, setBusy] = useState(false);
   const lock = useRef(false);
   const [sendError, setSendError] = useState<unknown>();
-  const [notice, setNotice] = useState('');
+  const [notice, setNotice] = useState<CommandNotice | null>(null);
   const [filter, setFilter] = useState('');
   const [selected, setSelected] = useState<CommandRecord | null>(null);
   const responseList = useRef<HTMLDivElement>(null);
   const followLatest = useRef(true);
   const history = useCommandRecords(projectId, device.deviceId, '', canView);
   const records = history.records;
+  const noticeText = commandNoticeText(notice, records);
   const liveRecords = records.filter(row => row.createTime >= history.startedAt && (!filter || row.commandType === filter));
   const selectedRecord = selected ? records.find(row => row.requestId === selected.requestId) ?? null : null;
   useEffect(() => {
@@ -76,7 +78,7 @@ export default function DeviceCommands({ projectId, device }: { projectId: strin
   function submitted(result: CommandSubmission) {
     if (!result || typeof result.requestId !== 'string' || !result.requestId) throw new Error('提交响应缺少请求编号，请核对指令记录。');
     const message = `已提交 ${result.requestId}，等待设备处理结果。`;
-    setNotice(message); toast.message(message); followLatest.current = true;
+    setNotice({ message, requestId: result.requestId }); toast.message(message); followLatest.current = true;
   }
 
   const inputSchema = {
@@ -113,7 +115,7 @@ export default function DeviceCommands({ projectId, device }: { projectId: strin
   async function send() {
     if (lock.current || blocked) return;
     const value = validate(); if (!value) return;
-    lock.current = true; setBusy(true); setSendError(undefined); setNotice('');
+    lock.current = true; setBusy(true); setSendError(undefined); setNotice(null);
     try {
       const result = await commandRequest<CommandSubmission>(projectId, commandPath(device.deviceId) + '/properties/issue', 'POST', {
         properties: JSON.stringify(value),
@@ -124,7 +126,7 @@ export default function DeviceCommands({ projectId, device }: { projectId: strin
       setText('{}'); setConfirm(false);
     } catch (error) {
       setSendError(error); setConfirm(false);
-      setNotice('本次请求未能确认结果，请先刷新指令记录核对，避免重复执行。'); resetHistory();
+      setNotice({ message: '本次请求未能确认结果，请先刷新指令记录核对，避免重复执行。' }); resetHistory();
     } finally { lock.current = false; setBusy(false); }
   }
   return <div className="min-w-0 space-y-4">
@@ -196,7 +198,7 @@ export default function DeviceCommands({ projectId, device }: { projectId: strin
           </div>
         </header>
         <div ref={responseList} onScroll={event => { const list = event.currentTarget; followLatest.current = list.scrollHeight - list.scrollTop - list.clientHeight < 64; }} className="flex h-96 min-h-0 min-w-0 flex-1 flex-col gap-5 overflow-y-auto p-4 lg:h-auto [&>*]:shrink-0">
-          {notice && <p role="status" className="rounded border bg-background p-3 text-xs leading-5">{notice}</p>}
+          {noticeText && <p role="status" className="rounded border bg-background p-3 text-xs leading-5">{noticeText}</p>}
           <ErrorNotice error={sendError} /><ErrorNotice error={history.error} retry={history.refresh} />
           {!!history.streamError && <div className="rounded-md border p-3 text-xs text-muted-foreground"><p>{history.streamError instanceof Error ? history.streamError.message : '实时连接暂不可用。'}</p><p>{history.status === 'blocked' ? '请检查登录状态或访问权限后重新连接。' : '已显示的记录会保留，连接恢复后自动补查。'}</p>{history.status === 'blocked' && <Button variant="outline" size="sm" className="mt-2" onClick={history.refresh}>重新连接</Button>}</div>}
           {history.isLoading && <Loading />}
