@@ -48,4 +48,3 @@ export const lifecycleLabels: Record<Lifecycle, string> = {
   PENDING_ACTIVATION: '待激活', ACTIVE: '已激活', DISABLED: '已停用', DELETING: '解绑处理中',
 };
 export const nodeLabels = { DIRECT: '直连设备', GATEWAY: '网关', SUB_DEVICE: '子设备' };
-export const formatTime = (time?: number | null) => time == null ? '—' : new Date(time).toLocaleString('zh-CN', { hour12: false });

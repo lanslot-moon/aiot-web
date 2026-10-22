@@ -1,3 +1,4 @@
+import { formatDateTime } from '@/lib/date-time';
 import { Library, PackagePlus, SearchIcon, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { usePermission } from '@/context/iam-context/identity';
@@ -304,10 +305,10 @@ const ProjectProductsPage = () => {
                         <ProductLifecycleBadge status={product.lifecycleStatus} />
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
-                        {new Date(product.createTime).toLocaleString()}
+                        {formatDateTime(product.createTime)}
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
-                        {product.updateTime == null ? '—' : new Date(product.updateTime).toLocaleString()}
+                        {product.updateTime == null ? '—' : formatDateTime(product.updateTime)}
                       </TableCell>
                       <TableCell className="text-start">
                         <div className="flex items-center justify-start gap-1 whitespace-nowrap">

@@ -1,3 +1,4 @@
+import { formatDateTime } from '@/lib/date-time';
 import { put, segment } from '@/api/iam/client';
 import type { ProjectDetailVO } from '@/api/iam/contracts';
 import { useLocation, useParams } from 'react-router';
@@ -6,7 +7,7 @@ import { useIam } from '../../context/iam-context/identity';
 
 import { IamProjectShell } from '@/components/iam/project-shell';
 import { Action, FieldsForm, Panel, Status } from '@/components/iam/shared';
-import { epoch, reasonFields, useResource } from '../../components/iam/shared-utils';
+import { reasonFields, useResource } from '../../components/iam/shared-utils';
 export default function ProjectPage() {
   const { platformAuthorization: authorization, authorization: projectAuthorization } = useIam();
   const codes = authorization.data?.permissionCodes ?? [];
@@ -44,7 +45,7 @@ export default function ProjectPage() {
               </div>
               <div className="grid gap-1 sm:grid-cols-[8rem_minmax(0,1fr)] sm:gap-4">
                 <dt className="text-muted-foreground">更新时间</dt>
-                <dd>{epoch(data.project.updateTime)}</dd>
+                <dd>{formatDateTime(data.project.updateTime)}</dd>
               </div>
             </dl>
             {data.myMember && <dl className="space-y-3 border-t pt-4 text-sm">
@@ -56,7 +57,7 @@ export default function ProjectPage() {
               </div>
               <div className="grid gap-1 sm:grid-cols-[8rem_minmax(0,1fr)] sm:gap-4">
                 <dt className="text-muted-foreground">加入时间</dt>
-                <dd>{epoch(data.myMember.joinedAt)}</dd>
+                <dd>{formatDateTime(data.myMember.joinedAt)}</dd>
               </div>
               <div className="grid gap-1 sm:grid-cols-[8rem_minmax(0,1fr)] sm:gap-4"><dt className="text-muted-foreground">我的项目角色</dt><dd>{projectAuthorization.data?.roles.map((role) => role.roleName).join('、') || '未分配角色'}</dd></div>
             </dl>}

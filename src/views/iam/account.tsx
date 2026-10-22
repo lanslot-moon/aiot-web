@@ -1,3 +1,4 @@
+import { formatDateTime } from '@/lib/date-time';
 import { post, put, remove, segment, setSession } from '@/api/iam/client';
 import type {
 ProjectAccessRequestVO,
@@ -12,7 +13,7 @@ import { useSWRConfig } from 'swr';
 import { useIam } from '../../context/iam-context/identity';
 
 import { Action, CursorTable, ErrorNotice, Loading, Navigation, Page, Panel, Status } from '@/components/iam/shared';
-import { epoch, reasonFields, type Field } from '../../components/iam/shared-utils';
+import { reasonFields, type Field } from '../../components/iam/shared-utils';
 const links = [
   { to: '/account/profile', label: '个人资料' },
   { to: '/account/security', label: '账号安全' },
@@ -139,8 +140,8 @@ export default function AccountPage() {
                 ),
               },
               { label: '状态', render: (row) => <Status value={row.status} /> },
-              { label: '最后活动', render: (row) => epoch(row.lastSeenAt) },
-              { label: '到期时间', render: (row) => epoch(row.expiresAt) },
+              { label: '最后活动', render: (row) => formatDateTime(row.lastSeenAt) },
+              { label: '到期时间', render: (row) => formatDateTime(row.expiresAt) },
               {
                 label: '操作',
                 render: (row) => (
@@ -192,7 +193,7 @@ export default function AccountPage() {
                 { label: '项目', render: (row) => row.projectId },
                 { label: '说明', render: (row) => row.message },
                 { label: '状态', render: (row) => <Status value={row.status} /> },
-                { label: '提交时间', render: (row) => epoch(row.createTime) },
+                { label: '提交时间', render: (row) => formatDateTime(row.createTime) },
                 {
                   label: '操作',
                   render: (row) =>

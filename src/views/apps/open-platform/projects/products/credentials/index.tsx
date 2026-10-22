@@ -1,3 +1,4 @@
+import { formatDateTime } from '@/lib/date-time';
 import {
 ArrowLeft,
 Ban,
@@ -65,15 +66,9 @@ type CredentialDistributionView = Omit<DistributionView, 'requestReference'> & {
 
 const PRODUCT_TAB_CLASS = 'h-8 gap-1.5';
 
-function formatDate(value: number | null | undefined) {
-  if (!value) return '长期有效';
-  return new Date(value).toLocaleString('zh-CN', { hour12: false });
-}
 
-function formatDateShort(value: number | null | undefined) {
-  if (!value) return '—';
-  return new Date(value).toLocaleDateString('zh-CN');
-}
+
+
 
 function formatDateTimeInput(value: number) {
   const date = new Date(value);
@@ -718,8 +713,8 @@ function ManufacturingBatchDetailDialog({
             <div><p className="text-xs text-muted-foreground">凭证族</p><code className="mt-1 block break-all font-mono text-xs">{itemDetail.credentialFamilyId}</code></div>
             <div><p className="text-xs text-muted-foreground">绑定设备</p><p className="mt-1">{itemDetail.boundDeviceId || '尚未绑定'}</p></div>
             <div><p className="text-xs text-muted-foreground">划拨集合</p><p className="mt-1 break-all">{itemDetail.distributionId || '尚未划拨'}</p></div>
-            <div><p className="text-xs text-muted-foreground">分配时间</p><p className="mt-1">{itemDetail.allocatedAt ? formatDate(itemDetail.allocatedAt) : '尚未分配'}</p></div>
-            <div><p className="text-xs text-muted-foreground">绑定时间</p><p className="mt-1">{itemDetail.boundAt ? formatDate(itemDetail.boundAt) : '尚未绑定'}</p></div>
+            <div><p className="text-xs text-muted-foreground">分配时间</p><p className="mt-1">{itemDetail.allocatedAt ? formatDateTime(itemDetail.allocatedAt, '长期有效') : '尚未分配'}</p></div>
+            <div><p className="text-xs text-muted-foreground">绑定时间</p><p className="mt-1">{itemDetail.boundAt ? formatDateTime(itemDetail.boundAt, '长期有效') : '尚未绑定'}</p></div>
           </div>
         </div>
       ) : null}
@@ -773,7 +768,7 @@ function ManufacturingBatchDetailDialog({
                       {items.map((item) => (
                         <Fragment key={item.itemId}>
                           <TableRow className={cn('transition-colors hover:bg-muted/20', selectedItemId === item.itemId && 'bg-muted/30')}>
-                            <TableCell className="whitespace-normal"><button type="button" className="max-w-full break-all whitespace-normal text-left font-medium underline-offset-4 hover:underline" onClick={() => void openItemDetail(item)}>{item.itemId}</button><div className="mt-1 text-xs text-muted-foreground">创建于 {formatDateShort(item.createTime)}</div></TableCell>
+                            <TableCell className="whitespace-normal"><button type="button" className="max-w-full break-all whitespace-normal text-left font-medium underline-offset-4 hover:underline" onClick={() => void openItemDetail(item)}>{item.itemId}</button><div className="mt-1 text-xs text-muted-foreground">创建于 {formatDateTime(item.createTime)}</div></TableCell>
                             <TableCell className="whitespace-normal break-all"><code className="break-all font-mono text-xs">{item.hardwareUuid}</code></TableCell>
                             <TableCell>{statusBadge(manufacturingItemStatusLabel[item.status] ?? item.status, getManufacturingItemTone(item.status))}</TableCell>
                             <TableCell className="whitespace-normal break-all"><code className="break-all font-mono text-xs">{item.credentialId}</code><div className="mt-1 text-xs text-muted-foreground">v{item.credentialVersion}</div></TableCell>
@@ -1026,7 +1021,7 @@ function DistributionDetailPanel({ distribution, canManage, onClose, onExport, o
     </div>
     <div className="space-y-2">
       <h2 id="pickup-detail-heading" ref={headingRef} tabIndex={-1} className="break-all text-lg font-semibold outline-none">{distribution.distributionRequestId || '领取单详情'}</h2>
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm"><span>领取总量 <strong className="tabular-nums">{formatNumber(distribution.allocatedQuantity)} 份</strong></span>{statusBadge(distributionStatusLabel[distribution.status] ?? distribution.status, getDistributionTone(distribution.status))}<span className="text-muted-foreground">领取时间 {formatDate(distribution.frozenAt)}</span></div>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm"><span>领取总量 <strong className="tabular-nums">{formatNumber(distribution.allocatedQuantity)} 份</strong></span>{statusBadge(distributionStatusLabel[distribution.status] ?? distribution.status, getDistributionTone(distribution.status))}<span className="text-muted-foreground">领取时间 {formatDateTime(distribution.frozenAt, '长期有效')}</span></div>
       <details className="text-xs text-muted-foreground"><summary className="cursor-pointer py-1">单据信息</summary><dl className="mt-2 grid gap-2 sm:grid-cols-2"><div><dt>领取单 ID</dt><dd className="mt-1 break-all font-mono">{distribution.distributionId}</dd></div><div><dt>来源批次</dt><dd className="mt-1 break-all font-mono">{distribution.batchId}</dd></div></dl></details>
     </div>
     {!canManage && <p className="rounded-lg border bg-muted/20 p-3 text-sm text-muted-foreground">当前产品仅可查看历史成员，不能作废或导出凭证。</p>}
@@ -1038,7 +1033,7 @@ function DistributionDetailPanel({ distribution, canManage, onClose, onExport, o
     <div className="overflow-hidden rounded-xl border"><Table><TableHeader><TableRow><TableHead>设备 UUID</TableHead><TableHead>制造项状态</TableHead><TableHead>设备绑定</TableHead><TableHead className="text-right">操作</TableHead></TableRow></TableHeader><TableBody>
       {isLoading || (error && items.length === 0) ? <RequestTableState colSpan={4} loading={isLoading} error={error} onRetry={() => void mutate()} /> : items.length === 0 ? <TableRow><TableCell colSpan={4} className="h-32 text-center text-muted-foreground">{filtered ? '没有符合条件的制造项，请调整筛选条件。' : '本领取单暂无制造项。'}</TableCell></TableRow> : items.map((item) => <Fragment key={item.itemId}>
         <TableRow><TableCell className="break-all font-mono text-xs">{item.hardwareUuid}</TableCell><TableCell>{statusBadge(manufacturingItemStatusLabel[item.status] ?? item.status, item.status === 'VOID' ? 'danger' : 'default')}</TableCell><TableCell className="text-sm">{item.boundDeviceId ? <span className="break-all font-mono text-xs">{item.boundDeviceId}</span> : '未绑定'}</TableCell><TableCell><div className="flex justify-end gap-1"><Button variant="ghost" size="sm" aria-expanded={expandedId === item.itemId} aria-controls={`pickup-item-${item.itemId}`} onClick={() => setExpandedId(expandedId === item.itemId ? null : item.itemId)}>{expandedId === item.itemId ? '收起' : '详情'}</Button>{canManage && item.status === 'AVAILABLE' && !item.boundDeviceId && (item.expiresAt == null || item.expiresAt > Date.now()) && <Button variant="ghost" size="sm" className="text-destructive" disabled={busy} onClick={() => { setPendingVoid(item); setReason(''); }}>作废</Button>}</div></TableCell></TableRow>
-        {expandedId === item.itemId && <TableRow id={`pickup-item-${item.itemId}`}><TableCell colSpan={4} className="bg-muted/20"><dl className="grid gap-3 py-2 text-xs sm:grid-cols-2"><div><dt className="text-muted-foreground">制造项 ID</dt><dd className="mt-1 break-all font-mono">{item.itemId}</dd></div><div><dt className="text-muted-foreground">凭证 ID · 版本</dt><dd className="mt-1 break-all font-mono">{item.credentialId} · v{item.credentialVersion}</dd></div><div><dt className="text-muted-foreground">领取时间</dt><dd className="mt-1">{formatDate(item.allocatedAt)}</dd></div><div><dt className="text-muted-foreground">失效时间</dt><dd className="mt-1">{formatDate(item.expiresAt)}</dd></div></dl></TableCell></TableRow>}
+        {expandedId === item.itemId && <TableRow id={`pickup-item-${item.itemId}`}><TableCell colSpan={4} className="bg-muted/20"><dl className="grid gap-3 py-2 text-xs sm:grid-cols-2"><div><dt className="text-muted-foreground">制造项 ID</dt><dd className="mt-1 break-all font-mono">{item.itemId}</dd></div><div><dt className="text-muted-foreground">凭证 ID · 版本</dt><dd className="mt-1 break-all font-mono">{item.credentialId} · v{item.credentialVersion}</dd></div><div><dt className="text-muted-foreground">领取时间</dt><dd className="mt-1">{formatDateTime(item.allocatedAt, '长期有效')}</dd></div><div><dt className="text-muted-foreground">失效时间</dt><dd className="mt-1">{formatDateTime(item.expiresAt, '长期有效')}</dd></div></dl></TableCell></TableRow>}
       </Fragment>)}
     </TableBody></Table></div>
     {error && items.length > 0 && <ApiErrorAlert message="加载或刷新成员失败，已保留当前列表。" onRetry={() => void mutate()} />}
@@ -1351,7 +1346,7 @@ const ProductCredentialsPage = () => {
     try {
       const endpoint = report ? 'skip-report/download-link' : 'download-link';
       const result = await openPlatformPost<{ downloadUrl: string; expiresAt: number }>(`/api/v1/credential-exports/${encodeURIComponent(task.exportId)}/${endpoint}`, {});
-      toast.success(`下载链接已签发，将于 ${formatDate(result.expiresAt)} 失效。`);
+      toast.success(`下载链接已签发，将于 ${formatDateTime(result.expiresAt, '长期有效')} 失效。`);
       window.open(result.downloadUrl, '_blank', 'noopener,noreferrer');
     } catch (error) {
       toast.error(error instanceof OpenPlatformApiError ? error.message : '下载链接签发失败。');
@@ -1490,10 +1485,10 @@ const ProductCredentialsPage = () => {
                       const displayStatus = getBatchDisplayStatus(batch);
                       const fullyAllocated = displayStatus === 'FULLY_ALLOCATED';
                       return <TableRow key={batch.batchId} className="transition-colors hover:bg-muted/20">
-                        <TableCell><button type="button" className="text-left font-medium underline-offset-4 hover:underline" onClick={() => setManufacturingBatch(batch)} aria-label={`查看批次 ${batch.batchId}`}>批次 {maskId(batch.batchId)}</button><div className="mt-1 text-xs text-muted-foreground">{formatDateShort(batch.createTime)}</div></TableCell>
+                        <TableCell><button type="button" className="text-left font-medium underline-offset-4 hover:underline" onClick={() => setManufacturingBatch(batch)} aria-label={`查看批次 ${batch.batchId}`}>批次 {maskId(batch.batchId)}</button><div className="mt-1 text-xs text-muted-foreground">{formatDateTime(batch.createTime)}</div></TableCell>
                         <TableCell>{statusBadge(batchStatusLabel[displayStatus] ?? displayStatus, getBatchTone(displayStatus))}</TableCell>
                         <TableCell><div className="font-medium tabular-nums">{formatNumber(batch.targetQuantity)}</div><div className="mt-1 text-xs text-muted-foreground">{fullyAllocated ? `已全部划拨 ${formatNumber(batch.allocatedQuantity)}` : `剩余可领取 ${formatNumber(batch.availableCount)}`}</div></TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{formatDate(batch.expiresAt)}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{formatDateTime(batch.expiresAt, '长期有效')}</TableCell>
                         <TableCell className="text-right"><div className="flex flex-wrap justify-end gap-1.5"><Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => { setAllocateBatch(batch); setAllocationOpen(true); }} disabled={!manufacturingFlowEnabled || batch.availableCount === 0}><PackageCheck className="size-3.5" aria-hidden />{fullyAllocated ? '已全部领取' : '创建领取单'}</Button><Button type="button" variant="ghost" size="sm" className="gap-1.5" onClick={() => void openExportForBatch(batch)} disabled={!distributions.some((item) => item.batchId === batch.batchId)}><Eye className="size-3.5" aria-hidden />查看领取单</Button></div></TableCell>
                       </TableRow>;
                     })}
@@ -1518,8 +1513,8 @@ const ProductCredentialsPage = () => {
                       <TableCell><code className="font-mono text-xs">{distribution.batchId}</code></TableCell>
                       <TableCell><span className="font-medium tabular-nums">{formatNumber(distribution.allocatedQuantity)}</span><span className="text-xs text-muted-foreground"> / {formatNumber(distribution.requestedQuantity)}</span></TableCell>
                       <TableCell>{statusBadge(distributionStatusLabel[distribution.status] ?? distribution.status, getDistributionTone(distribution.status))}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{distribution.frozenAt ? formatDate(distribution.frozenAt) : '尚未领取'}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{formatDate(distribution.expiresAt)}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{distribution.frozenAt ? formatDateTime(distribution.frozenAt, '长期有效') : '尚未领取'}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{formatDateTime(distribution.expiresAt, '长期有效')}</TableCell>
                       <TableCell><div className="flex justify-end gap-1.5"><Button type="button" variant="ghost" size="sm" onClick={() => void openDistributionDetail(distribution)}>查看成员</Button>{distribution.status === 'FROZEN' && manufacturingFlowEnabled ? <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => setExportDistribution(distribution)}><CloudDownload className="size-3.5" aria-hidden />导出</Button> : null}</div></TableCell>
                     </TableRow>)}
                   </TableBody>
@@ -1553,7 +1548,7 @@ const ProductCredentialsPage = () => {
                     <TableCell><span className="font-mono text-xs">v{credential.versionNo}</span><div className="mt-1 text-xs text-muted-foreground">{credential.credentialId}</div></TableCell>
                     <TableCell><div className="flex flex-wrap gap-1.5">{statusBadge(credentialStatusLabel[credential.credentialStatus] ?? credential.credentialStatus, getCredentialTone(credential.credentialStatus))}{credential.credentialStatus !== 'REVOKED' && credential.credentialStatus !== 'EXPIRED' && statusBadge(credential.accessState === 'ENABLED' ? '未冻结' : accessStateLabel[credential.accessState] ?? credential.accessState, credential.accessState === 'ENABLED' ? 'default' : 'warning')}</div></TableCell>
                     <TableCell><code className="font-mono text-xs text-muted-foreground">{credential.credentialFamilyId}</code></TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{formatDate(credential.updateTime)}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{formatDateTime(credential.updateTime, '长期有效')}</TableCell>
                     <TableCell><div className="flex justify-end gap-1.5"><Button type="button" variant="ghost" size="sm" onClick={() => canProvision && setRotationCredential(credential)} disabled={!canProvision || credential.credentialStatus !== 'ACTIVE' || !credential.deviceId} title={!credential.deviceId ? '设备激活并绑定后才能轮换' : undefined}><RotateCcw className="size-3.5" aria-hidden />轮换</Button>{canProvision && credential.credentialStatus !== 'REVOKED' ? <Button type="button" variant="ghost" size="sm" className={credential.accessState === 'ENABLED' ? 'text-amber-600 hover:text-amber-700' : 'text-emerald-600 hover:text-emerald-700'} onClick={() => setPendingCredentialAction({ credential, action: credential.accessState === 'ENABLED' ? 'FREEZE' : 'UNFREEZE' })}>{credential.accessState === 'ENABLED' ? '冻结' : '解冻'}</Button> : null}<Button type="button" variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => setPendingCredentialAction({ credential, action: 'REVOKE' })} disabled={!canProvision || credential.credentialStatus === 'REVOKED'}>吊销</Button></div></TableCell>
                   </TableRow>)}</TableBody>
                 </Table>
@@ -1574,7 +1569,7 @@ const ProductCredentialsPage = () => {
                     const expired = task.retentionUntil != null && task.retentionUntil <= Math.max(exportClock, Date.now());
                     const downloadDisabled = !manufacturingFlowEnabled || task.retentionUntil == null || expired || exportDownloadPending != null;
                     return <TableRow key={task.exportId} className="transition-colors hover:bg-muted/20">
-                      <TableCell><div className="font-medium">{task.exportId}</div><div className="mt-1 text-xs text-muted-foreground">{formatDate(task.createTime)}</div></TableCell>
+                      <TableCell><div className="font-medium">{task.exportId}</div><div className="mt-1 text-xs text-muted-foreground">{formatDateTime(task.createTime, '长期有效')}</div></TableCell>
                       <TableCell><div className="font-mono text-xs">{task.distributionId}</div><div className="mt-1 text-xs text-muted-foreground">{formatNumber(task.expectedCount)} 台</div></TableCell>
                       <TableCell><Badge variant="outline">{task.format}</Badge></TableCell>
                       <TableCell>
@@ -1596,7 +1591,7 @@ const ProductCredentialsPage = () => {
                             下载未导出明细
                           </Button>}
                         </div>
-                        <div className="mt-1 text-xs text-muted-foreground">{expired ? '下载链接申请已截止' : task.retentionUntil != null ? `链接申请截止 ${formatDate(task.retentionUntil)}` : completed ? '未设置链接申请期限' : ['PENDING', 'RUNNING'].includes(task.status) ? '完成后可申请下载链接' : '当前任务不可下载'}</div>
+                        <div className="mt-1 text-xs text-muted-foreground">{expired ? '下载链接申请已截止' : task.retentionUntil != null ? `链接申请截止 ${formatDateTime(task.retentionUntil, '长期有效')}` : completed ? '未设置链接申请期限' : ['PENDING', 'RUNNING'].includes(task.status) ? '完成后可申请下载链接' : '当前任务不可下载'}</div>
                       </TableCell>
                     </TableRow>;
                   })}</TableBody>
@@ -1612,7 +1607,7 @@ const ProductCredentialsPage = () => {
                   <TableBody>{preRegistrationsLoading || preRegistrationsError ? <RequestTableState colSpan={5} error={preRegistrationsError} loading={preRegistrationsLoading} onRetry={() => void mutatePreRegistrations()} /> : preRegistrations.length === 0 ? <TableRow><TableCell colSpan={5} className="h-32 text-center text-sm text-muted-foreground">还没有预注册设备。添加 UUID 后，名单内设备才可首次注册。</TableCell></TableRow> : preRegistrations.map((item) => <TableRow key={item.preRegistrationId} className="transition-colors hover:bg-muted/20">
                     <TableCell><code className="font-mono text-xs">{item.hardwareUuid}</code><div className="mt-1 text-xs text-muted-foreground">代次 {item.registrationGeneration}</div></TableCell>
                     <TableCell>{statusBadge(preRegistrationStatusLabel[item.status] ?? item.status, getPreRegistrationTone(item.status))}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{formatDate(item.expiresAt)}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{formatDateTime(item.expiresAt, '长期有效')}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{item.note || '—'}</TableCell>
                     <TableCell className="text-right"><Button type="button" variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => setPendingRemoval(item)} disabled={!canImportPreRegistrations || item.status !== 'PENDING'}>移除</Button></TableCell>
                   </TableRow>)}</TableBody>
@@ -1629,7 +1624,7 @@ const ProductCredentialsPage = () => {
                     <TableCell><div className="font-medium">{task.hardwareUuid || '—'}</div><div className="mt-1 font-mono text-xs text-muted-foreground">{maskId(task.hardwareUuid)}</div></TableCell>
                     <TableCell>{statusBadge(rotationStatusLabel[task.status] ?? task.status, getRotationTone(task.status))}<div className="mt-1 text-xs text-muted-foreground">{task.reasonCode}</div></TableCell>
                     <TableCell className="font-mono text-xs">v{task.currentCredentialVersion} → {task.replacementCredentialVersion ? `v${task.replacementCredentialVersion}` : '待签发'}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{formatDate(task.claimDeadline)}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{formatDateTime(task.claimDeadline, '长期有效')}</TableCell>
                     <TableCell><Badge variant="outline">{task.enforcementMode === 'SECURITY_ENFORCED' ? '强制轮换' : '普通轮换'}</Badge></TableCell>
                   </TableRow>)}</TableBody>
                 </Table>

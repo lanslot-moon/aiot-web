@@ -1,3 +1,4 @@
+import { formatDateTime } from '@/lib/date-time';
 import { DeviceTable as DataTable } from './layout';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
@@ -14,7 +15,7 @@ import { useResource } from '@/components/iam/shared-utils';
 import { request, OpenPlatformApiError } from '@/api/iam/client';
 import type { ProductDetailView } from '@/types/apps/open-platform';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
-import { devicePath, groupPath, deviceRequest, formatTime, nodeLabels, type DeviceDetail, type DeviceMembership, type HardwareProfile, type HardwareObservation } from '@/api/device/client';
+import { devicePath, groupPath, deviceRequest, nodeLabels, type DeviceDetail, type DeviceMembership, type HardwareProfile, type HardwareObservation } from '@/api/device/client';
 import { Fact, CursorList, LifecycleBadge } from './shared';
 import { useDeviceResource } from './use-device-resource';
 import ResourceTags from './tags';
@@ -52,7 +53,7 @@ function DeviceProduct({ projectId, productId, product }: { projectId: string; p
 function Hardware({ projectId, id }: { projectId: string; id: string }) {
   const resource = useDeviceResource<HardwareProfile>(projectId, `${devicePath(id)}/hardware-profile`);
   function observation(label: string, value: HardwareObservation | null) {
-    return <Panel title={label}>{value ? <dl><Fact label="序列号">{value.serialNumber}</Fact><Fact label="硬件版本">{value.hardwareVersion}</Fact><Fact label="来源">{value.source}</Fact><Fact label="接收时间">{formatTime(value.receivedAt)}</Fact><Fact label="网卡地址">{value.macAddresses?.length ? value.macAddresses.map((m, i) => <div key={i}>{m.interfaceName ?? '未命名网卡'} · {m.address}</div>) : '—'}</Fact></dl> : <p className="text-sm text-muted-foreground">尚未收到此来源的硬件资料。</p>}</Panel>;
+    return <Panel title={label}>{value ? <dl><Fact label="序列号">{value.serialNumber}</Fact><Fact label="硬件版本">{value.hardwareVersion}</Fact><Fact label="来源">{value.source}</Fact><Fact label="接收时间">{formatDateTime(value.receivedAt)}</Fact><Fact label="网卡地址">{value.macAddresses?.length ? value.macAddresses.map((m, i) => <div key={i}>{m.interfaceName ?? '未命名网卡'} · {m.address}</div>) : '—'}</Fact></dl> : <p className="text-sm text-muted-foreground">尚未收到此来源的硬件资料。</p>}</Panel>;
   }
   return <div className="space-y-4"><ErrorNotice error={resource.error} retry={() => resource.mutate()} />{resource.isLoading && <Loading />}{resource.data && <div className="grid gap-4 lg:grid-cols-2">{observation('可信登记资料', resource.data.verified)}{observation('设备自报资料', resource.data.reported)}</div>}</div>;
 }
@@ -140,16 +141,16 @@ export default function DeviceDetails({ projectId, id, back, openGroup, backLabe
               <CardTitle className="mb-4 text-base">接入记录</CardTitle>
               <dl className="grid gap-x-6 gap-y-6 sm:grid-cols-2 xl:grid-cols-1">
                 <DetailField label="认证方式">{{ DEVICE_SECRET: '设备密钥认证', CUSTOM: '自定义认证', GATEWAY_ASSERTED: '网关代理认证' }[device.authRoute] ?? device.authRoute}</DetailField>
-                <DetailField label="首次认证">{device.activation?.activatedAt ? formatTime(device.activation.activatedAt) : '尚无认证记录'}</DetailField>
-                <DetailField label="激活记录时间">{formatTime(device.activation?.observedAt)}</DetailField>
-                <DetailField label="创建时间">{formatTime(device.createTime)}</DetailField>
-                <DetailField label="最近更新">{formatTime(device.updateTime)}</DetailField>
+                <DetailField label="首次认证">{device.activation?.activatedAt ? formatDateTime(device.activation.activatedAt) : '尚无认证记录'}</DetailField>
+                <DetailField label="激活记录时间">{formatDateTime(device.activation?.observedAt)}</DetailField>
+                <DetailField label="创建时间">{formatDateTime(device.createTime)}</DetailField>
+                <DetailField label="最近更新">{formatDateTime(device.updateTime)}</DetailField>
               </dl>
             </section>
           </div>
         </TabsContent>
         <TabsContent value="tags">{tab === 'tags' && <ResourceTags projectId={projectId} path={devicePath(id)} readOnly={device.lifecycle === 'DELETING'} />}</TabsContent>
-        <TabsContent value="groups">{tab === 'groups' && <CursorList<DeviceMembership> projectId={projectId} path={`${devicePath(id)}/groups`} emptyTitle="尚未加入分组" emptyDescription="到静态分组的成员页添加设备，这里只显示直接所属组。">{(items, reload) => <DataTable rows={items} columns={[{ label: '分组', render: m => <Button variant="link" onClick={() => openGroup(m.group.groupId)}>{m.group.name}</Button> }, { label: '加入时间', render: m => formatTime(m.joinedAt) }, ...device.lifecycle !== 'DELETING' ? [{ label: '操作', render: (m: DeviceMembership) => <Action label="移出分组" permission="device:update" description={`只移除与「${m.group.name}」的直接关系，不删除设备，也不影响其他组。`} run={async () => { await deviceRequest(projectId, `${groupPath(m.group.groupId)}/devices/${encodeURIComponent(id)}`, 'DELETE');  }} done={reload} /> }] : []]} />}</CursorList>}</TabsContent>
+        <TabsContent value="groups">{tab === 'groups' && <CursorList<DeviceMembership> projectId={projectId} path={`${devicePath(id)}/groups`} emptyTitle="尚未加入分组" emptyDescription="到静态分组的成员页添加设备，这里只显示直接所属组。">{(items, reload) => <DataTable rows={items} columns={[{ label: '分组', render: m => <Button variant="link" onClick={() => openGroup(m.group.groupId)}>{m.group.name}</Button> }, { label: '加入时间', render: m => formatDateTime(m.joinedAt) }, ...device.lifecycle !== 'DELETING' ? [{ label: '操作', render: (m: DeviceMembership) => <Action label="移出分组" permission="device:update" description={`只移除与「${m.group.name}」的直接关系，不删除设备，也不影响其他组。`} run={async () => { await deviceRequest(projectId, `${groupPath(m.group.groupId)}/devices/${encodeURIComponent(id)}`, 'DELETE');  }} done={reload} /> }] : []]} />}</CursorList>}</TabsContent>
         <TabsContent value="hardware">{tab === 'hardware' && <Hardware projectId={projectId} id={id} />}</TabsContent>
         <TabsContent value="simulation"><Empty className="min-h-64 rounded-lg border border-dashed"><EmptyHeader><EmptyMedia variant="icon"><FlaskConical /></EmptyMedia><EmptyTitle>设备模拟待开放</EmptyTitle><EmptyDescription>后续可在这里配置模拟数据、启动或停止模拟，并查看运行记录。</EmptyDescription></EmptyHeader></Empty></TabsContent>
         <TabsContent value="commands">{tab === 'commands' && (debugAllowed ? <DeviceCommands key={id} projectId={projectId} device={device} /> : <p role="status" className="rounded-lg border bg-muted/20 p-4 text-sm">{debugUnavailableReason}</p>)}</TabsContent>

@@ -51,15 +51,7 @@ export const statusOptions = [
   { value: 'CLOSED', label: '关闭' },
 ];
 
-export function epoch(value?: number | null) {
-  return value
-    ? new Intl.DateTimeFormat('zh-CN', {
-        dateStyle: 'medium',
-        timeStyle: 'short',
-        timeZone: 'Asia/Shanghai',
-      }).format(value)
-    : '—';
-}
+
 
 export const optional = (value: string | undefined) => value?.trim() || undefined;
 

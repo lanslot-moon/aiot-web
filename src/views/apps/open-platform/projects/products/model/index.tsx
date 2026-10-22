@@ -1,3 +1,4 @@
+import { formatDateTime } from '@/lib/date-time';
 import {
 Archive,
 ArrowLeft,
@@ -392,9 +393,7 @@ function modelRevisionLabel(revision: number) {
   return `版本 ${revision}`;
 }
 
-function formatVersionTime(value: number | null | undefined) {
-  return value == null ? '—' : new Date(value).toLocaleString('zh-CN');
-}
+
 
 function modelCapabilityTypeLabel(type: string) {
   if (type === 'PROPERTY') return '属性';
@@ -1259,7 +1258,7 @@ const ProductModelPage = () => {
                               <div>
                                 <p className="text-sm font-medium">{modelRevisionLabel(version.modelRevision)}</p>
                                 <p className="mt-1 text-[11px] text-muted-foreground">
-                                  创建时间：{formatVersionTime(version.createTime)} · 发布时间：{formatVersionTime(version.publishedAt)}
+                                  创建时间：{formatDateTime(version.createTime)} · 发布时间：{formatDateTime(version.publishedAt)}
                                 </p>
                               </div>
                               <Badge variant={version.status === 'PUBLISHED' ? 'secondary' : 'outline'}>
@@ -1637,7 +1636,7 @@ const ProductModelPage = () => {
                       <p className="text-[11px] text-muted-foreground">基线版本</p>
                       <p className="mt-0.5 font-medium">{modelRevisionLabel(diffFromVersion.modelRevision)}</p>
                       <p className="mt-0.5 text-[11px] text-muted-foreground">
-                        创建时间：{formatVersionTime(diffFromVersion.createTime)} · 发布时间：{formatVersionTime(diffFromVersion.publishedAt)}
+                        创建时间：{formatDateTime(diffFromVersion.createTime)} · 发布时间：{formatDateTime(diffFromVersion.publishedAt)}
                       </p>
                     </div>
                     <ArrowRight className="mx-auto size-4 shrink-0 rotate-90 text-muted-foreground sm:mx-0 sm:rotate-0" aria-hidden />
@@ -1645,7 +1644,7 @@ const ProductModelPage = () => {
                       <p className="text-[11px] text-muted-foreground">目标版本</p>
                       <p className="mt-0.5 font-medium">{modelRevisionLabel(diffToVersion.modelRevision)}</p>
                       <p className="mt-0.5 text-[11px] text-muted-foreground">
-                        创建时间：{formatVersionTime(diffToVersion.createTime)} · 发布时间：{formatVersionTime(diffToVersion.publishedAt)}
+                        创建时间：{formatDateTime(diffToVersion.createTime)} · 发布时间：{formatDateTime(diffToVersion.publishedAt)}
                       </p>
                     </div>
                   </div>

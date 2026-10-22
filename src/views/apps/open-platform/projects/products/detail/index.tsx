@@ -1,3 +1,4 @@
+import { formatDateTime } from '@/lib/date-time';
 import {
 Archive,
 ArrowLeft,
@@ -828,11 +829,11 @@ const ProductDetailPage = () => {
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">创建时间</p>
-                    <p className="mt-1 text-sm">{new Date(product.createTime).toLocaleString('zh-CN')}</p>
+                    <p className="mt-1 text-sm">{formatDateTime(product.createTime)}</p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">最近更新</p>
-                    <p className="mt-1 text-sm">{product.updateTime == null ? '—' : new Date(product.updateTime).toLocaleString('zh-CN')}</p>
+                    <p className="mt-1 text-sm">{product.updateTime == null ? '—' : formatDateTime(product.updateTime)}</p>
                   </div>
                   {product.description ? (
                     <div className="sm:col-span-2">

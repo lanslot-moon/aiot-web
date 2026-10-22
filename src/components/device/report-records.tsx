@@ -1,6 +1,7 @@
+import { formatDateTime } from '@/lib/date-time';
 import { useState } from 'react';
 import { ChevronDown, ChevronRight, RefreshCw } from 'lucide-react';
-import { type DeviceDetail, formatTime } from '@/api/device/client';
+import { type DeviceDetail } from '@/api/device/client';
 import { reportStreamPage, reportTimestamp, reportMessageId, type ReportRow, type ReportStreamCursor, type ReportStreamQuery, type ReportStreamPage } from '@/api/device/telemetry';
 import type { ThingModelDefinition } from '@/types/apps/open-platform';
 import { useResource } from '@/components/iam/shared-utils';
@@ -127,14 +128,14 @@ export function ReportRecords({ projectId, device, model }: { projectId: string;
     <div className="space-y-3 p-4">
       {query.kind !== 'event' && query.propertyCodes.length === Math.min(10, model.properties.length) && model.properties.length > 10 && <p role="status" className="rounded-md border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">此设备共 {model.properties.length} 个属性，默认仅查询物模型中的前 10 个属性。其余属性请通过「属性筛选」单独查看。</p>}
       <div className="flex items-center justify-between gap-3">
-        <p className="min-w-0 flex-1 text-xs text-muted-foreground">当前结果：{query.kind === 'all' ? '全部上报' : query.kind === 'property' ? '属性上报' : '事件上报'} · {formatTime(query.from)} — {formatTime(query.to)}</p>
+        <p className="min-w-0 flex-1 text-xs text-muted-foreground">当前结果：{query.kind === 'all' ? '全部上报' : query.kind === 'property' ? '属性上报' : '事件上报'} · {formatDateTime(query.from)} — {formatDateTime(query.to)}</p>
         {chartProperty && <div className="flex shrink-0 items-center gap-2">{chartOriginalRange && <Button size="sm" variant="ghost" onClick={restoreChartRange}>返回原时间范围</Button>}<Button size="sm" variant="outline" aria-expanded={chartExpanded} aria-controls="property-report-chart" onClick={() => setChartExpanded(previous => !previous)}>{chartExpanded ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}{chartExpanded ? '收起属性图表' : '展开属性图表'}</Button></div>}
       </div>
       {chartProperty && chartExpanded && <div id="property-report-chart"><PropertyReportChart key={`${chartProperty.code}:${query.from}:${query.to}:${page.revision}`} projectId={projectId} device={device} property={chartProperty} from={query.from} to={query.to} revision={page.revision} onSelectRange={filterChartRange} /></div>}
       {data.isLoading && <Loading />}<ErrorNotice error={data.error} retry={() => data.mutate()} />
       {!data.isLoading && !data.error && !data.data?.items.length && <p className="py-8 text-center text-sm text-muted-foreground">此范围内暂无上报记录，请调整筛选或在设备上报后刷新。</p>}
       {!data.error && !!data.data?.items.length && <GatewayDataTable<ReportRow> rows={data.data.items} columns={[
-        { label: '上报时间', render: row => <time className="whitespace-nowrap tabular-nums text-muted-foreground">{formatTime(reportTimestamp(row))}</time> },
+        { label: '上报时间', render: row => <time className="whitespace-nowrap tabular-nums text-muted-foreground">{formatDateTime(reportTimestamp(row))}</time> },
         { label: '类型', render: row => <Badge variant="outline" className={row.kind === 'property' ? 'border-blue-200 bg-blue-50 text-blue-700! dark:border-blue-400/50 dark:bg-blue-500/20 dark:text-blue-300!' : 'border-amber-200 bg-amber-50 text-amber-800! dark:border-amber-400/50 dark:bg-amber-500/20 dark:text-amber-300!'}>{row.kind === 'property' ? '属性上报' : '事件上报'}</Badge> },
         { label: 'Message ID', render: row => { const messageId = reportMessageId(row); return <div className="flex items-center gap-1"><code className="whitespace-nowrap font-mono text-xs">{messageId}</code><CopyIdButton value={messageId} label="Message ID" /></div>; } },
         { label: '上报内容', render: row => <div className="flex items-start justify-between gap-3"><div className="min-w-0">{row.kind === 'property' ? reportFields(row.data.properties, propertySchema) : <div className="space-y-1"><p className="text-xs font-medium">{model.events.find(item => item.code === row.data.eventCode)?.title ?? row.data.eventCode}<span className="ml-2 font-normal text-muted-foreground">{row.data.eventCode} · {({ INFO: '信息', WARN: '告警', ERROR: '故障' }[row.data.eventType] ?? row.data.eventType)}</span></p>{reportFields(row.data.output, model.events.find(item => item.code === row.data.eventCode)?.outputSchema)}</div>}</div><Button variant="ghost" size="sm" className="h-6 shrink-0 px-2 text-xs" aria-label={`查看${row.kind === 'property' ? '属性' : '事件'}上报 JSON ${reportMessageId(row)}`} onClick={() => setSelectedReport(row)}>查看 JSON</Button></div> },
@@ -144,7 +145,7 @@ export function ReportRecords({ projectId, device, model }: { projectId: string;
     <Dialog open={!!selectedReport} onOpenChange={open => { if (!open) setSelectedReport(null); }}>
       <DialogContent className="flex! max-h-[85dvh] flex-col overflow-hidden sm:max-w-3xl">
         <DialogHeader><DialogTitle>{selectedReport?.kind === 'property' ? '属性上报详情' : '事件上报详情'}</DialogTitle><DialogDescription>该条上报记录的接口返回 JSON。</DialogDescription></DialogHeader>
-        {selectedReport && <><div className="flex min-w-0 items-center justify-between gap-3 text-xs text-muted-foreground"><span>{formatTime(reportTimestamp(selectedReport))}</span><CopyIdButton value={JSON.stringify(selectedReport.data, null, 2)} label="JSON" /></div><pre tabIndex={0} aria-label="上报记录 JSON" className="min-h-0 overflow-auto rounded-md border bg-muted/20 p-4 font-mono text-xs leading-relaxed">{JSON.stringify(selectedReport.data, null, 2)}</pre></>}
+        {selectedReport && <><div className="flex min-w-0 items-center justify-between gap-3 text-xs text-muted-foreground"><span>{formatDateTime(reportTimestamp(selectedReport))}</span><CopyIdButton value={JSON.stringify(selectedReport.data, null, 2)} label="JSON" /></div><pre tabIndex={0} aria-label="上报记录 JSON" className="min-h-0 overflow-auto rounded-md border bg-muted/20 p-4 font-mono text-xs leading-relaxed">{JSON.stringify(selectedReport.data, null, 2)}</pre></>}
       </DialogContent>
     </Dialog>
   </section>;

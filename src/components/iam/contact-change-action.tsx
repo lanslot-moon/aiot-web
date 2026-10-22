@@ -1,3 +1,4 @@
+import { formatDateTime } from '@/lib/date-time';
 import { post, put } from '@/api/iam/client';
 import type { AccountVO, VerificationChallengeVO } from '@/api/iam/contracts';
 import { useEffect, useRef, useState } from 'react';
@@ -6,7 +7,7 @@ import { useIam } from '../../context/iam-context/identity';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { FieldsForm } from './shared';
-import { epoch } from './shared-utils';
+
 import { VERIFICATION_RESEND_SECONDS } from './verification-policy';
 
 export function ContactChangeAction({ type, current }: { type: 'EMAIL' | 'PHONE'; current?: string | null }) {
@@ -74,7 +75,7 @@ export function ContactChangeAction({ type, current }: { type: 'EMAIL' | 'PHONE'
             setChallenge(result);
           }}
         /> : <>
-          {challenge.expiresAt && <p className="text-sm text-muted-foreground">验证码有效期至 {epoch(challenge.expiresAt)}</p>}
+          {challenge.expiresAt && <p className="text-sm text-muted-foreground">验证码有效期至 {formatDateTime(challenge.expiresAt)}</p>}
           <FieldsForm
             key={challenge.verificationId}
             fields={[

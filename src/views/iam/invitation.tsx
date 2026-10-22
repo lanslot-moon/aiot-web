@@ -1,10 +1,11 @@
+import { formatDateTime } from '@/lib/date-time';
 import { put, segment } from '@/api/iam/client';
 import type { ProjectInvitationVO } from '@/api/iam/contracts';
 import { Action, ErrorNotice, Loading, Page, Panel, Status } from '@/components/iam/shared';
 import { Link, useNavigate, useParams } from 'react-router';
 import { useSWRConfig } from 'swr';
 import { useIam } from '@/context/iam-context/identity';
-import { epoch, useResource } from '../../components/iam/shared-utils';
+import { useResource } from '../../components/iam/shared-utils';
 export default function InvitationPage() {
   const navigate = useNavigate();
   const { platformAuthorization, account } = useIam();
@@ -32,7 +33,7 @@ export default function InvitationPage() {
                   <Status value={data.status} />
                 </dd>
                 <dt>到期时间</dt>
-                <dd>{epoch(data.expiresAt)}</dd>
+                <dd>{formatDateTime(data.expiresAt)}</dd>
               </dl>
               <p className="text-sm">当前登录：{account.data?.username || account.data?.email}</p>
               <p className="text-sm text-muted-foreground">角色 ID：<span className="break-all font-mono">{data.roleId}</span></p>

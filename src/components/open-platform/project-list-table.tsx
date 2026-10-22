@@ -1,5 +1,5 @@
+import { formatDateTime } from '@/lib/date-time';
 import { CreateProjectAction } from '@/components/iam/create-project-action';
-import { format } from 'date-fns';
 import { EllipsisVertical, FolderKanban, FolderOpen, Loader2, SearchX } from 'lucide-react';
 import { useNavigate } from 'react-router';
 
@@ -35,9 +35,7 @@ import { OpenPlatformApiError } from '../../context/open-platform-context/projec
 import type { ProjectVO } from '@/api/iam/contracts';
 import { cn } from '@/lib/utils';
 
-function formatEpoch(ms: number): string {
-  return format(new Date(ms), 'MMM d, yyyy HH:mm');
-}
+
 
 function ProjectListSkeleton() {
   return (
@@ -197,10 +195,10 @@ export function ProjectListTable({
                 <ProjectStatusBadge status={project.status} />
               </TableCell>
               <TableCell className="whitespace-nowrap text-muted-foreground text-xs">
-                {formatEpoch(project.createTime)}
+                {formatDateTime(project.createTime)}
               </TableCell>
               <TableCell className="whitespace-nowrap text-muted-foreground text-xs">
-                {formatEpoch(project.updateTime)}
+                {formatDateTime(project.updateTime)}
               </TableCell>
               <TableCell className="text-start">
                 <div className="inline-flex items-center justify-start gap-1">

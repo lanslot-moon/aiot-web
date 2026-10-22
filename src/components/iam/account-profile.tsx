@@ -1,3 +1,4 @@
+import { formatDateTime } from '@/lib/date-time';
 import { put } from '@/api/iam/client';
 import type { AccountVO } from '@/api/iam/contracts';
 import { UserRound } from 'lucide-react';
@@ -11,7 +12,7 @@ import BreadcrumbComp from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
 import { AvatarEditor } from './avatar-editor';
 import { canNavigate } from './menu-navigation';
 import { Action, ErrorNotice, Loading, Navigation, Status } from './shared';
-import { epoch } from './shared-utils';
+
 
 const links = [
   { to: '/account/profile', label: '个人资料' },
@@ -63,8 +64,8 @@ export function AccountProfile() {
               <div><dt>手机号</dt><dd>{data.phone || '尚未绑定'}</dd></div>
               <div><dt>账号 ID</dt><dd className="font-mono text-xs">{data.accountId}</dd></div>
               <div><dt>账号状态</dt><dd><Status value={data.status} /></dd></div>
-              <div><dt>创建时间</dt><dd>{epoch(data.createTime)}</dd></div>
-              <div><dt>更新时间</dt><dd>{epoch(data.updateTime)}</dd></div>
+              <div><dt>创建时间</dt><dd>{formatDateTime(data.createTime)}</dd></div>
+              <div><dt>更新时间</dt><dd>{formatDateTime(data.updateTime)}</dd></div>
             </dl>
             <details className="border-t p-4">
               <summary className="cursor-pointer text-sm text-muted-foreground">当前访问权限</summary>

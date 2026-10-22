@@ -38,5 +38,5 @@ export function policyRequest<T>(projectId: string, path: string, method = 'GET'
 export const policyPath = (id: string) => 'policies/' + encodeURIComponent(id);
 export const principalLabels: Record<PrincipalType, string> = { DEVICE: '设备', PRODUCT: '整个产品', STATIC_GROUP: '静态设备组', ACCOUNT: '账号', APPLICATION: '应用', TENANT_ROLE: '项目角色' };
 export const statusLabels: Record<string, string> = { DRAFT: '草稿', ACTIVE: '已生效', ARCHIVED: '已归档', CURRENT: '当前版本', SCHEDULED: '待生效', RETIRED: '历史版本', CANCELLED: '已取消', REVOKED: '已撤销', EXPIRED: '已过期', VALID: '校验通过', INVALID: '校验未通过', NOT_VALIDATED: '待校验' };
-export const formatTime = (time?: number | null) => time ? new Date(time).toLocaleString('zh-CN', { hour12: false }) : '—';
+
 export const emptyDocument = (): Document => ({ languageVersion: '2026-09-01', statements: [] });

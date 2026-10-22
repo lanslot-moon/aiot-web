@@ -1,10 +1,11 @@
+import { formatDateTime } from '@/lib/date-time';
 import { segment } from '@/api/iam/client';
 import type { SessionVO } from '@/api/iam/contracts';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useState } from 'react';
 import { ErrorNotice, Loading, Status } from './shared';
-import { epoch, useResource } from './shared-utils';
+import { useResource } from './shared-utils';
 
 export function SessionDetailsAction({ sessionId }: { sessionId: string }) {
   const [open, setOpen] = useState(false);
@@ -28,9 +29,9 @@ export function SessionDetailsAction({ sessionId }: { sessionId: string }) {
           <div><dt className="text-muted-foreground">设备类型</dt><dd className="mt-1">{data.clientType ?? '—'}</dd></div>
           <div><dt className="text-muted-foreground">登录方式</dt><dd className="mt-1">{data.loginMethod ?? '—'}</dd></div>
           <div><dt className="text-muted-foreground">状态</dt><dd className="mt-1"><Status value={data.status} /></dd></div>
-          <div><dt className="text-muted-foreground">创建时间</dt><dd className="mt-1">{epoch(data.createTime)}</dd></div>
-          <div><dt className="text-muted-foreground">最后活动</dt><dd className="mt-1">{epoch(data.lastSeenAt)}</dd></div>
-          <div><dt className="text-muted-foreground">到期时间</dt><dd className="mt-1">{epoch(data.expiresAt)}</dd></div>
+          <div><dt className="text-muted-foreground">创建时间</dt><dd className="mt-1">{formatDateTime(data.createTime)}</dd></div>
+          <div><dt className="text-muted-foreground">最后活动</dt><dd className="mt-1">{formatDateTime(data.lastSeenAt)}</dd></div>
+          <div><dt className="text-muted-foreground">到期时间</dt><dd className="mt-1">{formatDateTime(data.expiresAt)}</dd></div>
         </dl>}
         <DialogFooter><Button type="button" variant="outline" onClick={() => setOpen(false)}>关闭</Button></DialogFooter>
       </DialogContent>

@@ -1,3 +1,4 @@
+import { formatDateTime } from '@/lib/date-time';
 import {
 ArrowLeft,
 Braces,
@@ -84,9 +85,7 @@ const DIRECTION_LABEL: Record<ParserProfileDirection, string> = {
   BIDIRECTIONAL: '双向',
 };
 
-function formatDate(value: number | null | undefined) {
-  return value ? new Date(value).toLocaleString('zh-CN', { hour12: false }) : '—';
-}
+
 
 function statusLabel(status: string) {
   if (status === 'PUBLISHED') return '已发布';
@@ -429,7 +428,7 @@ const ParserProfileDetailPage = () => {
                 <CardContent className="space-y-4">
                   {versionsError || versionError ? <ApiErrorAlert message={((versionsError || versionError) as Error).message} /> : loadingVersion ? <RequestLoading label="正在加载版本映射…" /> : version ? (
                     <>
-                      <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/20 px-3 py-2 text-sm"><span className="font-medium">版本 {version.profileVersion}</span><Badge className={statusClass(version.versionStatus)} variant="outline">{statusLabel(version.versionStatus)}</Badge><span className="text-xs text-muted-foreground">发布时间 {formatDate(version.publishedAt)}</span></div>
+                      <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/20 px-3 py-2 text-sm"><span className="font-medium">版本 {version.profileVersion}</span><Badge className={statusClass(version.versionStatus)} variant="outline">{statusLabel(version.versionStatus)}</Badge><span className="text-xs text-muted-foreground">发布时间 {formatDateTime(version.publishedAt)}</span></div>
                       <div className="flex items-center justify-between"><div><h3 className="text-sm font-medium">字段映射</h3><p className="text-xs text-muted-foreground">source key 是厂商报文字段或路径。</p></div><Button type="button" variant="outline" size="sm" className="gap-1.5" disabled={!isDraft} onClick={() => setRows((current) => [...current, { source: '', rule: { code: '', type: 'STRING', sourcePath: '', direction: 'UPLINK' } }])}><Plus className="size-4" aria-hidden />添加映射</Button></div>
                       <div className="space-y-2">
                         {rows.length === 0 ? <div className="rounded-lg border border-dashed px-3 py-8 text-center text-sm text-muted-foreground">还没有映射规则，点击“添加映射”开始配置。</div> : rows.map((row, index) => (
@@ -472,7 +471,7 @@ const ParserProfileDetailPage = () => {
               <Card>
                 <CardHeader className="flex flex-row items-start justify-between gap-3"><div><CardTitle className="flex items-center gap-2"><History className="size-4" aria-hidden />版本历史</CardTitle><CardDescription>草稿、已发布和已废弃版本都会保留。</CardDescription></div><Button type="button" size="icon-sm" variant="outline" aria-label="新建版本" onClick={openCreateVersion}><Plus className="size-4" aria-hidden /></Button></CardHeader>
                 <CardContent className="space-y-2">
-                  {versionsLoading ? <RequestLoading label="正在加载版本历史…" /> : versionsError ? <ApiErrorAlert message={(versionsError as Error).message} /> : sortedVersions.map((item) => <button key={item.profileVersion} type="button" onClick={() => setSelectedVersion(item.profileVersion)} className={`w-full rounded-lg border p-3 text-left transition-colors ${selectedVersion === item.profileVersion ? 'border-primary bg-primary/5' : 'hover:bg-muted/30'}`}><div className="flex items-center justify-between gap-2"><span className="font-medium">v{item.profileVersion}</span><Badge variant="outline" className={statusClass(item.versionStatus)}>{statusLabel(item.versionStatus)}</Badge></div><div className="mt-1 text-xs text-muted-foreground">发布时间：{formatDate(item.publishedAt)}</div><div className="mt-1 truncate font-mono text-[11px] text-muted-foreground">{item.versionDigest || '尚未生成摘要'}</div></button>)}
+                  {versionsLoading ? <RequestLoading label="正在加载版本历史…" /> : versionsError ? <ApiErrorAlert message={(versionsError as Error).message} /> : sortedVersions.map((item) => <button key={item.profileVersion} type="button" onClick={() => setSelectedVersion(item.profileVersion)} className={`w-full rounded-lg border p-3 text-left transition-colors ${selectedVersion === item.profileVersion ? 'border-primary bg-primary/5' : 'hover:bg-muted/30'}`}><div className="flex items-center justify-between gap-2"><span className="font-medium">v{item.profileVersion}</span><Badge variant="outline" className={statusClass(item.versionStatus)}>{statusLabel(item.versionStatus)}</Badge></div><div className="mt-1 text-xs text-muted-foreground">发布时间：{formatDateTime(item.publishedAt)}</div><div className="mt-1 truncate font-mono text-[11px] text-muted-foreground">{item.versionDigest || '尚未生成摘要'}</div></button>)}
                   {!versionsLoading && !versionsError && !sortedVersions.length ? <div className="rounded-lg border border-dashed px-3 py-8 text-center text-sm text-muted-foreground">还没有版本。</div> : null}
                   <div className="grid grid-cols-2 gap-2 pt-2"><Button type="button" variant="outline" size="sm" className="gap-1.5" disabled={!version} onClick={() => { setRollbackTarget(`${version?.profileVersion ?? ''}-copy`); setRollbackOpen(true); }}><RotateCcw className="size-3.5" aria-hidden />复制为草稿</Button><Button type="button" variant="outline" size="sm" className="gap-1.5" disabled={sortedVersions.length < 2} onClick={() => { setDiffFrom(sortedVersions[1]?.profileVersion ?? ''); setDiffTo(sortedVersions[0]?.profileVersion ?? ''); setDiff(null); setDiffOpen(true); }}><GitCompare className="size-3.5" aria-hidden />版本比较</Button></div>
                 </CardContent>

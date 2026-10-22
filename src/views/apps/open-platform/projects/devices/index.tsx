@@ -1,3 +1,4 @@
+import { formatDateTime } from '@/lib/date-time';
 import { useEffect, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router';
 import { useIam } from '@/context/iam-context/identity';
@@ -13,7 +14,7 @@ import { CursorList, DeviceSelect, LifecycleBadge } from '@/components/device/sh
 import DeviceDetails from '@/components/device/detail';
 import { GroupList, GroupDetails, CreateGroup } from '@/components/device/groups';
 import CreateVirtualDevice from '@/components/device/create-virtual';
-import { query, formatTime, lifecycleLabels, nodeLabels, type DeviceSummary } from '@/api/device/client';
+import { query, lifecycleLabels, nodeLabels, type DeviceSummary } from '@/api/device/client';
 
 function Workspace({ projectId }: { projectId: string }) {
   const [params, setParams] = useSearchParams();
@@ -85,8 +86,8 @@ function Workspace({ projectId }: { projectId: string }) {
         { label: '管理状态', render: d => <LifecycleBadge value={d.lifecycle} /> },
         { label: '设备类型', render: d => d.virtualDevice ? '虚拟设备' : '实体设备' },
         { label: '节点类型', render: d => nodeLabels[d.nodeType] },
-        { label: '激活时间', render: d => <span className="whitespace-nowrap text-xs text-muted-foreground">{d.activation ? formatTime(d.activation.activatedAt) : '尚无激活记录'}</span> },
-        { label: '创建时间', render: d => <span className="whitespace-nowrap text-xs text-muted-foreground">{formatTime(d.createTime)}</span> },
+        { label: '激活时间', render: d => <span className="whitespace-nowrap text-xs text-muted-foreground">{d.activation ? formatDateTime(d.activation.activatedAt) : '尚无激活记录'}</span> },
+        { label: '创建时间', render: d => <span className="whitespace-nowrap text-xs text-muted-foreground">{formatDateTime(d.createTime)}</span> },
         { label: '操作', render: d => <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => openDevice(d.deviceId)}>{d.lifecycle === 'DELETING' ? '查看并继续处理' : '查看详情'}</Button> },
       ]} />}</CursorList>
     </div></TabsContent>

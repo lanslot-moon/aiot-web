@@ -1,3 +1,4 @@
+import { formatDateTime } from '@/lib/date-time';
 import { put, remove, request, segment } from '@/api/iam/client';
 import type {
 ProjectAccessRequestVO,
@@ -18,7 +19,7 @@ import { useIam } from '../../context/iam-context/identity';
 import { IamProjectShell } from '@/components/iam/project-shell';
 import { useProjectRoleDirectory } from '@/components/iam/role-directory';
 import { Action, CursorTable, Panel, Status } from '@/components/iam/shared';
-import { epoch, optional, reasonFields } from '../../components/iam/shared-utils';
+import { optional, reasonFields } from '../../components/iam/shared-utils';
 export default function MembersPage() {
   const { projectId = '' } = useParams();
   const location = useLocation();
@@ -51,7 +52,7 @@ export default function MembersPage() {
               { label: '申请账号', render: (row) => row.applicantAccountId },
               { label: '申请说明', render: (row) => row.message },
               { label: '状态', render: (row) => <Status value={row.status} /> },
-              { label: '时间', render: (row) => epoch(row.createTime) },
+              { label: '时间', render: (row) => formatDateTime(row.createTime) },
               {
                 label: '操作',
                 render: (row) =>
@@ -122,7 +123,7 @@ export default function MembersPage() {
                 },
                 { label: '项目角色', render: (row) => row.roles?.map((role) => role.roleName).join('、') || '未分配角色' },
                 { label: '状态', render: (row) => <Status value={row.membershipStatus} /> },
-                { label: '加入时间', render: (row) => epoch(row.joinedAt) },
+                { label: '加入时间', render: (row) => formatDateTime(row.joinedAt) },
                 {
                   label: '操作',
                   render: (row) => (
@@ -161,7 +162,7 @@ export default function MembersPage() {
                 { label: '受邀用户', render: (row) => row.inviteeEmail ?? row.inviteeAccountId },
                 { label: '授予角色', render: (row) => roles.data?.items.find((role) => role.roleId === row.roleId)?.roleName ?? row.roleId },
                 { label: '状态', render: (row) => <Status value={row.status} /> },
-                { label: '有效期', render: (row) => epoch(row.expiresAt) },
+                { label: '有效期', render: (row) => formatDateTime(row.expiresAt) },
                 {
                   label: '操作',
                   render: (row) => (

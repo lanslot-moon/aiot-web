@@ -1,3 +1,4 @@
+import { formatDateTime } from '@/lib/date-time';
 import { segment } from '@/api/iam/client';
 import type { ProjectMemberVO } from '@/api/iam/contracts';
 import { CopyIdButton } from '@/components/open-platform/copy-id-button';
@@ -5,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { useState } from 'react';
 import { ErrorNotice, Loading, Status } from './shared';
-import { epoch, useResource } from './shared-utils';
+import { useResource } from './shared-utils';
 
 export function MemberDetailsAction({ projectId, accountId }: { projectId: string; accountId: string }) {
   const [open, setOpen] = useState(false);
@@ -23,9 +24,9 @@ export function MemberDetailsAction({ projectId, accountId }: { projectId: strin
             <div><dt className="text-muted-foreground">邮箱</dt><dd className="mt-1 break-all">{data.email || '—'}</dd></div>
             <div><dt className="text-muted-foreground">当前项目角色</dt><dd className="mt-1">{data.roles?.map((role) => role.roleName).join('、') || '未分配角色'}</dd></div>
             <div><dt className="text-muted-foreground">成员状态</dt><dd className="mt-1"><Status value={data.membershipStatus} /></dd></div>
-            <div><dt className="text-muted-foreground">加入时间</dt><dd className="mt-1">{epoch(data.joinedAt)}</dd></div>
-            <div><dt className="text-muted-foreground">创建时间</dt><dd className="mt-1">{epoch(data.createTime)}</dd></div>
-            <div><dt className="text-muted-foreground">更新时间</dt><dd className="mt-1">{epoch(data.updateTime)}</dd></div>
+            <div><dt className="text-muted-foreground">加入时间</dt><dd className="mt-1">{formatDateTime(data.joinedAt)}</dd></div>
+            <div><dt className="text-muted-foreground">创建时间</dt><dd className="mt-1">{formatDateTime(data.createTime)}</dd></div>
+            <div><dt className="text-muted-foreground">更新时间</dt><dd className="mt-1">{formatDateTime(data.updateTime)}</dd></div>
           </dl>}
         </div>
         <SheetFooter><Button type="button" variant="outline" onClick={() => setOpen(false)}>关闭</Button></SheetFooter>

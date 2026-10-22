@@ -1,3 +1,4 @@
+import { formatDateTime } from '@/lib/date-time';
 import { ChevronRight, Info, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router';
@@ -37,9 +38,7 @@ import { OpenPlatformApiError, openPlatformDelete, openPlatformGetFetcher, openP
 import { BreadcrumbTrail } from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
 import type { CursorResult, ParserProfileView } from '@/types/apps/open-platform';
 
-function formatDate(value: number) {
-  return new Date(value).toLocaleString('zh-CN', { hour12: false });
-}
+
 
 const ParserProfilesPage = () => {
   const { projectId = '' } = useParams<{ projectId: string }>();
@@ -205,7 +204,7 @@ const ParserProfilesPage = () => {
                         <td className="px-4 py-3">
                           {profile.currentVersion ? <Badge className="bg-emerald-600/15 text-emerald-700 dark:text-emerald-300">v{profile.currentVersion} 已发布</Badge> : <span className="text-muted-foreground">暂无已发布</span>}
                         </td>
-                        <td className="px-4 py-3 text-muted-foreground">{formatDate(profile.updateTime)}</td>
+                        <td className="px-4 py-3 text-muted-foreground">{formatDateTime(profile.updateTime)}</td>
                         <td className="px-4 py-3">
                           <div className="flex justify-end gap-1.5">
                             <Button type="button" variant="ghost" size="sm" nativeButton={false} render={<Link to={`${profileListPath}/${profile.profileId}`} />}>

@@ -1,3 +1,4 @@
+import { formatDateTime } from '@/lib/date-time';
 import {
 ArrowLeft,
 Braces,
@@ -175,9 +176,7 @@ function settingsFromPath(pathname: string): SettingsTab {
   return 'settings';
 }
 
-function formatProjectDate(value: number) {
-  return new Date(value).toLocaleString('zh-CN');
-}
+
 
 function projectHeaderOpenStorageKey(projectId: string) {
   return `open-platform:project-header-open:${projectId}`;
@@ -406,7 +405,7 @@ export function ProjectWorkspaceShell({
               <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                 <span>创建</span>
                 <time dateTime={new Date(project.createTime).toISOString()}>
-                  {formatProjectDate(project.createTime)}
+                  {formatDateTime(project.createTime)}
                 </time>
               </span>
             </div>

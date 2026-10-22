@@ -1,3 +1,4 @@
+import { formatDateTime } from '@/lib/date-time';
 import { post } from '@/api/iam/client';
 import type { ProjectCreateVO, ProjectVO } from '@/api/iam/contracts';
 import { Action, CursorTable, Panel, Status } from '@/components/iam/shared';
@@ -6,7 +7,7 @@ import BreadcrumbComp from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
 import { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useSWRConfig } from 'swr';
-import { epoch } from '../../components/iam/shared-utils';
+
 export default function ProjectsPage() {
   useEffect(() => { document.title = '全部项目 · AIoT'; }, []);
   const navigate = useNavigate();
@@ -53,7 +54,7 @@ export default function ProjectsPage() {
             },
             { label: '说明', render: (row) => row.description ?? '—' },
             { label: '状态', render: (row) => <Status value={row.status} /> },
-            { label: '创建时间', render: (row) => epoch(row.createTime) },
+            { label: '创建时间', render: (row) => formatDateTime(row.createTime) },
             { label: '操作', render: (row) => <Link className="inline-flex items-center rounded-md border px-3 py-1.5 text-sm hover:bg-muted focus-visible:outline focus-visible:outline-ring" to={`/projects/${row.projectId}/overview`}>进入项目</Link> },
           ]}
         />

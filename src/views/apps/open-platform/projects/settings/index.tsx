@@ -1,3 +1,4 @@
+import { formatDateTime } from '@/lib/date-time';
 import { KeyRound, Package, Users } from 'lucide-react';
 import { Link, useParams } from 'react-router';
 
@@ -70,7 +71,7 @@ const ProjectSettingsPage = () => {
                   <div>
                     <dt className="text-muted-foreground">更新时间</dt>
                     <dd className="mt-0.5 font-medium">
-                      {new Date(project.updateTime).toLocaleString()}
+                      {formatDateTime(project.updateTime)}
                     </dd>
                   </div>
                   <div className="sm:col-span-2">

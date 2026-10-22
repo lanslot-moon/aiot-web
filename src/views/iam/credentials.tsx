@@ -1,3 +1,4 @@
+import { formatDateTime } from '@/lib/date-time';
 import { get, OpenPlatformApiError, post, put, remove, segment } from '@/api/iam/client';
 import type {
 AuthorizationInitializedVO,
@@ -15,7 +16,7 @@ import { useIam, usePermission } from '@/context/iam-context/identity';
 import { useRef, useState } from 'react';
 import { useParams } from 'react-router';
 import { toast } from 'sonner';
-import { epoch, reasonFields, useResource } from '../../components/iam/shared-utils';
+import { reasonFields, useResource } from '../../components/iam/shared-utils';
 export default function CredentialsPage() {
   const { projectId = '' } = useParams();
   const { session } = useIam();
@@ -125,8 +126,8 @@ function ProjectCredentials({ projectId }: { projectId: string }) {
                 columns={[
                   { label: 'Client ID', render: (row) => <code>{row.clientId ?? '未开通'}</code> },
                   { label: '状态', render: (row) => <Status value={row.status} /> },
-                  { label: '创建时间', render: (row) => epoch(row.createTime) },
-                  { label: '轮换时间', render: (row) => epoch(row.lastRotatedAt) },
+                  { label: '创建时间', render: (row) => formatDateTime(row.createTime) },
+                  { label: '轮换时间', render: (row) => formatDateTime(row.lastRotatedAt) },
                   {
                     label: '操作',
                     render: (row) =>
@@ -234,7 +235,7 @@ function ProjectCredentials({ projectId }: { projectId: string }) {
             ) : (
               <dl className="grid grid-cols-2 gap-3 text-sm">
                 <dt>最后调用</dt>
-                <dd>{epoch(usage.data?.lastUsedAt)}</dd>
+                <dd>{formatDateTime(usage.data?.lastUsedAt)}</dd>
                 <dt>来源 IP</dt>
                 <dd>{usage.data?.sourceIp ?? '—'}</dd>
                 <dt>请求次数</dt>
