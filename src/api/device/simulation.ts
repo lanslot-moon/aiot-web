@@ -11,7 +11,15 @@ export interface ProfileVersion { profileId: string; version: number; snapshot: 
 export interface InstanceConfiguration { instanceId: { value: string }; deviceId: { value: string }; profileId: { value: string }; profileVersion: number; parameterOverrides: ValueMap; initialOverrides: ValueMap }
 export interface SimulationInstance { instanceId: string; productId: string; deviceId: string; profileId: string; profileVersion: number; configuration: InstanceConfiguration; desiredState: 'RUNNING' | 'STOPPED'; activeSessionId: string | null; generation: number; revision: number; updatedAt: number }
 export interface SimulationSession { sessionId: string; instanceId: string; profileId: string; profileVersion: number; generation: number; status: 'STARTING' | 'RUNNING' | 'STOPPING' | 'STOPPED' | 'FAILED'; startedAt: number; endedAt: number | null; failureCode: string | null }
+export interface SimulationState { instance: SimulationInstance; session: SimulationSession | null }
 export interface BehaviorPreview { propertyChanges: ValueMap; behaviorStateChanges: ValueMap; effects: Record<string, unknown>[] }
+export interface PropertyReportReceipt {
+  reportId: string;
+  sessionId: string;
+  status: 'ACCEPTED' | 'QUEUED' | 'FAILED';
+  updatedAt: number;
+  message: string;
+}
 export const sessionLabels: Record<SimulationSession['status'], string> = { STARTING: '启动中', RUNNING: '运行中', STOPPING: '停止中', STOPPED: '已停止', FAILED: '运行失败' };
 export const simulationPath = (path: string) => `/api/v1/simulation/${path}`;
 export function simulationRequest<T>(projectId: string, path: string, method = 'GET', body?: unknown) {

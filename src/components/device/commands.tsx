@@ -27,6 +27,8 @@ import { latestProperties } from '@/api/device/telemetry';
 import { ActionControl } from './action-control';
 import { CommandRecords } from './command-records';
 import { useCommandRecords } from '@/hooks/use-command-records';
+import CommunicationLog from './simulation/communication-log';
+import type { SimulationEvents } from './simulation/use-simulation-events';
 
 const pretty = (value: unknown) => JSON.stringify(value, null, 2);
 function JsonBlock({ text }: { text: string | null }) {
@@ -35,10 +37,12 @@ function JsonBlock({ text }: { text: string | null }) {
   return <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-all rounded-md border bg-muted/30 p-3 text-xs font-mono">{value}</pre>;
 }
 
-export default function DeviceCommands({ projectId, device }: { projectId: string; device: DeviceDetail }) {
+export default function DeviceCommands({ projectId, device, simulation }: { projectId: string; device: DeviceDetail; simulation?: { blocked: string; instanceId?: string; events?: SimulationEvents } }) {
   const allowed = usePermission('device:command');
   const canView = usePermission('device:view');
   const [recordsOpen, setRecordsOpen] = useState(false);
+  const [observation, setObservation] = useState('response');
+  const [seenResponses, setSeenResponses] = useState('');
   const [mode, setMode] = useState<'properties' | 'actions'>('properties');
   const [functionSearch, setFunctionSearch] = useState('');
   const [showAllProperties, setShowAllProperties] = useState(false);
@@ -60,11 +64,13 @@ export default function DeviceCommands({ projectId, device }: { projectId: strin
   const records = history.records;
   const noticeText = commandNoticeText(notice, records);
   const liveRecords = records.filter(row => row.createTime >= history.startedAt && (!filter || row.commandType === filter));
+  const responseVersion = liveRecords.map(row => `${row.requestId}:${row.version}`).join('|');
+  const responseHidden = !!simulation && observation === 'log';
   const selectedRecord = selected ? records.find(row => row.requestId === selected.requestId) ?? selected : null;
   useEffect(() => {
     const list = responseList.current;
-    if (list && followLatest.current) list.scrollTop = list.scrollHeight;
-  }, [records, filter]);
+    if (list && !responseHidden && followLatest.current) list.scrollTop = list.scrollHeight;
+  }, [records, filter, responseHidden]);
   const model = useResource<ThingModelDefinition | null>(
     `/api/v1/products/${encodeURIComponent(device.productId)}/model/published`, 'product:view',
     path => request(path, 'GET', undefined, { projectId }), `command-model:${projectId}`,
@@ -97,7 +103,7 @@ export default function DeviceCommands({ projectId, device }: { projectId: strin
     }
     setValidation(''); setEditor(next);
   }
-  const blocked = !allowed ? '当前账号没有下发指令的权限。' : device.lifecycle !== 'ACTIVE' ? '设备已激活且未停用时才能下发指令。' : '';
+  const blocked = !allowed ? '当前账号没有下发指令的权限。' : device.virtualDevice ? ['DISABLED', 'DELETING'].includes(device.lifecycle) ? '设备已停用或正在解绑，无法下发指令。' : simulation?.blocked ?? '请先开启设备模拟，运行后才能发送指令。' : device.lifecycle !== 'ACTIVE' ? '设备已激活且未停用时才能下发指令。' : '';
   const resetHistory = () => { followLatest.current = true; history.refresh(); };
   function validate() {
     try {
@@ -184,16 +190,17 @@ export default function DeviceCommands({ projectId, device }: { projectId: strin
         </div>}
 
       </section>
-      <section className="flex min-h-0 min-w-0 flex-col border-t bg-muted/10 lg:border-t-0 lg:border-l" aria-label="实时指令响应">
+      <section className="flex min-h-0 min-w-0 flex-col border-t bg-muted/10 lg:border-t-0 lg:border-l" aria-label={simulation ? '调试结果' : '实时指令响应'}>
         <header className="flex flex-wrap items-center justify-between gap-2 border-b bg-background px-5 py-3">
-          <div className="flex flex-wrap items-center gap-2"><h3 className="flex items-center gap-2 text-sm font-medium"><Terminal className="size-4" />实时指令响应</h3><CommandConnectionStatus status={history.status} /></div>
+          {simulation ? <div className="flex items-center gap-1" role="group" aria-label="记录视图"><Button size="sm" variant={!responseHidden ? 'secondary' : 'ghost'} aria-pressed={!responseHidden} onClick={() => setObservation('response')}>指令响应{responseHidden && liveRecords.length > 0 && responseVersion !== seenResponses && <span className="text-xs text-primary">有更新</span>}</Button><Button size="sm" variant={responseHidden ? 'secondary' : 'ghost'} aria-pressed={responseHidden} onClick={() => { setSeenResponses(responseVersion); setObservation('log'); }}>通讯日志</Button></div> : <div className="flex flex-wrap items-center gap-2"><h3 className="flex items-center gap-2 text-sm font-medium"><Terminal className="size-4" />实时指令响应</h3><CommandConnectionStatus status={history.status} /></div>}
           <div className="flex flex-wrap items-center gap-1">
-            <CommandSelect label="响应类型筛选" className="w-28 text-xs" value={filter || 'ALL'} onValueChange={value => { followLatest.current = true; setFilter(value === 'ALL' ? '' : value); setSelected(null); }} placeholder="全部指令" options={[{ value: 'ALL', label: '全部指令' }, { value: 'PROPERTY', label: '属性控制' }, { value: 'ACTION', label: '动作调用' }]} />
-            <Button size="icon" variant="ghost" className="size-8!" aria-label="刷新响应" disabled={history.isValidating} onClick={resetHistory}><RefreshCw className="size-3.5" /></Button>
+            {!responseHidden && <><CommandSelect label="响应类型筛选" className="w-28 text-xs" value={filter || 'ALL'} onValueChange={value => { followLatest.current = true; setFilter(value === 'ALL' ? '' : value); setSelected(null); }} placeholder="全部指令" options={[{ value: 'ALL', label: '全部指令' }, { value: 'PROPERTY', label: '属性控制' }, { value: 'ACTION', label: '动作调用' }]} />
+            <Button size="icon" variant="ghost" className="size-8!" aria-label="刷新响应" disabled={history.isValidating} onClick={resetHistory}><RefreshCw className="size-3.5" /></Button></>}
             <Button size="sm" variant="outline" onClick={() => setRecordsOpen(true)}><History className="size-3.5" />指令记录</Button>
           </div>
         </header>
-        <div ref={responseList} onScroll={event => { const list = event.currentTarget; followLatest.current = list.scrollHeight - list.scrollTop - list.clientHeight < 64; }} className="flex h-96 min-h-0 min-w-0 flex-1 flex-col gap-5 overflow-y-auto p-4 lg:h-auto [&>*]:shrink-0">
+        <div ref={responseList} onScroll={event => { const list = event.currentTarget; if (!responseHidden) followLatest.current = list.scrollHeight - list.scrollTop - list.clientHeight < 64; }} className={cn('flex h-96 min-h-0 min-w-0 flex-1 flex-col gap-5 overflow-y-auto p-4 lg:h-auto [&>*]:shrink-0', responseHidden && 'hidden!')}>
+          {simulation && <CommandConnectionStatus status={history.status} />}
           {noticeText && <p role="status" className="rounded border bg-background p-3 text-xs leading-5">{noticeText}</p>}
           <ErrorNotice error={sendError} /><ErrorNotice error={history.error} retry={history.refresh} />
           {!!history.streamError && <div className="rounded-md border p-3 text-xs text-muted-foreground"><p>{history.streamError instanceof Error ? history.streamError.message : '实时连接暂不可用。'}</p><p>{history.status === 'blocked' ? '请检查登录状态或访问权限后重新连接。' : '已显示的记录会保留，连接恢复后自动补查。'}</p>{history.status === 'blocked' && <Button variant="outline" size="sm" className="mt-2" onClick={history.refresh}>重新连接</Button>}</div>}
@@ -202,6 +209,7 @@ export default function DeviceCommands({ projectId, device }: { projectId: strin
           {liveRecords.map(row => <CommandExchange key={row.requestId} record={row} onDetails={setSelected} />)}
 
         </div>
+        {simulation && <div className={cn('h-96 min-h-0 shrink-0 lg:h-auto lg:flex-1', !responseHidden && 'hidden!')}><CommunicationLog instanceId={simulation.instanceId} events={simulation.events} visible={responseHidden} /></div>}
       </section>
     </div>
     <Dialog open={recordsOpen} onOpenChange={setRecordsOpen}>

@@ -181,6 +181,11 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    scrollbar-width: none;
+  }
+
+  *::-webkit-scrollbar {
+    display: none;
   }
 
   body {
@@ -204,6 +209,11 @@
   input[type="radio"]:checked {
     @apply bg-primary;
   }
+}
+
+[data-slot="scroll-area-scrollbar"],
+.simplebar-track {
+  display: none;
 }
 
 @utility btn-circle-hover {
