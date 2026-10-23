@@ -69,7 +69,7 @@ function SimulationWorkspace({ projectId, device, onDebug }: { projectId: string
       if (!target) throw new Error('尚未开启设备模拟。');
       starting = true;
       await simulationRequest(projectId, `instances/${encodeURIComponent(target.instanceId)}/${action}`, 'POST');
-      toast.success(action === 'start' ? '模拟已开启，可查看当前状态。' : '模拟已停止。');
+      toast.success(action === 'start' ? '模拟已开启，可查看通讯日志。' : '模拟已停止。');
     } catch (cause) { setError(cause); if (starting) setUncertain(true); }
     finally { await refresh(); lock.current = false; setBusy(''); }
   }
@@ -80,7 +80,7 @@ function SimulationWorkspace({ projectId, device, onDebug }: { projectId: string
   }
   return <div className="space-y-5 py-3"><div className="flex flex-wrap items-center justify-between gap-3"><div><div className="flex items-center gap-2 text-sm"><span className={cn('size-2 rounded-full', active?.status === 'RUNNING' ? 'bg-emerald-600' : 'bg-muted-foreground/60')} /><span>{state}</span><span className="text-xs text-muted-foreground">· {version.error ? '自动上报状态未知' : version.isLoading ? '正在读取设置' : version.data?.snapshot.rules.some(rule => rule.trigger.type === 'periodic') ? '已配置自动上报' : '自动上报已关闭'}</span></div><p className="mt-2 text-xs text-muted-foreground">开启后保持模拟会话，切换页面不会停止。</p></div><div className="flex gap-2"><Button size="icon" variant="ghost" aria-label="刷新模拟状态" disabled={!!busy || directory.isValidating} onClick={() => void refresh()}><RefreshCw className="size-4" /></Button><Button disabled={configuring || !!busy || !allowed || !!directory.error || directory.isLoading || !!current.error || uncertain || (!running && !!blocked)} onClick={() => void run(running ? 'stop' : 'start')}>{running ? <Square className="size-4" /> : <Play className="size-4" />}{busy || (running ? '停止模拟' : '开启设备模拟')}</Button></div></div>
     <ErrorNotice error={directory.error} retry={() => directory.mutate()} /><ErrorNotice error={current.error} retry={refresh} /><ErrorNotice error={error} />{uncertain && <p role="status" className="text-sm text-muted-foreground">操作结果待确认，请刷新模拟状态后再试。</p>}{blocked && <p role="status" className="text-xs text-muted-foreground">{blocked}</p>}{directory.isLoading && <Loading />}
-    {directory.data && !directory.error && <SimulationWorkbench projectId={projectId} device={device} instance={instance} status={state} blocked={!!blocked || !!busy} automatic={<AutomaticSettings key={`${instance?.instanceId ?? 'new'}:${instance?.revision ?? 0}`} projectId={projectId} device={device} instance={instance} blocked={blocked || (busy ? '请等待当前操作完成。' : running ? '请先停止模拟，再修改自动上报设置。' : '')} done={configured} onEditing={setConfiguring} />} />}
+    {directory.data && !directory.error && <SimulationWorkbench projectId={projectId} device={device} instance={instance} blocked={!!blocked || !!busy} automatic={<AutomaticSettings key={`${instance?.instanceId ?? 'new'}:${instance?.revision ?? 0}`} projectId={projectId} device={device} instance={instance} blocked={blocked || (busy ? '请等待当前操作完成。' : running ? '请先停止模拟，再修改自动上报设置。' : '')} done={configured} onEditing={setConfiguring} />} />}
     <Button variant="link" disabled={device.lifecycle !== 'ACTIVE'} onClick={onDebug}>前往设备调试<ArrowRight className="size-4" /></Button>
   </div>;
 }
