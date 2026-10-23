@@ -26,7 +26,7 @@ const states: Record<StreamStatus, { label: string; light: string }> = {
 
 export function CommandConnectionStatus({ status }: { status: StreamStatus }) {
   const state = states[status];
-  return <span role="status" aria-live="polite" className="ml-auto inline-flex items-center gap-2.5 px-2 text-xs text-muted-foreground">
+  return <span role="status" aria-live="polite" className="inline-flex items-center gap-2 whitespace-nowrap text-xs text-muted-foreground">
     <span aria-hidden="true" className={cn('size-1.5 shrink-0 rounded-full ring-[3px] transition-colors duration-300', state.light)} />
     {state.label}
   </span>;

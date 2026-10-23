@@ -19,7 +19,7 @@ export interface DeviceGroup {
   counts?: { directDeviceCount: number };
 }
 export interface GroupMember { device: DeviceSummary }
-export interface DeviceMembership { group: DeviceGroup; joinedAt: number }
+export interface DeviceMembership extends DeviceGroup { joinedAt: number }
 export interface Tags { tags: Record<string, string>; updateTime: number }
 export interface HardwareObservation {
   schemaVersion: number | null; hardwareModel: string | null; hardwareUuid: string | null;

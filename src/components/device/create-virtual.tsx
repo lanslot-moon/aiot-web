@@ -47,7 +47,7 @@ export default function CreateVirtualDevice({ projectId, done }: { projectId: st
   }
   return <>
     <Button disabled={!allowed} title={!allowed ? '需要创建设备权限' : undefined} onClick={() => { setProductMode('select'); setProductId(''); setSelectedProduct(null); setName(''); setCursors(['']); setError(undefined); setInvalid(false); setUncertain(false); setOpen(true); }}>创建虚拟设备</Button>
-    <Dialog open={open} onOpenChange={v => { if (!pending.current) setOpen(v); }}><DialogContent className="max-h-[90dvh] overflow-y-auto" showCloseButton={!busy}><DialogHeader><DialogTitle>创建虚拟设备</DialogTitle><DialogDescription>仅创建待激活的设备档案。凭证准备和模拟运行需在对应服务中完成。</DialogDescription></DialogHeader>
+    <Dialog open={open} onOpenChange={v => { if (!pending.current) setOpen(v); }}><DialogContent className="max-h-[90dvh] overflow-y-auto" showCloseButton={!busy}><DialogHeader><DialogTitle>创建虚拟设备</DialogTitle><DialogDescription>创建待激活的虚拟设备，由服务准备独立凭证。创建后可在设备详情的“设备模拟”中配置行为并启动。</DialogDescription></DialogHeader>
       <form onSubmit={e => void submit(e)} className="space-y-4" aria-busy={busy}>
         <fieldset disabled={busy || uncertain} className="space-y-4">
           <div className="flex flex-col gap-2">

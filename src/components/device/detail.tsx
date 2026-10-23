@@ -1,13 +1,12 @@
 import { formatDateTime } from '@/lib/date-time';
 import { cn } from '@/lib/utils';
-import { HardwareObservationDetails } from './hardware-observation';
 import { DeviceTable as DataTable } from './layout';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
-import { ArrowLeft, ChevronDown, ChevronUp, RefreshCw, FlaskConical, Send, LayoutDashboard, Tags, FolderTree, Cpu } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronUp, RefreshCw, FlaskConical, Send, History, LayoutDashboard, FolderTree, Cpu } from 'lucide-react';
 import { ProductIconPreview } from '@/components/open-platform/product-icon-preview';
 import { CopyIdButton } from '@/components/open-platform/copy-id-button';
-import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from '@/components/ui/empty';
+import DeviceSimulation from './simulation';
 import { Action, ErrorNotice, Loading } from '@/components/iam/shared';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -15,13 +14,15 @@ import { CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useResource } from '@/components/iam/shared-utils';
 import { request, OpenPlatformApiError } from '@/api/iam/client';
-import type { ProductDetailView } from '@/types/apps/open-platform';
+import type { ProductDetailView, ThingModelDefinition } from '@/types/apps/open-platform';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { devicePath, groupPath, deviceRequest, nodeLabels, type DeviceDetail, type DeviceMembership, type HardwareProfile } from '@/api/device/client';
+import { HardwareObservationDetails } from './hardware-observation';
 import { CursorList, LifecycleBadge } from './shared';
 import { useDeviceResource } from './use-device-resource';
 import ResourceTags from './tags';
 import DeviceCommands from './commands';
+import { ReportRecords } from './report-records';
 import DeviceUnbindActions from './unbind-actions';
 import { DeviceSection as Panel, DeviceTabsNav, DetailField } from './layout';
 
@@ -59,6 +60,18 @@ function Hardware({ projectId, id }: { projectId: string; id: string }) {
     {resource.data.reported && <HardwareObservationDetails title="设备自报资料" value={resource.data.reported} />}
     {!resource.data.verified && !resource.data.reported && <p className="text-sm text-muted-foreground">尚未收到硬件资料。</p>}
   </div>}</div>;
+}
+
+function DeviceReports({ projectId, device }: { projectId: string; device: DeviceDetail }) {
+  const model = useResource<ThingModelDefinition | null>(
+    `/api/v1/products/${encodeURIComponent(device.productId)}/model/published`, 'product:view',
+    path => request(path, 'GET', undefined, { projectId }), `command-model:${projectId}`,
+  );
+  return <>
+    <ErrorNotice error={model.error} retry={() => model.mutate()} />
+    {model.isLoading && <Loading />}
+    {model.data && <ReportRecords key={`${device.deviceId}:${model.data.modelRevision}`} projectId={projectId} device={device} model={model.data} />}
+  </>;
 }
 
 export default function DeviceDetails({ projectId, id, back, openGroup, backLabel = '返回设备列表' }: { projectId: string; id: string; back: () => void; openGroup: (id: string) => void; backLabel?: string }) {
@@ -126,10 +139,10 @@ export default function DeviceDetails({ projectId, id, back, openGroup, backLabe
         </CollapsibleContent>
       </Collapsible>
       {device.lifecycle === 'DELETING' && <p role="status" className="rounded-lg border bg-muted/30 p-3 text-sm">设备正在解绑或清理数据，资料和分类已停止编辑。若处理未完成，请对同一设备重试原操作；不要将部分失败视为操作未执行。</p>}
-      <Tabs value={tab} onValueChange={value => { const next = String(value); if (next === 'commands' && !debugAllowed) return; setTab(next); if (next === 'commands') setSummaryOpen(false); }} className="min-w-0 flex-col! gap-2">
-        <DeviceTabsNav variant="default" label="设备详情" items={[{ value: 'profile', label: '设备概览', icon: LayoutDashboard }, { value: 'hardware', label: '硬件资料', icon: Cpu }, { value: 'tags', label: '标签', icon: Tags }, { value: 'groups', label: '所属分组', icon: FolderTree }, { value: 'simulation', label: '设备模拟', icon: FlaskConical }, { value: 'commands', label: '设备调试', icon: Send, disabled: !debugAllowed, disabledReason: debugAllowed ? undefined : debugUnavailableReason }]} />
+      <Tabs value={tab} onValueChange={value => { const next = String(value); if (next === 'commands' && !debugAllowed) return; setTab(next); if (next === 'commands' || next === 'reports') setSummaryOpen(false); }} className="min-w-0 flex-col! gap-2">
+        <DeviceTabsNav variant="default" label="设备详情" items={[{ value: 'profile', label: '设备概览', icon: LayoutDashboard }, { value: 'hardware', label: '硬件资料', icon: Cpu }, { value: 'groups', label: '所属分组', icon: FolderTree }, ...device.virtualDevice ? [{ value: 'simulation', label: '设备模拟', icon: FlaskConical }] : [], { value: 'commands', label: '设备调试', icon: Send, disabled: !debugAllowed, disabledReason: debugAllowed ? undefined : debugUnavailableReason }, { value: 'reports', label: '上报记录', icon: History }]} />
         {!debugAllowed && <p role="status" className="px-1 text-xs text-muted-foreground">{debugUnavailableReason}</p>}
-        <TabsContent value="profile">
+        <TabsContent value="profile" className="space-y-4">
           <div className="grid overflow-hidden rounded-xl border xl:grid-cols-[minmax(0,1.7fr)_minmax(18rem,1fr)]">
             <section className="min-w-0 p-4 sm:p-5">
               <CardTitle className="mb-4 text-base">设备资料</CardTitle>
@@ -151,12 +164,13 @@ export default function DeviceDetails({ projectId, id, back, openGroup, backLabe
               </dl>
             </section>
           </div>
+          {tab === 'profile' && <Panel title="设备标签"><ResourceTags projectId={projectId} path={devicePath(id)} readOnly /></Panel>}
         </TabsContent>
-        <TabsContent value="tags">{tab === 'tags' && <ResourceTags projectId={projectId} path={devicePath(id)} readOnly={device.lifecycle === 'DELETING'} />}</TabsContent>
-        <TabsContent value="groups">{tab === 'groups' && <CursorList<DeviceMembership> projectId={projectId} path={`${devicePath(id)}/groups`} emptyTitle="尚未加入分组" emptyDescription="到静态分组的成员页添加设备，这里只显示直接所属组。">{(items, reload) => <DataTable rows={items} columns={[{ label: '分组', render: m => <Button variant="link" onClick={() => openGroup(m.group.groupId)}>{m.group.name}</Button> }, { label: '加入时间', render: m => formatDateTime(m.joinedAt) }, ...device.lifecycle !== 'DELETING' ? [{ label: '操作', render: (m: DeviceMembership) => <Action label="移出分组" permission="device:update" description={`只移除与「${m.group.name}」的直接关系，不删除设备，也不影响其他组。`} run={async () => { await deviceRequest(projectId, `${groupPath(m.group.groupId)}/devices/${encodeURIComponent(id)}`, 'DELETE');  }} done={reload} /> }] : []]} />}</CursorList>}</TabsContent>
+        <TabsContent value="groups">{tab === 'groups' && <CursorList<DeviceMembership> projectId={projectId} path={`${devicePath(id)}/groups`} emptyTitle="尚未加入分组" emptyDescription="到静态分组的成员页添加设备，这里只显示直接所属组。">{(items, reload) => <DataTable rows={items} columns={[{ label: '分组', render: m => <Button variant="link" onClick={() => openGroup(m.groupId)}>{m.name}</Button> }, { label: '加入时间', render: m => formatDateTime(m.joinedAt) }, ...device.lifecycle !== 'DELETING' ? [{ label: '操作', render: (m: DeviceMembership) => <Action label="移出分组" permission="device:update" description={`只移除与「${m.name}」的直接关系，不删除设备，也不影响其他组。`} run={async () => { await deviceRequest(projectId, `${groupPath(m.groupId)}/devices/${encodeURIComponent(id)}`, 'DELETE');  }} done={reload} /> }] : []]} />}</CursorList>}</TabsContent>
         <TabsContent value="hardware">{tab === 'hardware' && <Hardware projectId={projectId} id={id} />}</TabsContent>
-        <TabsContent value="simulation"><Empty className="min-h-64 rounded-lg border border-dashed"><EmptyHeader><EmptyMedia variant="icon"><FlaskConical /></EmptyMedia><EmptyTitle>设备模拟待开放</EmptyTitle><EmptyDescription>后续可在这里配置模拟数据、启动或停止模拟，并查看运行记录。</EmptyDescription></EmptyHeader></Empty></TabsContent>
+        <TabsContent value="simulation">{device.virtualDevice && tab === 'simulation' && <DeviceSimulation key={`${projectId}:${id}`} projectId={projectId} device={device} onDebug={() => { setTab('commands'); setSummaryOpen(false); }} />}</TabsContent>
         <TabsContent value="commands">{tab === 'commands' && (debugAllowed ? <DeviceCommands key={id} projectId={projectId} device={device} /> : <p role="status" className="rounded-lg border bg-muted/20 p-4 text-sm">{debugUnavailableReason}</p>)}</TabsContent>
+        <TabsContent value="reports">{tab === 'reports' && <DeviceReports projectId={projectId} device={device} />}</TabsContent>
       </Tabs>
     </>}
   </div>;
