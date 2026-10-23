@@ -1,4 +1,5 @@
 import { Clock3 } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { request } from '@/api/iam/client';
 import { decodeMap, decodeValue, type ProfileVersion, type SimulationInstance, type SimulationValue } from '@/api/device/simulation';
 import type { ThingModelDefinition } from '@/types/apps/open-platform';
@@ -26,14 +27,14 @@ function describe(source: unknown): { mode: string; detail: string } {
   }
 }
 
-export default function BehaviorSummary({ projectId, instance }: { projectId: string; instance: SimulationInstance }) {
+export default function BehaviorSummary({ projectId, instance, actions }: { projectId: string; instance: SimulationInstance; actions?: (ruleId: string) => ReactNode }) {
   const version = useSimulation<ProfileVersion>(projectId, `profiles/${encodeURIComponent(instance.profileId)}/versions/${instance.profileVersion}`);
   const model = useResource<ThingModelDefinition | null>(`/api/v1/products/${encodeURIComponent(instance.productId)}/model/published`, 'product:view', path => request(path, 'GET', undefined, { projectId }), `simulation-model:${projectId}`);
   const properties = new Map(model.data?.properties.map(property => [property.code, property]));
   const initial = version.data ? decodeMap({ ...version.data.snapshot.initialProperties, ...instance.configuration.initialOverrides }) : {};
   const rules = version.data?.snapshot.rules.filter(rule => rule.trigger.type === 'periodic') ?? [];
 
-  return <div className="space-y-3">
+  return <div className="space-y-2">
     <ErrorNotice error={version.error} retry={() => version.mutate()} />
     <ErrorNotice error={model.error} retry={() => model.mutate()} />
     {version.isLoading && <Loading />}
@@ -50,9 +51,12 @@ export default function BehaviorSummary({ projectId, instance }: { projectId: st
         if (action.type === 'emitEvent' && typeof action.eventId === 'string') events.push(action.eventId);
       });
       return <section key={rule.ruleId} className="overflow-hidden rounded-md border" aria-label="已保存的自动上报配置">
-        <header className="flex flex-wrap items-center justify-between gap-2 border-b bg-muted/20 px-3 py-2">
-          <p className="flex items-center gap-2 text-xs font-medium"><Clock3 aria-hidden className="size-3.5 text-muted-foreground" />每 {Number(rule.trigger.intervalMs) / 1000} 秒上报{!!rule.condition && <span className="font-normal text-muted-foreground">· 满足条件时</span>}</p>
-          <span className="text-xs text-muted-foreground">{reports.length} 项属性{events.length > 0 && ` · ${events.length} 项事件`}</span>
+        <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 border-b bg-muted/20 px-3 py-1" title={`规则标识：${rule.ruleId}`}>
+          <div className="flex min-w-0 flex-wrap items-center gap-x-2 text-xs leading-5">
+            <p className="flex items-center gap-2 font-medium"><Clock3 aria-hidden className="size-3.5 shrink-0 text-muted-foreground" /><span>每 <span className="tabular-nums">{Number(rule.trigger.intervalMs) / 1000}</span> 秒上报{!!rule.condition && <span className="font-normal text-muted-foreground"> · 满足条件时</span>}</span></p>
+            <p className="text-muted-foreground"><span className="tabular-nums">{reports.length}</span> 项属性{events.length > 0 && <> · <span className="tabular-nums">{events.length}</span> 项事件</>}</p>
+          </div>
+          {actions && <div className="flex items-start justify-end">{actions(rule.ruleId)}</div>}
         </header>
         <dl className="divide-y">
           {reports.map(report => {
@@ -62,12 +66,12 @@ export default function BehaviorSummary({ projectId, instance }: { projectId: st
             const source = describe(report.source);
             const initialText = `初始 ${displayValue(initial[report.code])}${initial[report.code] !== undefined ? suffix : ''}`;
             const detail = source.mode === '当前模拟值' ? initialText : `${source.detail}${source.mode === '固定值' ? suffix : ` · ${initialText}`}`;
-            return <div key={report.key} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)] items-baseline gap-x-3 px-3 py-1.5 leading-5">
-              <dt className="flex min-w-0 flex-wrap items-baseline gap-x-1.5"><span className="break-words text-xs font-medium">{property?.title ?? report.code}</span><span className="max-w-24 truncate font-mono text-[11px] text-muted-foreground" title={report.code}>{report.code}</span></dt>
-              <dd className="flex min-w-0 flex-wrap items-baseline justify-end gap-x-1.5 text-right text-xs" title={`${source.mode}：${source.detail}；${initialText}`}><span className="text-muted-foreground">{source.mode}</span><span className="break-words tabular-nums [overflow-wrap:anywhere]">{detail}</span></dd>
+            return <div key={report.key} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)] items-start gap-x-3 px-3 py-1.5 text-xs leading-4">
+              <dt className="min-w-0"><span className="block break-words font-medium [overflow-wrap:anywhere]">{property?.title ?? report.code}</span><span className="block break-all font-mono text-[11px] text-muted-foreground">{report.code}</span></dt>
+              <dd className="min-w-0 text-left" title={`${source.mode}：${source.detail}；${initialText}`}><span className="block text-muted-foreground">{source.mode}</span><span className="block break-words tabular-nums [overflow-wrap:anywhere]">{detail}</span></dd>
             </div>;
           })}
-          {events.map((code, index) => <div key={`${index}:${code}`} className="flex flex-wrap justify-between gap-2 px-3 py-1.5 text-xs leading-5"><dt>{model.data?.events.find(event => event.code === code)?.title ?? code}</dt><dd className="text-muted-foreground">事件上报</dd></div>)}
+          {events.map((code, index) => <div key={`${index}:${code}`} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)] items-start gap-x-3 px-3 py-1.5 text-xs leading-4"><dt className="min-w-0"><span className="block break-words font-medium [overflow-wrap:anywhere]">{model.data?.events.find(event => event.code === code)?.title ?? code}</span><span className="block break-all font-mono text-[11px] text-muted-foreground">{code}</span></dt><dd className="min-w-0 text-muted-foreground">事件上报</dd></div>)}
         </dl>
         {!reports.length && !events.length && <p className="px-3 py-3 text-xs text-muted-foreground">此定时任务没有配置属性或事件上报。</p>}
       </section>;
