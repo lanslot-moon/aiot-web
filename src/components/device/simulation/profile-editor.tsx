@@ -35,6 +35,7 @@ export default function ProfileEditor({ projectId, device, existing, seed, done,
   const [interval, setInterval] = useState(initialDraft.form?.interval ?? '5');
   const [formRuleId, setFormRuleId] = useState(initialDraft.form?.ruleId ?? newRuleId);
   const [advanced, setAdvanced] = useState(!!initialDraft.body && (!quickDone || !initialDraft.form));
+  const [preservedForm, setPreservedForm] = useState(false);
   const [json, setJson] = useState(initialDraft.body ? pretty(initialDraft.body) : '');
   const [ruleIndex, setRuleIndex] = useState('0');
   const [args, setArgs] = useState('{}');
@@ -52,13 +53,19 @@ export default function ProfileEditor({ projectId, device, existing, seed, done,
   const model = useResource<ThingModelDefinition | null>(`/api/v1/products/${encodeURIComponent(device.productId)}/model/published`, 'product:view', path => request(path, 'GET', undefined, { projectId }), `simulation-model:${projectId}`);
   const properties = model.data?.properties ?? [];
   function compile(): ProfileBody {
-    if (advanced) {
+    if (advanced || preservedForm) {
       let body: ProfileBody;
       try { body = JSON.parse(json); } catch { throw new Error('行为 JSON 格式不正确。'); }
       if (!body || body.version !== nextVersion || !body.parameters || !body.initialProperties || !body.scripts || !Array.isArray(body.rules) || !body.rules.length || body.rules.length > 128 || body.rules.some(rule => !rule?.ruleId || !rule.trigger?.type || !Array.isArray(rule.actions) || !rule.actions.length)) throw new Error(`请提供完整的版本 ${nextVersion} 行为定义和至少一条有效规则。`);
       if ([body.parameters, body.initialProperties, body.scripts].some(value => schemaObject(value) !== value)) throw new Error('parameters、initialProperties 和 scripts 必须是 JSON 对象。');
       if (Object.keys(body.scripts).length > 32 || Object.entries(body.scripts).some(([id, script]) => !script || script.scriptId !== id || typeof script.source !== 'string' || !script.source.trim() || script.source.length > 65536)) throw new Error('脚本标识须与 scripts 的键一致，源码不能为空且不能超过 65536 个字符，最多 32 个脚本。');
       if (body.rules.some(rule => rule.actions.some(action => action.type === 'script' && (typeof action.scriptId !== 'string' || !Object.prototype.hasOwnProperty.call(body.scripts, action.scriptId))))) throw new Error('规则引用的脚本不存在，请补全脚本或移除对应动作。');
+      if (!advanced && preservedForm) {
+        // 表单只修改定时器，保留无法由属性控件表达的脚本、参数和动作顺序。
+        const intervalMs = Number(interval) * 1000;
+        if (!interval.trim() || !Number.isSafeInteger(intervalMs) || intervalMs <= 0) throw new Error('请输入大于 0 的上报周期，精度为毫秒。');
+        return { ...body, rules: body.rules.map(rule => ({ ...rule, trigger: { ...rule.trigger, intervalMs } })) };
+      }
       return body;
     }
     const intervalMs = Number(interval) * 1000;
@@ -104,19 +111,28 @@ export default function ProfileEditor({ projectId, device, existing, seed, done,
     setModeNotice('');
     try {
       if (next) {
-        if (rows.every(row => !row.code)) {
+        if (preservedForm) {
+          setJson(pretty(compile()));
+        } else if (rows.every(row => !row.code)) {
           const intervalMs = Number(interval) * 1000;
           if (!interval.trim() || !Number.isSafeInteger(intervalMs) || intervalMs <= 0) throw new Error('请先填写有效的上报间隔。');
           setJson(pretty({ version: nextVersion, parameters: {}, initialProperties: {}, scripts: {}, rules: [{ ruleId: formRuleId, trigger: { type: 'periodic', intervalMs }, actions: [{ type: 'setProperties', properties: {} }, { type: 'reportProperties', properties: [] }] }] }));
         } else setJson(pretty(compile()));
       } else {
         const draft = compile();
-        let form;
-        try { form = readProfileForm(draft); } catch {
-          setModeNotice('此配置包含脚本、参数或自定义动作，请使用 JSON 或脚本编辑；当前内容已保留。');
-          setError(undefined); return;
+        try {
+          const form = readProfileForm(draft);
+          setRows(form.rows); setInterval(form.interval); setFormRuleId(form.ruleId);
+          setPreservedForm(false);
+        } catch {
+          const rule = draft.rules[0];
+          if (draft.rules.length !== 1 || rule.trigger.type !== 'periodic' || !Number.isSafeInteger(rule.trigger.intervalMs) || Number(rule.trigger.intervalMs) <= 0) {
+            setModeNotice('表单仅支持单条定时规则；多条规则或其他触发方式请使用 JSON 编辑，当前内容已保留。');
+            setError(undefined); return;
+          }
+          setPreservedForm(true);
+          setInterval(String(Number(rule.trigger.intervalMs) / 1000));
         }
-        setRows(form.rows); setInterval(form.interval); setFormRuleId(form.ruleId);
       }
       setAdvanced(next); setScriptEditing(false); setError(undefined);
     } catch (cause) { setError(cause); }
@@ -194,9 +210,9 @@ export default function ProfileEditor({ projectId, device, existing, seed, done,
     <ErrorNotice error={model.error} retry={() => model.mutate()} />{model.isLoading && <Loading />}
     {!model.isLoading && !model.error && !model.data && <p role="status" className="rounded-lg border p-4 text-sm">产品尚未发布物模型，请先到产品管理发布，再配置模拟行为。</p>}
     {modeNotice && <p role="status" className="rounded-md bg-muted/40 px-3 py-2 text-xs leading-5 text-muted-foreground">{modeNotice}</p>}
-    <div className="flex flex-wrap items-center justify-between gap-2"><h4 className="flex items-center gap-1 text-xs font-medium">{advanced ? scriptEditing ? '上报脚本' : automaticRuleId !== undefined ? '当前规则定义' : '完整行为定义' : `上报属性 · ${rows.length} 项`}{advanced && scriptEditing && <ScriptHelp />}</h4>{advanced && !scriptEditing ? <Button variant="ghost" size="sm" disabled={frozen} onClick={() => { try { setJson(pretty(JSON.parse(json))); setError(undefined); } catch { setError(new Error('JSON 格式不正确，请先修正后再格式化。')); } }}>格式化 JSON</Button> : !quickDone && <Button variant="outline" size="sm" disabled={frozen} onClick={() => changeMode(true)}>转为高级 JSON</Button>}</div>
+    <div className="flex flex-wrap items-center justify-between gap-2"><h4 className="flex items-center gap-1 text-xs font-medium">{advanced ? scriptEditing ? '上报脚本' : automaticRuleId !== undefined ? '当前规则定义' : '完整行为定义' : preservedForm ? '上报行为' : `上报属性 · ${rows.length} 项`}{advanced && scriptEditing && <ScriptHelp />}</h4>{advanced && !scriptEditing ? <Button variant="ghost" size="sm" disabled={frozen} onClick={() => { try { setJson(pretty(JSON.parse(json))); setError(undefined); } catch { setError(new Error('JSON 格式不正确，请先修正后再格式化。')); } }}>格式化 JSON</Button> : !quickDone && <Button variant="outline" size="sm" disabled={frozen} onClick={() => changeMode(true)}>转为高级 JSON</Button>}</div>
     {automaticRuleId !== undefined && <p className="text-xs leading-5 text-muted-foreground">这里只编辑本次选择或新增的规则，保存时会与当前设备的其他规则合并。</p>}
-    {advanced && scriptEditing ? scriptBody ? <ScriptEditor body={scriptBody} disabled={frozen} onChange={draft => { setJson(pretty(draft)); setError(undefined); setModeNotice(''); }} /> : <p role="status" className="text-xs text-muted-foreground">请先在 JSON 中补全有效的规则与 scripts 对象，再编辑脚本。</p> : advanced ? <div className="space-y-2"><Textarea aria-label="行为 JSON" spellCheck={false} className="h-72 resize-y font-mono text-xs leading-5" value={json} disabled={frozen} onChange={e => { setJson(e.target.value); setError(undefined); }} /><p className="text-xs leading-5 text-muted-foreground">直接编辑上报间隔、属性取值和动作规则，保存后重新开启模拟生效。</p>{quickInstance && (Object.keys(quickInstance.configuration.parameterOverrides).length > 0 || Object.keys(quickInstance.configuration.initialOverrides).length > 0) && <details className="text-xs text-muted-foreground"><summary className="cursor-pointer">查看设备覆盖值（预演与运行时优先使用）</summary><pre className="mt-2 max-h-32 overflow-auto whitespace-pre-wrap break-all">{pretty({ parameterOverrides: quickInstance.configuration.parameterOverrides, initialOverrides: quickInstance.configuration.initialOverrides })}</pre></details>}</div> : <CommandControlTheme><div className="space-y-2">{rows.map((row, index) => {
+    {advanced && scriptEditing ? scriptBody ? <ScriptEditor body={scriptBody} disabled={frozen} onChange={draft => { setJson(pretty(draft)); setError(undefined); setModeNotice(''); }} /> : <p role="status" className="text-xs text-muted-foreground">请先在 JSON 中补全有效的规则与 scripts 对象，再编辑脚本。</p> : advanced ? <div className="space-y-2"><Textarea aria-label="行为 JSON" spellCheck={false} className="h-72 resize-y font-mono text-xs leading-5" value={json} disabled={frozen} onChange={e => { setJson(e.target.value); setError(undefined); }} /><p className="text-xs leading-5 text-muted-foreground">直接编辑上报间隔、属性取值和动作规则，保存后重新开启模拟生效。</p>{quickInstance && (Object.keys(quickInstance.configuration.parameterOverrides).length > 0 || Object.keys(quickInstance.configuration.initialOverrides).length > 0) && <details className="text-xs text-muted-foreground"><summary className="cursor-pointer">查看设备覆盖值（预演与运行时优先使用）</summary><pre className="mt-2 max-h-32 overflow-auto whitespace-pre-wrap break-all">{pretty({ parameterOverrides: quickInstance.configuration.parameterOverrides, initialOverrides: quickInstance.configuration.initialOverrides })}</pre></details>}</div> : preservedForm ? <div className="space-y-2 rounded-md border bg-muted/10 p-3 text-xs leading-5"><p>当前规则包含脚本或自定义动作，可在上方修改上报间隔。</p><p className="text-muted-foreground">脚本、参数及动作顺序均会保留。修改具体上报逻辑，请切换到“脚本”或“JSON”。</p></div> : <CommandControlTheme><div className="space-y-2">{rows.map((row, index) => {
       const property = properties.find(item => item.code === row.code);
       const numeric = ['number', 'integer'].includes(schemaType(property?.schema));
       const valueFieldClass = cn('w-full [&>[data-slot=field][data-orientation=horizontal]]:grid-cols-[4rem_minmax(0,1fr)]', numeric ? 'max-w-64' : !['object', 'array'].includes(schemaType(property?.schema)) && 'max-w-80');
@@ -219,7 +235,7 @@ export default function ProfileEditor({ projectId, device, existing, seed, done,
       {preview && <div role="status" className="space-y-3 rounded-lg border bg-muted/20 p-4"><p className="text-sm font-medium">{previewCurrent ? '预演完成 · 尚未发送消息' : '配置已修改 · 请重新预演'}</p><p className="text-xs text-muted-foreground">预计属性变化</p><pre className="max-h-48 overflow-auto whitespace-pre-wrap break-all text-xs">{pretty(decodeMap(preview.result.propertyChanges))}</pre><details><summary className="cursor-pointer text-xs">查看 {preview.result.effects.length} 个预计效果</summary><pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap break-all text-xs">{pretty(preview.result.effects)}</pre></details></div>}
     </DeviceSection>}
     {quickDone && <div className="space-y-3 border-t pt-3">
-      {!advanced && <p className="text-xs leading-6 text-muted-foreground">{body ? `每 ${interval} 秒上报 ${rows.length} 项数据：${rows.map(row => properties.find(item => item.code === row.code)?.title ?? row.code).join('、')}。` : '请先选择上报属性并填写数值。'}保存后，重新开启模拟时生效。</p>}
+      {!advanced && !preservedForm && <p className="text-xs leading-6 text-muted-foreground">{body ? `每 ${interval} 秒上报 ${rows.length} 项数据：${rows.map(row => properties.find(item => item.code === row.code)?.title ?? row.code).join('、')}。` : '请先选择上报属性并填写数值。'}保存后，重新开启模拟时生效。</p>}
       <ErrorNotice error={error} />
       {resuming && !busy && <p role="status" className="text-sm">保存尚未完成，已保留本次设置。请点击“继续保存”，完成前暂不能修改。</p>}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><span role="status" className="text-xs text-muted-foreground">{busy ? '正在保存，请稍候…' : '配置仅保存到当前设备'}</span><div className="flex justify-end gap-2">{onClose && <Button size="sm" className="min-w-16" variant="outline" onClick={onClose}>关闭</Button>}<Button size="sm" className="w-44" disabled={!!busy || !model.data || !!model.error} onClick={() => void saveQuick()}><Check className="size-4" />{busy || (resuming ? '继续保存' : '保存自动上报设置')}</Button></div></div>
