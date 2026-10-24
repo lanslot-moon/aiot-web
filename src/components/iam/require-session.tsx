@@ -19,6 +19,8 @@ export function RequireSession({ children }: { children: ReactNode }) {
     return (
       <div className="mx-auto max-w-lg p-8">
         <ErrorNotice
+          presentation="empty"
+          title="账号信息加载失败"
           error={account.error ?? authorization.error}
           retry={() => {
             return Promise.all([account.mutate(), authorization.mutate()]);

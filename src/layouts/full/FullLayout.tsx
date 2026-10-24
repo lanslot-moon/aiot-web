@@ -18,7 +18,7 @@ function ProjectContent() {
   const projectId = projectIdFromPath(pathname);
   const section = projectId ? pathname.slice(`/projects/${projectId}/`.length).split('/')[0] || 'overview' : '';
   const codes = section === 'settings' ? platformAuthorization.data?.permissionCodes : authorization?.data?.permissionCodes;
-  if (authorization?.error) return <ErrorNotice error={authorization.error} retry={() => authorization.mutate()} />;
+  if (authorization?.error) return <ErrorNotice presentation="empty" title="项目权限加载失败" error={authorization.error} retry={() => authorization.mutate()} />;
   if (authorization && !authorization.data) return <Loading />;
   if (authorization?.data && !canNavigate(section, codes ?? [])) return <ErrorNotice error={new OpenPlatformApiError('FORBIDDEN', '当前项目角色没有访问此功能的权限。', 403)} />;
   if (authorization?.data && pathname.endsWith('/model') && !authorization.data.permissionCodes.includes('thing-model:view')) return <ErrorNotice error={new OpenPlatformApiError('FORBIDDEN', '当前项目角色没有查看物模型的权限。', 403)} />;
