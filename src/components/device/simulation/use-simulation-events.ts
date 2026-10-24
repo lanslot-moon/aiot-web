@@ -40,7 +40,7 @@ export function useSimulationEvents(projectId: string, instanceId?: string) {
 
     async function connect() {
       hasSnapshot = false;
-      setConnection({ key, synced: false, status: failures ? '正在重新连接…' : '正在连接…' });
+      setConnection(previous => ({ key, synced: false, status: failures ? '正在重新连接…' : '正在连接…', error: previous.key === key ? previous.error : undefined }));
       try {
         const after = cursor.current.key === key ? cursor.current.id : undefined;
         const path = simulationPath(`instances/${encodeURIComponent(instanceId!)}/events/stream`) + (after ? `?after=${encodeURIComponent(after)}` : '');
@@ -116,7 +116,7 @@ export function useSimulationEvents(projectId: string, instanceId?: string) {
     allowed, paused,
     togglePaused: () => { pausedRef.current = !pausedRef.current; setPaused(pausedRef.current); },
     clear: () => setOutput({ key, lines: [] }),
-    reconnect: () => { setConnection({ key, synced: false, status: '正在重新连接…' }); setAttempt(value => value + 1); },
+    reconnect: () => { setConnection(previous => ({ key, synced: false, status: '正在重新连接…', error: previous.key === key ? previous.error : undefined })); setAttempt(value => value + 1); },
   };
 }
 
