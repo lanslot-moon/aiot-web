@@ -1,6 +1,7 @@
 import { request } from '@/api/iam/client';
 
 export type Lifecycle = 'PENDING_ACTIVATION' | 'ACTIVE' | 'DISABLED' | 'DELETING';
+export type DeviceConnectivity = 'ONLINE' | 'OFFLINE' | 'UNKNOWN' | 'NOT_APPLICABLE';
 export interface CursorPage<T> { items: T[]; nextCursor: string | null; hasMore: boolean }
 export interface DeviceSummary {
   deviceId: string; projectId: string; productId: string; deviceName: string;
@@ -10,6 +11,7 @@ export interface DeviceSummary {
   activation: { method: string; activatedAt: number; observedAt: number } | null;
 }
 export interface DeviceDetail extends DeviceSummary {
+  connectivity?: DeviceConnectivity | null;
   description: string | null; customIconUrl: string | null; hardwareUuid: string | null;
   authRoute: string;
 }

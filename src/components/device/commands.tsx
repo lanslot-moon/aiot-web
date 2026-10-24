@@ -29,6 +29,7 @@ import { CommandRecords } from './command-records';
 import { useCommandRecords } from '@/hooks/use-command-records';
 import CommunicationLog from './simulation/communication-log';
 import type { SimulationEvents } from './simulation/use-simulation-events';
+import { useCommandAvailability } from './use-command-availability';
 
 const pretty = (value: unknown) => JSON.stringify(value, null, 2);
 function JsonBlock({ text }: { text: string | null }) {
@@ -40,6 +41,7 @@ function JsonBlock({ text }: { text: string | null }) {
 export default function DeviceCommands({ projectId, device, simulation }: { projectId: string; device: DeviceDetail; simulation?: { blocked: string; instanceId?: string; events?: SimulationEvents } }) {
   const allowed = usePermission('device:command');
   const canView = usePermission('device:view');
+  const availability = useCommandAvailability(projectId, device.deviceId);
   const [recordsOpen, setRecordsOpen] = useState(false);
   const [observation, setObservation] = useState('response');
   const [seenResponses, setSeenResponses] = useState('');
@@ -103,7 +105,7 @@ export default function DeviceCommands({ projectId, device, simulation }: { proj
     }
     setValidation(''); setEditor(next);
   }
-  const blocked = !allowed ? '当前账号没有下发指令的权限。' : device.virtualDevice ? ['DISABLED', 'DELETING'].includes(device.lifecycle) ? '设备已停用或正在解绑，无法下发指令。' : simulation?.blocked ?? '请先开启设备模拟，运行后才能发送指令。' : device.lifecycle !== 'ACTIVE' ? '设备已激活且未停用时才能下发指令。' : '';
+  const blocked = !allowed ? '当前账号没有下发指令的权限。' : availability.blocked || (device.virtualDevice ? ['DISABLED', 'DELETING'].includes(device.lifecycle) ? '设备已停用或正在解绑，无法下发指令。' : simulation?.blocked ?? '请先开启设备模拟，运行后才能发送指令。' : device.lifecycle !== 'ACTIVE' ? '设备已激活且未停用时才能下发指令。' : '');
   const resetHistory = () => { followLatest.current = true; history.refresh(); };
   function validate() {
     try {
@@ -123,6 +125,7 @@ export default function DeviceCommands({ projectId, device, simulation }: { proj
     const value = validate(); if (!value) return;
     lock.current = true; setBusy(true); setSendError(undefined); setNotice(null);
     try {
+      await availability.verifyOnline();
       const result = await commandRequest<CommandSubmission>(projectId, commandPath(device.deviceId) + '/properties/issue', 'POST', {
         properties: JSON.stringify(value),
         clientToken: crypto.randomUUID(), deliveryTtlMs: Number(ttl) * 1000,
@@ -186,7 +189,7 @@ export default function DeviceCommands({ projectId, device, simulation }: { proj
         <footer className="sticky bottom-0 z-10 flex shrink-0 flex-wrap items-start justify-between gap-3 border-t bg-background px-4 py-3"><details className="min-w-0"><summary className="cursor-pointer py-2 text-xs text-muted-foreground">发送选项</summary><div className="mt-3 flex items-center gap-2"><Label htmlFor="command-ttl" className="text-xs">投递有效期</Label><DeviceInput id="command-ttl" type="number" min="0.001" max="30" step="0.001" className="w-20" value={ttl} disabled={busy} onChange={event => setTtl(event.target.value)} /><span className="text-xs text-muted-foreground">秒</span></div></details><div className="ml-auto flex gap-2"><Button variant="outline" disabled={busy} onClick={() => { setText('{}'); setRetainedValues({}); setValidation(''); }}><Trash2 className="size-3.5" />清空</Button><Button disabled={!!blocked || busy} onClick={() => { if (validate()) setConfirm(true); }}><Send className="size-3.5" />发送指令</Button></div></footer>
         </> : <div className="min-h-0 flex-1 lg:overflow-y-auto">
           {model.isLoading && <Loading />}<ErrorNotice error={model.error} retry={() => model.mutate()} />
-          {model.data && <ActionControl projectId={projectId} device={device} actions={model.data.actions} blocked={blocked} onSubmitted={submitted} busy={busy} onBusyChange={setBusy} />}
+          {model.data && <ActionControl projectId={projectId} device={device} actions={model.data.actions} blocked={blocked} beforeSend={availability.verifyOnline} onSubmitted={submitted} busy={busy} onBusyChange={setBusy} />}
         </div>}
 
       </section>

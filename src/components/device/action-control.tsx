@@ -11,18 +11,18 @@ import { CommandSelect } from './command-select';
 import CommandField from './command-fields';
 import { fieldError, initialValue, supportsForm } from './command-schema';
 
-export function ActionControl({ projectId, device, actions, blocked, onSubmitted, busy, onBusyChange }: { projectId: string; device: DeviceDetail; actions: ThingModelAction[]; blocked: string; onSubmitted: (result: CommandSubmission) => void; busy: boolean; onBusyChange: (busy: boolean) => void }) {
+export function ActionControl({ projectId, device, actions, blocked, beforeSend, onSubmitted, busy, onBusyChange }: { projectId: string; device: DeviceDetail; actions: ThingModelAction[]; blocked: string; beforeSend: () => Promise<void>; onSubmitted: (result: CommandSubmission) => void; busy: boolean; onBusyChange: (busy: boolean) => void }) {
   const [code, setCode] = useState(actions[0]?.code ?? '');
   const action = actions.find(item => item.code === code);
   return <div className="space-y-4 p-4">
     <p className="text-xs leading-5 text-muted-foreground">调用一次设备动作，处理结果通过右侧指令回复显示。</p>
     {!actions.length ? <p className="py-8 text-center text-sm text-muted-foreground">物模型尚未定义动作。</p> : <>
       <CommandSelect label="选择设备动作" disabled={busy} value={code} onValueChange={setCode} options={actions.map(item => ({ value: item.code, label: `${item.title} · ${item.code}` }))} placeholder="选择动作" />
-      {action && <ActionForm key={action.code} action={action} projectId={projectId} device={device} blocked={blocked} onSubmitted={onSubmitted} busy={busy} onBusyChange={onBusyChange} />}
+      {action && <ActionForm key={action.code} action={action} projectId={projectId} device={device} blocked={blocked} beforeSend={beforeSend} onSubmitted={onSubmitted} busy={busy} onBusyChange={onBusyChange} />}
     </>}
   </div>;
 }
-function ActionForm({ action, projectId, device, blocked, onSubmitted, busy, onBusyChange }: { action: ThingModelAction; projectId: string; device: DeviceDetail; blocked: string; onSubmitted: (result: CommandSubmission) => void; busy: boolean; onBusyChange: (busy: boolean) => void }) {
+function ActionForm({ action, projectId, device, blocked, beforeSend, onSubmitted, busy, onBusyChange }: { action: ThingModelAction; projectId: string; device: DeviceDetail; blocked: string; beforeSend: () => Promise<void>; onSubmitted: (result: CommandSubmission) => void; busy: boolean; onBusyChange: (busy: boolean) => void }) {
   const [text, setText] = useState(() => JSON.stringify(initialValue(action.inputSchema) ?? {}, null, 2));
   const [json, setJson] = useState(!supportsForm(action.inputSchema));
   const [validation, setValidation] = useState('');
@@ -44,6 +44,7 @@ function ActionForm({ action, projectId, device, blocked, onSubmitted, busy, onB
     const input = validate(); if (!input) return;
     lock.current = true; onBusyChange(true); setError(undefined);
     try {
+      await beforeSend();
       const result = await commandRequest<CommandSubmission>(projectId, `${commandPath(device.deviceId)}/actions`, 'POST', {
         actionCode: action.code, inputParams: JSON.stringify(input), clientToken: crypto.randomUUID(), deliveryTtlMs: 10000,
       });

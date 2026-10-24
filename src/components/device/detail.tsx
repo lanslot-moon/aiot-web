@@ -24,6 +24,7 @@ import ResourceTags from './tags';
 import DeviceCommands from './commands';
 import { ReportRecords } from './report-records';
 import DeviceUnbindActions from './unbind-actions';
+import { ConnectivityBadge } from './connectivity-badge';
 import { DeviceSection as Panel, DeviceTabsNav, DetailField } from './layout';
 
 function useDeviceProduct(projectId: string, productId?: string) {
@@ -55,7 +56,7 @@ function DeviceProduct({ projectId, productId, product }: { projectId: string; p
 
 function Hardware({ projectId, id }: { projectId: string; id: string }) {
   const resource = useDeviceResource<HardwareProfile>(projectId, `${devicePath(id)}/hardware-profile`);
-  return <div className="space-y-4"><ErrorNotice error={resource.error} retry={() => resource.mutate()} />{resource.isLoading && <Loading />}{resource.data && <div className={cn('grid gap-4', resource.data.verified && resource.data.reported && 'lg:grid-cols-2')}>
+  return <div className="space-y-4"><ErrorNotice error={resource.error} presentation={resource.data ? 'toast' : 'empty'} title={resource.data ? '设备信息更新失败' : '设备信息加载失败'} retry={() => resource.mutate()} />{resource.isLoading && <Loading />}{resource.data && <div className={cn('grid gap-4', resource.data.verified && resource.data.reported && 'lg:grid-cols-2')}>
     {resource.data.verified && <HardwareObservationDetails title="可信登记资料" value={resource.data.verified} />}
     {resource.data.reported && <HardwareObservationDetails title="设备自报资料" value={resource.data.reported} />}
     {!resource.data.verified && !resource.data.reported && <p className="text-sm text-muted-foreground">尚未收到硬件资料。</p>}
@@ -68,7 +69,7 @@ function DeviceReports({ projectId, device }: { projectId: string; device: Devic
     path => request(path, 'GET', undefined, { projectId }), `command-model:${projectId}`,
   );
   return <>
-    <ErrorNotice error={model.error} retry={() => model.mutate()} />
+    <ErrorNotice error={model.error} presentation="toast" title="物模型加载失败" retry={() => model.mutate()} />
     {model.isLoading && <Loading />}
     {model.data && <ReportRecords key={`${device.deviceId}:${model.data.modelRevision}`} projectId={projectId} device={device} model={model.data} />}
   </>;
@@ -80,6 +81,15 @@ export default function DeviceDetails({ projectId, id, back, openGroup, backLabe
   const resource = useDeviceResource<DeviceDetail>(projectId, devicePath(id));
   const device = resource.data;
   const revalidateDevice = resource.mutate;
+  useEffect(() => {
+    let checking = false;
+    const timer = setInterval(() => {
+      if (document.hidden || checking) return;
+      checking = true;
+      void revalidateDevice().catch(() => undefined).finally(() => { checking = false; });
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [revalidateDevice]);
   useEffect(() => {
     if (device?.lifecycle !== 'DELETING') return;
     let cancelled = false;
@@ -109,7 +119,7 @@ export default function DeviceDetails({ projectId, id, back, openGroup, backLabe
       <Button variant="ghost" size="sm" onClick={back}><ArrowLeft className="size-4" />{backLabel}</Button>
       <Button variant="outline" size="sm" disabled={resource.isValidating} onClick={refresh}><RefreshCw className="size-4" />刷新设备</Button>
     </div>
-    <ErrorNotice error={resource.error} retry={() => resource.mutate()} />
+    <ErrorNotice error={resource.error} presentation={resource.data ? 'toast' : 'empty'} title={resource.data ? '设备信息更新失败' : '设备信息加载失败'} retry={() => resource.mutate()} />
     {resource.isLoading && <Loading />}
     {device && <>
       <Collapsible open={summaryOpen} onOpenChange={setSummaryOpen} render={<header />} className="rounded-xl border bg-muted/15 p-3">
@@ -150,6 +160,7 @@ export default function DeviceDetails({ projectId, id, back, openGroup, backLabe
                 <DetailField label="设备名称" fullWidth>{device.deviceName}</DetailField>
                 <DetailField label="产品 ID" fullWidth><Link className="underline-offset-4 hover:underline" to={'/projects/' + encodeURIComponent(projectId) + '/products/' + encodeURIComponent(device.productId)}>{device.productId}</Link></DetailField>
                 <DetailField label="硬件标识" fullWidth>{device.hardwareUuid}</DetailField>
+                <DetailField label="在线状态" fullWidth><ConnectivityBadge value={resource.error ? undefined : device.connectivity} /></DetailField>
                 <DetailField label="设备说明" fullWidth>{device.description || '暂无说明'}</DetailField>
               </dl>
             </section>
