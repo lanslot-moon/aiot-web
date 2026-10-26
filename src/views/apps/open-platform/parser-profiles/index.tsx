@@ -1,14 +1,15 @@
 import { formatDateTime } from '@/lib/date-time';
-import { ChevronRight, Info, Pencil, Plus, Search, Trash2 } from 'lucide-react';
+import { ChevronRight, Info, Pencil, Plus, Search, Trash2, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { toast } from 'sonner';
 import useSWR from 'swr';
 
 import { ApiErrorAlert } from '@/components/open-platform/api-error-alert';
+import { CopyIdButton } from '@/components/open-platform/copy-id-button';
 import { ProjectWorkspaceShell } from '@/components/open-platform/project-workspace-shell';
 import StyleAwareWrapper from '@/components/shared/StyleAwareWrapper';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Alert, AlertAction, AlertDescription } from '@/components/ui/alert';
 import {
 AlertDialog,
 AlertDialogAction,
@@ -21,7 +22,6 @@ AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
 Dialog,
 DialogContent,
@@ -33,6 +33,7 @@ DialogTitle,
 import { Input } from '@/components/ui/input';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { OpenPlatformApiError, openPlatformDelete, openPlatformGetFetcher, openPlatformPost, openPlatformPut } from '../../../../context/open-platform-context/project-resources';
 
 import { BreadcrumbTrail } from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
@@ -48,6 +49,7 @@ const ParserProfilesPage = () => {
     openPlatformGetFetcher,
   );
   const [keyword, setKeyword] = useState('');
+  const [showGuide, setShowGuide] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<ParserProfileView | null>(null);
   const [profileName, setProfileName] = useState('');
@@ -134,21 +136,22 @@ const ParserProfilesPage = () => {
         items={[{ to: '/projects', title: '项目' }, { title: '协议解析' }]}
       />}>
         <div className="flex flex-col gap-4">
-        <Alert className="rounded-xl! border-primary/20 bg-primary/5 px-3 py-2.5 [&>svg]:text-primary">
+        {showGuide && <Alert className="rounded-xl! border-primary/20 bg-primary/5 px-3 py-2.5 [&>svg]:text-primary">
           <Info className="size-4" aria-hidden />
           <AlertDescription>
             管理自定义报文到物模型能力的映射。版本发布后不可编辑，产品可绑定已发布版本。
           </AlertDescription>
-        </Alert>
+          <AlertAction>
+            <Button type="button" variant="ghost" size="icon-xs" aria-label="关闭协议解析提示" onClick={() => setShowGuide(false)}>
+              <X className="size-3.5" aria-hidden />
+            </Button>
+          </AlertAction>
+        </Alert>}
 
         {apiError ? <ApiErrorAlert code={apiError.code} message={apiError.message} /> : null}
 
-        <Card>
-          <CardHeader className="gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <CardTitle>Profile 列表</CardTitle>
-              <CardDescription>Profile 本身不区分草稿，版本映射独立维护生命周期。</CardDescription>
-            </div>
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
               <InputGroup className="w-full sm:w-72">
                 <InputGroupAddon>
@@ -166,8 +169,8 @@ const ParserProfilesPage = () => {
                 新建 Profile
               </Button>
             </div>
-          </CardHeader>
-          <CardContent>
+          </div>
+          <div>
             {isLoading && !data ? (
               <div className="space-y-3">
                 {[1, 2].map((item) => <Skeleton key={item} className="h-20 w-full" />)}
@@ -178,35 +181,38 @@ const ParserProfilesPage = () => {
               </div>
             ) : (
               <div className="overflow-x-auto rounded-lg border">
-                <table className="w-full min-w-[760px] text-sm">
-                  <thead className="border-b bg-muted/30 text-left text-xs text-muted-foreground">
-                    <tr>
-                      <th className="px-4 py-3 font-medium">Profile</th>
-                      <th className="px-4 py-3 font-medium">协议编码</th>
-                      <th className="px-4 py-3 font-medium">已发布版本</th>
-                      <th className="px-4 py-3 font-medium">最近更新</th>
-                      <th className="px-4 py-3 text-right font-medium">操作</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Profile</TableHead>
+                      <TableHead className="w-[12rem]">Profile ID</TableHead>
+                      <TableHead>协议编码</TableHead>
+                      <TableHead>已发布版本</TableHead>
+                      <TableHead>最近更新</TableHead>
+                      <TableHead className="w-44 min-w-44"><div className="flex justify-center">操作</div></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {filtered.map((profile) => (
-                      <tr key={profile.profileId} className="border-b last:border-0 hover:bg-muted/20">
-                        <td className="p-0">
-                          <Link
-                            to={`${profileListPath}/${profile.profileId}`}
-                            className="block px-4 py-3 outline-none transition-colors focus-visible:bg-muted/30 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
-                          >
-                            <div className="font-medium">{profile.profileName}</div>
-                            <div className="font-mono text-xs text-muted-foreground">{profile.profileId}</div>
-                          </Link>
-                        </td>
-                        <td className="px-4 py-3"><Badge variant="outline">{profile.protocolCode}</Badge></td>
-                        <td className="px-4 py-3">
-                          {profile.currentVersion ? <Badge className="bg-emerald-600/15 text-emerald-700 dark:text-emerald-300">v{profile.currentVersion} 已发布</Badge> : <span className="text-muted-foreground">暂无已发布</span>}
-                        </td>
-                        <td className="px-4 py-3 text-muted-foreground">{formatDateTime(profile.updateTime)}</td>
-                        <td className="px-4 py-3">
-                          <div className="flex justify-end gap-1.5">
+                      <TableRow key={profile.profileId}>
+                        <TableCell>
+                          <Button type="button" variant="link" className="h-auto max-w-64 p-0 font-medium" nativeButton={false} render={<Link to={`${profileListPath}/${profile.profileId}`} />}>
+                            <span className="truncate" title={profile.profileName}>{profile.profileName}</span>
+                          </Button>
+                        </TableCell>
+                        <TableCell className="w-[12rem] whitespace-nowrap">
+                          <div className="flex max-w-[11rem] items-center gap-0.5">
+                            <code className="min-w-0 flex-1 truncate font-mono text-xs text-muted-foreground" title={profile.profileId}>{profile.profileId}</code>
+                            <CopyIdButton value={profile.profileId} label="Profile ID" />
+                          </div>
+                        </TableCell>
+                        <TableCell><span className="block max-w-48 truncate text-sm" title={profile.protocolCode}>{profile.protocolCode}</span></TableCell>
+                        <TableCell>
+                          {profile.currentVersion ? <Badge variant="outline" className="border-transparent bg-chart-2/12 text-chart-2">v{profile.currentVersion} 已发布</Badge> : <span className="text-xs text-muted-foreground">暂无已发布</span>}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-xs text-muted-foreground">{formatDateTime(profile.updateTime)}</TableCell>
+                        <TableCell className="w-44 min-w-44">
+                          <div className="flex items-center justify-center gap-1.5">
                             <Button type="button" variant="ghost" size="sm" nativeButton={false} render={<Link to={`${profileListPath}/${profile.profileId}`} />}>
                               打开 <ChevronRight className="size-4" aria-hidden />
                             </Button>
@@ -217,15 +223,15 @@ const ParserProfilesPage = () => {
                               <Trash2 className="size-4" aria-hidden />
                             </Button>
                           </div>
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     ))}
-                  </tbody>
-                </table>
+                  </TableBody>
+                </Table>
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
         </div>
       </ProjectWorkspaceShell>
 

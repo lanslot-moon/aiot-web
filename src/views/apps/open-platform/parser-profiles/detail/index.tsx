@@ -458,13 +458,31 @@ const ParserProfileDetailPage = () => {
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader><CardTitle className="flex items-center gap-2"><TestTube2 className="size-4" aria-hidden />报文测试</CardTitle><CardDescription>使用真实报文样例验证映射结果；失败时可选择保存样本。</CardDescription></CardHeader>
-                <CardContent className="grid gap-4 lg:grid-cols-2">
-                  <div className="space-y-3"><div className="grid gap-2"><Label>方向<Select value={testDirection} onValueChange={(value) => setTestDirection(value as ParserProfileDirection)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{DIRECTION_OPTIONS.map((direction) => <SelectItem key={direction} value={direction}>{DIRECTION_LABEL[direction]}</SelectItem>)}</SelectContent></Select></Label></div><div className="grid gap-2"><Label htmlFor="profile-test-payload">输入报文（JSON）</Label><Textarea id="profile-test-payload" value={payloadText} onChange={(event) => setPayloadText(event.target.value)} className="min-h-48 font-mono text-xs" /></div><Button type="button" className="gap-1.5" onClick={() => void testMapping()} disabled={!version || busy != null}><TestTube2 className="size-4" aria-hidden />{busy === 'test' ? '测试中…' : '运行测试'}</Button></div>
-                  <div className="rounded-lg border bg-muted/20 p-3">{busy === 'test' ? <RequestLoading label="正在解析报文…" /> : testResult ? <div className="space-y-3"><div className="flex items-center gap-2">{testResult.success ? <CheckCircle2 className="size-4 text-emerald-600" aria-hidden /> : <XCircle className="size-4 text-destructive" aria-hidden />}<span className="font-medium">{testResult.success ? '解析成功' : '解析存在问题'}</span></div><div><div className="mb-1 text-xs text-muted-foreground">映射结果</div><pre className="max-h-40 overflow-auto rounded-md border bg-background p-2 text-xs">{prettyJson(testResult.mapped)}</pre></div>{testResult.issues.length ? <div><div className="mb-1 text-xs text-muted-foreground">问题</div><ul className="space-y-1 text-xs text-destructive">{testResult.issues.map((issue) => <li key={`${issue.code}-${issue.message}`}>{issue.message}</li>)}</ul></div> : null}</div> : <div className="flex min-h-48 items-center justify-center text-center text-sm text-muted-foreground">运行测试后在这里查看映射结果。</div>}</div>
-                </CardContent>
-              </Card>
+              <section className="@container/test min-w-0 space-y-3 px-4 py-3" aria-labelledby="profile-test-title">
+                <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+                  <div className="min-w-0 space-y-1"><h2 id="profile-test-title" className="flex items-center gap-2 text-sm font-medium"><TestTube2 className="size-4 text-muted-foreground" aria-hidden />报文测试</h2><p className="text-xs text-muted-foreground">输入报文，验证字段映射。</p></div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="profile-test-direction" className="text-xs text-muted-foreground">方向</Label>
+                      <Select value={testDirection} onValueChange={value => setTestDirection(value as ParserProfileDirection)}>
+                        <SelectTrigger id="profile-test-direction" className="w-28" size="sm"><SelectValue /></SelectTrigger>
+                        <SelectContent>{DIRECTION_OPTIONS.map(direction => <SelectItem key={direction} value={direction}>{DIRECTION_LABEL[direction]}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </div>
+                    <Button type="button" size="sm" className="gap-1.5" onClick={() => void testMapping()} disabled={!version || busy != null}><TestTube2 className="size-4" aria-hidden />{busy === 'test' ? '测试中…' : '运行测试'}</Button>
+                  </div>
+                </div>
+                  <div className="grid min-w-0 overflow-hidden rounded-lg border @min-[38rem]/test:grid-cols-2">
+                    <div className="min-w-0">
+                      <div className="flex h-9 items-center justify-between border-b bg-muted/30 px-3"><Label htmlFor="profile-test-payload" className="text-xs font-medium">输入报文</Label><span className="font-mono text-[11px] text-muted-foreground">JSON</span></div>
+                      <Textarea id="profile-test-payload" value={payloadText} onChange={event => setPayloadText(event.target.value)} className="h-56 min-h-56 resize-none overflow-auto rounded-none border-0 bg-transparent p-3 font-mono text-xs leading-6 shadow-none focus-visible:ring-inset" />
+                    </div>
+                    <div className="min-w-0 border-t @min-[38rem]/test:border-t-0 @min-[38rem]/test:border-l">
+                      <div className="flex h-9 items-center justify-between border-b bg-muted/30 px-3"><span className="text-xs font-medium">测试结果</span><span className="text-[11px] text-muted-foreground">{busy === 'test' ? '解析中' : testResult ? '已完成' : '等待运行'}</span></div>
+                  <div role="region" aria-label="报文测试结果" aria-live="polite" aria-busy={busy === 'test'} className="h-56 min-w-0 overflow-auto p-3">{busy === 'test' ? <RequestLoading label="正在解析报文…" /> : testResult ? <div className="space-y-3"><div className="flex items-center gap-2">{testResult.success ? <CheckCircle2 className="size-4 text-emerald-600" aria-hidden /> : <XCircle className="size-4 text-destructive" aria-hidden />}<span className="font-medium">{testResult.success ? '解析成功' : '解析存在问题'}</span></div><div><div className="mb-1 text-xs text-muted-foreground">映射结果</div><pre className="overflow-auto rounded-md border bg-background p-2 text-xs">{prettyJson(testResult.mapped)}</pre></div>{testResult.issues.length ? <div><div className="mb-1 text-xs text-muted-foreground">问题</div><ul className="space-y-1 text-xs text-destructive">{testResult.issues.map((issue) => <li key={`${issue.code}-${issue.message}`}>{issue.message}</li>)}</ul></div> : null}</div> : <div className="flex h-full items-center justify-center text-center text-sm text-muted-foreground">运行测试后在这里查看映射结果。</div>}</div>
+                    </div>
+                  </div>
+              </section>
             </div>
 
             <aside className="min-w-0 space-y-4">
