@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from 'uuid';
 import { useState } from 'react';
 import { segment } from '@/api/iam/client';
 import { createRole } from '@/api/iam/authorization';
@@ -23,7 +24,7 @@ export function RoleCreateForm({ owner, onCreated, submitLabel = '创建角色',
     onDirtyChange={onDirtyChange} onBusyChange={(value) => { setBusy(value); onBusyChange?.(value); }}
     submitDisabled={!tree.data?.length || !!tree.error || !codes.length}
     onSave={async (values) => {
-      const role = await createRole(owner, { roleName: values.roleName.trim(), description: values.description.trim() || undefined, roleCode: `role-${crypto.randomUUID()}`, permissionCodes: codes });
+      const role = await createRole(owner, { roleName: values.roleName.trim(), description: values.description.trim() || undefined, roleCode: `role-${uuidv4()}`, permissionCodes: codes });
       onCreated(role);
     }}>
     <ErrorNotice error={tree.error} retry={() => tree.mutate()} />

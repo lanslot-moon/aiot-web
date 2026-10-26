@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from 'uuid';
 import { formatDateTime } from '@/lib/date-time';
 import { useEffect, useRef, useState } from 'react';
 import { Braces, History, RefreshCw, Send, Terminal, Trash2, Search, X, SlidersHorizontal } from 'lucide-react';
@@ -124,18 +125,22 @@ export default function DeviceCommands({ projectId, device, simulation }: { proj
     if (lock.current || blocked) return;
     const value = validate(); if (!value) return;
     lock.current = true; setBusy(true); setSendError(undefined); setNotice(null);
+    let submissionStarted = false;
     try {
       await availability.verifyOnline();
-      const result = await commandRequest<CommandSubmission>(projectId, commandPath(device.deviceId) + '/properties/issue', 'POST', {
+      const body = {
         properties: JSON.stringify(value),
-        clientToken: crypto.randomUUID(), deliveryTtlMs: Number(ttl) * 1000,
-      });
+        clientToken: uuidv4(), deliveryTtlMs: Number(ttl) * 1000,
+      };
+      submissionStarted = true;
+      const result = await commandRequest<CommandSubmission>(projectId, commandPath(device.deviceId) + '/properties/issue', 'POST', body);
       submitted(result);
       setRetainedValues(previous => ({ ...previous, ...value }));
       setText('{}'); setConfirm(false);
     } catch (error) {
       setSendError(error); setConfirm(false);
-      setNotice({ message: '本次请求未能确认结果，请先刷新指令记录核对，避免重复执行。' }); resetHistory();
+      setNotice({ message: submissionStarted ? '本次请求未能确认结果，请先刷新指令记录核对，避免重复执行。' : '指令尚未发送，请处理错误后重试。' });
+      if (submissionStarted) resetHistory();
     } finally { lock.current = false; setBusy(false); }
   }
   return <div className="min-w-0 space-y-4">

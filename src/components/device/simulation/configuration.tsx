@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from 'uuid';
 import { useRef, useState } from 'react';
 import { Plus, Save } from 'lucide-react';
 import { simulationDirectory, simulationRequest, decodeMap, parseValueMap, type SimulationInstance, type SimulationProfile, type ProfileVersion } from '@/api/device/simulation';
@@ -13,7 +14,7 @@ import ProfileEditor from './profile-editor';
 import VersionPreview from './version-preview';
 
 export default function Configuration({ projectId, device, instance, blocked, done }: { projectId: string; device: DeviceDetail; instance?: SimulationInstance; blocked: string; done: (value: SimulationInstance) => void }) {
-  const [instanceId] = useState(() => instance?.instanceId ?? `sim-${crypto.randomUUID()}`);
+  const [instanceId] = useState(() => instance?.instanceId ?? `sim-${uuidv4()}`);
   const [profileId, setProfileId] = useState(instance?.profileId ?? '');
   const [version, setVersion] = useState(instance ? String(instance.profileVersion) : '');
   const [editing, setEditing] = useState(false);

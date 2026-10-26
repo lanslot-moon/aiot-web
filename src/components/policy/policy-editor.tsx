@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from 'uuid';
 import { useEffect, useState } from 'react';
 import useSWR from 'swr';
 import { Plus, Trash2, Code2, ListChecks } from 'lucide-react';
@@ -70,7 +71,7 @@ export default function PolicyEditor({ projectId, type, initial, onSave, onDirty
         {!!rule.conditions?.length && <p className="text-xs text-muted-foreground">已保留 {rule.conditions.length} 项生效条件，可在高级 JSON 中调整。</p>}
         {rule.constraints && <p className="text-xs text-muted-foreground">此规则包含 QoS / Retain 约束，可在高级 JSON 中调整。</p>}
       </section>)}
-      <Button variant="outline" disabled={busy} onClick={() => setDocument(old => ({ ...old, statements: [...old.statements, { sid: 'Rule_' + crypto.randomUUID().slice(0, 8), effect: type === 'MQTT_DEVICE' ? 'DENY' : 'ALLOW', actions: [type === 'MQTT_DEVICE' ? 'mqtt:Publish' : actions.data?.[0]?.action ?? 'device:Read'], operationReferences: [], resources: [], conditions: [] }] }))}><Plus className="size-4" />添加规则</Button>
+      <Button variant="outline" disabled={busy} onClick={() => setDocument(old => ({ ...old, statements: [...old.statements, { sid: 'Rule_' + uuidv4().slice(0, 8), effect: type === 'MQTT_DEVICE' ? 'DENY' : 'ALLOW', actions: [type === 'MQTT_DEVICE' ? 'mqtt:Publish' : actions.data?.[0]?.action ?? 'device:Read'], operationReferences: [], resources: [], conditions: [] }] }))}><Plus className="size-4" />添加规则</Button>
     </>}
     {type === 'MANAGEMENT' && <Failure error={actions.error} retry={() => actions.mutate()} />}
     {error && <p role="alert" className="text-xs text-destructive">{error}</p>}

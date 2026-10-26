@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from 'uuid';
 import { useRef, useState } from 'react';
 import { ArrowLeft, Clock3, Info, Plus, Settings2, Trash2 } from 'lucide-react';
 import { simulationRequest, type ProfileBody, type ProfileVersion, type SimulationInstance } from '@/api/device/simulation';
@@ -37,7 +38,7 @@ export default function AutomaticSettings({ projectId, device, instance, blocked
     lock.current = true; setWorking(true); onWorking(true); setError(undefined);
     try {
       if (!checkpoint.current) {
-        checkpoint.current = { profileId: `sim-${crypto.randomUUID()}`, instance,
+        checkpoint.current = { profileId: `sim-${uuidv4()}`, instance,
           body: removeAutomaticRules(version.data, removal.ruleId), created: false, published: false };
       }
       const task = checkpoint.current;

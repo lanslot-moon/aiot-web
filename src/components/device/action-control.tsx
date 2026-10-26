@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from 'uuid';
 import { useRef, useState } from 'react';
 import { Send } from 'lucide-react';
 import { commandPath, commandRequest, parseCommandInput, type CommandSubmission } from '@/api/device/commands';
@@ -27,6 +28,7 @@ function ActionForm({ action, projectId, device, blocked, beforeSend, onSubmitte
   const [json, setJson] = useState(!supportsForm(action.inputSchema));
   const [validation, setValidation] = useState('');
   const [error, setError] = useState<unknown>();
+  const [submissionUncertain, setSubmissionUncertain] = useState(false);
   const [confirm, setConfirm] = useState(false);
   const lock = useRef(false);
   let value: unknown = {};
@@ -42,14 +44,17 @@ function ActionForm({ action, projectId, device, blocked, beforeSend, onSubmitte
   async function send() {
     if (lock.current || busy || blocked) return;
     const input = validate(); if (!input) return;
-    lock.current = true; onBusyChange(true); setError(undefined);
+    lock.current = true; onBusyChange(true); setError(undefined); setSubmissionUncertain(false);
+    let submissionStarted = false;
     try {
       await beforeSend();
-      const result = await commandRequest<CommandSubmission>(projectId, `${commandPath(device.deviceId)}/actions`, 'POST', {
-        actionCode: action.code, inputParams: JSON.stringify(input), clientToken: crypto.randomUUID(), deliveryTtlMs: 10000,
-      });
+      const body = {
+        actionCode: action.code, inputParams: JSON.stringify(input), clientToken: uuidv4(), deliveryTtlMs: 10000,
+      };
+      submissionStarted = true;
+      const result = await commandRequest<CommandSubmission>(projectId, `${commandPath(device.deviceId)}/actions`, 'POST', body);
       onSubmitted(result); setConfirm(false);
-    } catch (failure) { setError(failure); setConfirm(false); }
+    } catch (failure) { setError(failure); setSubmissionUncertain(submissionStarted); setConfirm(false); }
     finally { lock.current = false; onBusyChange(false); }
   }
   return <div className="space-y-4">
@@ -57,7 +62,7 @@ function ActionForm({ action, projectId, device, blocked, beforeSend, onSubmitte
     {json ? <Textarea aria-label="动作 JSON 参数" className="min-h-48 font-mono text-xs" disabled={busy} value={text} onChange={event => setText(event.target.value)} /> : <CommandField schema={action.inputSchema} label={action.title} value={value} disabled={busy} onChange={next => setText(JSON.stringify(next, null, 2))} />}
     <details><summary className="cursor-pointer text-xs text-muted-foreground">查看动作输出定义</summary><pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap break-all text-xs">{JSON.stringify(action.outputSchema, null, 2)}</pre></details>
     {validation && <p role="alert" className="text-xs text-destructive">{validation}</p>}
-    <ErrorNotice error={error} />{!!error && <p className="text-xs text-muted-foreground">请求结果未确认，请先核对指令记录，勿自动重复调用。</p>}
+    <ErrorNotice error={error} />{!!error && <p className="text-xs text-muted-foreground">{submissionUncertain ? '请求结果未确认，请先核对指令记录，勿自动重复调用。' : '动作尚未发送，请处理错误后重试。'}</p>}
     {blocked && <p className="text-xs text-muted-foreground">{blocked}</p>}
     <Button disabled={busy || !!blocked} onClick={() => { if (validate()) setConfirm(true); }}><Send className="size-3.5" />调用动作</Button>
     <Dialog open={confirm} onOpenChange={open => { if (!busy) setConfirm(open); }}><DialogContent showCloseButton={!busy}><DialogHeader><DialogTitle>确认调用 {action.title}</DialogTitle><DialogDescription>将在设备「{device.deviceName}」执行一次动作，提交后等待设备回复。</DialogDescription></DialogHeader><pre className="max-h-64 overflow-auto whitespace-pre-wrap break-all text-xs">{text}</pre><DialogFooter><Button variant="outline" disabled={busy} onClick={() => setConfirm(false)}>返回修改</Button><Button disabled={busy || !!blocked} onClick={() => void send()}>{busy ? '正在提交…' : '确认调用'}</Button></DialogFooter></DialogContent></Dialog>

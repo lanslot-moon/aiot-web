@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from 'uuid';
 import { useEffect, useRef, useState } from 'react';
 import { OpenPlatformApiError } from '@/api/iam/client';
 import {
@@ -76,7 +77,7 @@ export function usePropertyReport(projectId: string) {
 
   async function submit(instance: SimulationInstance, properties: ValueMap) {
     await run(async () => {
-      const requestId = crypto.randomUUID();
+      const requestId = uuidv4();
       const collectionPath = `instances/${encodeURIComponent(instance.instanceId)}/property-reports`;
       const receiptPath = `${collectionPath}/${encodeURIComponent(requestId)}`;
       const body = {

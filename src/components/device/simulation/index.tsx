@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from 'uuid';
 import { useRef, useState } from 'react';
 import { Play, Square, RefreshCw, Settings2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -28,7 +29,7 @@ function SimulationWorkspace({ projectId, device }: { projectId: string; device:
   const [stopConfirm, setStopConfirm] = useState(false);
   const [operationDetails, setOperationDetails] = useState<{ error: unknown; title: string }>();
   const lock = useRef(false);
-  const bootstrap = useRef({ profileId: `sim-${crypto.randomUUID()}`, instanceId: `sim-${crypto.randomUUID()}`, profileSaved: false, published: false, instance: null as SimulationInstance | null });
+  const bootstrap = useRef({ profileId: `sim-${uuidv4()}`, instanceId: `sim-${uuidv4()}`, profileSaved: false, published: false, instance: null as SimulationInstance | null });
   // 期望状态记录用户意图；活动会话才表示仍有一次模拟运行需要停止。
   const running = !!instance?.activeSessionId;
   const unfinishedRunIntent = !running && instance?.desiredState === 'RUNNING';

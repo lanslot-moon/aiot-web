@@ -1,9 +1,10 @@
+import { v4 as uuidv4 } from 'uuid';
 import { decodeValue, encodeValue, type ProfileBody, type SimulationValue } from '@/api/device/simulation';
 import { schemaObject } from '../command-schema';
 
 export type Generator = 'current' | 'constant' | 'random' | 'ramp' | 'wave';
 export interface PropertyRow { key: string; code: string; generator: Generator; value: string; minimum: string; maximum: string; rate: string; amplitude: string; period: string }
-export const newRow = (): PropertyRow => ({ key: crypto.randomUUID(), code: '', generator: 'constant', value: '0', minimum: '0', maximum: '100', rate: '1', amplitude: '10', period: '60' });
+export const newRow = (): PropertyRow => ({ key: uuidv4(), code: '', generator: 'constant', value: '0', minimum: '0', maximum: '100', rate: '1', amplitude: '10', period: '60' });
 
 /** 只转换能够由表单完整表达的规则，避免覆盖自定义动作、参数或初始状态。 */
 export function readProfileForm(body: ProfileBody): { rows: PropertyRow[]; interval: string; ruleId: string } {

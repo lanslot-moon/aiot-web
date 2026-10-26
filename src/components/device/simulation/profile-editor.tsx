@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from 'uuid';
 import { useRef, useState } from 'react';
 import { Plus, Trash2, FlaskConical, Check } from 'lucide-react';
 import { request } from '@/api/iam/client';
@@ -21,9 +22,9 @@ import { automaticRuleDraft, mergeAutomaticRule } from './automatic-report';
 const pretty = (value: unknown) => JSON.stringify(value, null, 2);
 
 export default function ProfileEditor({ projectId, device, existing, seed, done, cancel, quickDone, onWorking, quickInstance, onClose, automaticRuleId }: { projectId: string; device: DeviceDetail; existing?: SimulationProfile; seed?: ProfileVersion; done: (profile: SimulationProfile, version: ProfileVersion) => void; cancel: () => void; quickDone?: (instance: SimulationInstance) => void; onWorking?: (working: boolean) => void; quickInstance?: SimulationInstance; onClose?: () => void; automaticRuleId?: string | null }) {
-  const [profileId] = useState(() => existing?.profileId ?? `sim-${crypto.randomUUID()}`);
+  const [profileId] = useState(() => existing?.profileId ?? `sim-${uuidv4()}`);
   const nextVersion = (existing?.latestVersion ?? 0) + 1;
-  const [newRuleId] = useState(() => `periodic-${crypto.randomUUID()}`);
+  const [newRuleId] = useState(() => `periodic-${uuidv4()}`);
   const [initialDraft] = useState(() => {
     const body: ProfileBody | null = automaticRuleId === null ? null : seed && automaticRuleId !== undefined ? automaticRuleDraft(seed, automaticRuleId, nextVersion)
       : seed ? { version: nextVersion, parameters: seed.snapshot.parameters, initialProperties: seed.snapshot.initialProperties, rules: seed.snapshot.rules, scripts: seed.snapshot.scripts } : null;
@@ -46,7 +47,7 @@ export default function ProfileEditor({ projectId, device, existing, seed, done,
   const [modeNotice, setModeNotice] = useState('');
   const [scriptEditing, setScriptEditing] = useState(false);
   const lock = useRef(false);
-  const [instanceId] = useState(() => quickInstance?.instanceId ?? `sim-${crypto.randomUUID()}`);
+  const [instanceId] = useState(() => quickInstance?.instanceId ?? `sim-${uuidv4()}`);
   const checkpoint = useRef<{ draft: ProfileBody; published: boolean } | null>(null);
   const [resuming, setResuming] = useState(false);
   const frozen = !!busy || resuming;
