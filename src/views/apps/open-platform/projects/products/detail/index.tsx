@@ -45,6 +45,9 @@ AlertDialogTitle,
 import { Button } from '@/components/ui/button';
 import { ProductIconPreview } from '@/components/open-platform/product-icon-preview';
 import { ProductIconEditor } from '@/components/open-platform/product-icon-editor';
+import { ProductMetadataDialog } from '@/components/open-platform/product-metadata-dialog';
+import { usePermission } from '@/context/iam-context/identity';
+import type { ProductMetadataUpdateRequest } from '@/types/apps/open-platform';
 import {
 Card,
 CardContent,
@@ -488,6 +491,9 @@ const ProductDetailPage = () => {
   );
   const [editOpen, setEditOpen] = useState(false);
   const [iconEditOpen, setIconEditOpen] = useState(false);
+  const [metadataOpen, setMetadataOpen] = useState(false);
+  const mayUpdateProduct = usePermission('product:update');
+  const canEditMetadata = mayUpdateProduct && !!product && ['DRAFT', 'PUBLISHED', 'DISABLED'].includes(product.lifecycleStatus);
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [confirmAction, setConfirmAction] = useState<ProductLifecycleAction | null>(null);
   const isCustomCategory =
@@ -536,14 +542,29 @@ const ProductDetailPage = () => {
   };
 
   const saveProductIcon = async (iconUrl: string) => {
-    if (!productKey || product?.lifecycleStatus !== 'DRAFT' || busyAction != null) {
+    if (!productKey || !canEditMetadata || busyAction != null) {
       throw new Error('当前产品暂时无法修改图标，请刷新后重试。');
     }
     setBusyAction('save-icon');
     try {
-      await openPlatformPut<boolean>(productKey, { iconUrl } satisfies ProductUpdateRequest);
+      await openPlatformPut<boolean>(`${productKey}/metadata`, { iconUrl } satisfies ProductMetadataUpdateRequest);
       await refreshProduct();
       toast.success('产品图标已更新。');
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
+  const saveMetadata = async (body: ProductMetadataUpdateRequest) => {
+    if (!productKey || !canEditMetadata || busyAction != null) return;
+    setBusyAction('metadata');
+    try {
+      await openPlatformPut<boolean>(`${productKey}/metadata`, body);
+      setMetadataOpen(false);
+      await refreshProduct();
+      toast.success('产品基本信息已更新。');
+    } catch (error) {
+      showActionError(error);
     } finally {
       setBusyAction(null);
     }
@@ -643,7 +664,7 @@ const ProductDetailPage = () => {
                 </Button>
                 <div className="flex flex-wrap items-center gap-2">
                   <ProductIconPreview key={product.iconUrl} iconUrl={product.iconUrl} productName={product.productName}
-                    onEdit={product.lifecycleStatus === 'DRAFT' ? () => setIconEditOpen(true) : undefined}
+                    onEdit={canEditMetadata ? () => setIconEditOpen(true) : undefined}
                     disabled={busyAction != null} />
                   <h1 className="truncate text-lg font-semibold tracking-tight">
                     {product.productName}
@@ -659,6 +680,7 @@ const ProductDetailPage = () => {
                 </div>
               </div>
               <div className="flex flex-wrap gap-2">
+                {canEditMetadata && product.lifecycleStatus !== 'DRAFT' && <Button type="button" variant="outline" className="gap-1" onClick={() => setMetadataOpen(true)} disabled={busyAction != null}><Pencil className="size-3.5" aria-hidden />编辑基本信息</Button>}
                 {product.lifecycleStatus === 'DRAFT' ? (
                   <>
                     <Button
@@ -976,10 +998,12 @@ const ProductDetailPage = () => {
         ) : null}
       </ProjectWorkspaceShell>
 
-      {product && iconEditOpen && product.lifecycleStatus === 'DRAFT' && <ProductIconEditor
+      {product && iconEditOpen && canEditMetadata && <ProductIconEditor
         iconUrl={product.iconUrl} productName={product.productName}
         onClose={() => setIconEditOpen(false)} onSave={saveProductIcon}
       />}
+
+      {product && metadataOpen && canEditMetadata && <ProductMetadataDialog product={product} busy={busyAction === 'metadata'} onClose={() => setMetadataOpen(false)} onSave={saveMetadata} />}
 
       {product ? (
         <ProductEditDialog

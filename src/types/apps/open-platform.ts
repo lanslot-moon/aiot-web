@@ -115,6 +115,13 @@ export interface ProductCreateRequest {
   topicTemplates?: Record<string, string>;
 }
 
+/** Display metadata only; omitted fields retain their current values. */
+export interface ProductMetadataUpdateRequest {
+  productName?: string;
+  iconUrl?: string;
+  description?: string;
+}
+
 /** Product metadata and connection contract update for DRAFT products. */
 export interface ProductUpdateRequest {
   productName?: string;
