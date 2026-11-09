@@ -1,6 +1,6 @@
 import { formatDateTime } from '@/lib/date-time';
 import { useEffect, useState, type ReactNode } from 'react';
-import useSWR from 'swr';
+import useSWR, { useSWRConfig } from 'swr';
 import { ArrowLeft, Check, CheckCircle2, CircleHelp, Info, Pencil, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Popover, PopoverContent, PopoverDescription, PopoverTitle, PopoverTrigger } from '@/components/ui/popover';
 import { ChevronDown } from 'lucide-react';
+import { OpenPlatformApiError } from '@/api/iam/client';
 
 type Operation = 'publish' | 'rollback' | 'cancel' | 'archive' | 'delete' | 'bind' | 'revoke' | 'validity' | 'deleteBinding' | 'metadata';
 const titles: Record<Operation, string> = { publish: '发布策略', rollback: '从历史版本发布', cancel: '取消定时发布', archive: '归档策略', delete: '删除草稿', bind: '添加授权对象', revoke: '撤销授权', validity: '调整有效期', deleteBinding: '删除待生效绑定', metadata: '修改名称与说明' };
@@ -48,6 +49,7 @@ export default function PolicyDetail({ projectId, id, back, initialEdit = false,
   projectId: string; id: string; back: () => void; initialEdit?: boolean; initialScope?: ManagementScope | null;
 }) {
   const base = policyPath(id);
+  const { mutate: mutateCache } = useSWRConfig();
   const read = <T,>(path: string) => policyRequest<T>(projectId, path);
   const policy = useSWR([projectId, base], () => read<Policy>(base));
   const draft = useSWR([projectId, base, 'draft'], () => read<Draft>(base + '/draft'), { revalidateOnFocus: false });
@@ -75,6 +77,8 @@ export default function PolicyDetail({ projectId, id, back, initialEdit = false,
   const bindings = useSWR([projectId, base, 'bindings', bindingCursors[bindingCursors.length - 1]], () => read<Page<Binding>>('policy-bindings' + query({ policyId: id, pageSize: 20, cursor: bindingCursors[bindingCursors.length - 1] })));
   const versions = useSWR([projectId, base, 'versions', versionCursors[versionCursors.length - 1]], () => read<Page<Version>>(base + '/versions' + query({ pageSize: 20, cursor: versionCursors[versionCursors.length - 1] })));
   const [validation, setValidation] = useState<Validation | null>(null);
+  const [staleValidationRevision, setStaleValidationRevision] = useState<number | null>(null);
+  const [publicationRevision, setPublicationRevision] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>();
   const [modalError, setModalError] = useState<unknown>();
@@ -110,12 +114,22 @@ export default function PolicyDetail({ projectId, id, back, initialEdit = false,
     } finally { setBusy(false); }
   }
   async function validate() {
-    if (!draft.data) return;
-    setBusy(true); setError(undefined);
+    if (validationDisabled || !draft.data) return;
+    const revision = draft.data.revision;
+    setBusy(true); setError(undefined); setValidation(null);
     try {
-      const result = await policyRequest<Validation>(projectId, base + '/validation', 'POST', { revision: draft.data.revision });
-      setValidation(result); await draft.mutate();
-      if (result.valid) toast.success('服务端校验通过，可以发布。');
+      const result = await policyRequest<Validation>(projectId, base + '/validation', 'POST', { revision });
+      if (result.validatedRevision !== revision) {
+        await draft.mutate();
+        throw new Error('草稿版本已变化，请重新校验。');
+      }
+      const updated = await draft.mutate(value => value?.revision === revision
+        ? { ...value, validationStatus: result.valid ? 'VALID' : 'INVALID' }
+        : value, { revalidate: false });
+      if (updated?.revision !== revision) throw new Error('草稿版本已变化，请重新校验。');
+      setStaleValidationRevision(null);
+      setValidation(result);
+      if (result.valid) toast.success('草稿校验通过。');
     } catch (e) { setError(e); } finally { setBusy(false); }
   }
   function publicationError(document?: Document) {
@@ -139,6 +153,10 @@ export default function PolicyDetail({ projectId, id, back, initialEdit = false,
   async function commit() {
     const p = policy.data;
     if (!p || !operation || busy) return;
+    if (operation === 'publish' && publishBlockReason) {
+      setModalError(new Error(publishBlockReason));
+      return;
+    }
     const start = operation === 'validity' && target && starts === toInput(target.effectiveAt) ? target.effectiveAt : epoch(starts);
     const end = operation === 'validity' && target && ends === toInput(target.expiresAt) ? target.expiresAt : epoch(ends);
     if ((starts && !Number.isFinite(start)) || (ends && !Number.isFinite(end))) { setModalError(new Error('请输入有效时间。')); return; }
@@ -148,14 +166,21 @@ export default function PolicyDetail({ projectId, id, back, initialEdit = false,
     if (operation === 'metadata' && !name.trim()) { setModalError(new Error('请填写策略名称。')); return; }
     setBusy(true); setModalError(undefined);
     try {
-      if ((operation === 'publish' || operation === 'rollback') && policyType === 'MANAGEMENT') {
-        const document = operation === 'publish' ? draft.data?.document : (await read<Version>(base + '/versions/' + versionNo)).document;
-        const problem = publicationError(document);
+      if (operation === 'rollback' && policyType === 'MANAGEMENT') {
+        const source = await read<Version>(base + '/versions/' + versionNo);
+        const problem = publicationError(source.document);
         if (problem) throw new Error(problem);
       }
       switch (operation) {
-        case 'publish': await policyRequest(projectId, base + '/publication', 'POST', { revision: draft.data?.revision, effectiveAt: start, changeReason: reason }); break;
-        case 'rollback': await policyRequest(projectId, base + '/rollback-publication', 'POST', { revision: p.revision, sourceVersionNo: versionNo, effectiveAt: start, changeReason: reason }); break;
+        case 'publish':
+        case 'rollback': {
+          const version = operation === 'publish'
+            ? await policyRequest<Version>(projectId, base + '/publication', 'POST', { revision: draft.data?.revision, effectiveAt: start, changeReason: reason })
+            : await policyRequest<Version>(projectId, base + '/rollback-publication', 'POST', { revision: p.revision, sourceVersionNo: versionNo, effectiveAt: start, changeReason: reason });
+          setPublicationRevision(p.revision);
+          await mutateCache([projectId, base, version.versionNo], version, { revalidate: false });
+          break;
+        }
         case 'cancel': await policyRequest(projectId, base + '/scheduled-publication/cancellation', 'POST', { revision: p.revision, versionNo: p.scheduledVersionNo, reason }); break;
         case 'archive': await policyRequest(projectId, base + '/archival', 'POST', { revision: p.revision, reason }); break;
         case 'delete': await policyRequest(projectId, base + query({ revision: p.revision }), 'DELETE'); break;
@@ -168,16 +193,42 @@ export default function PolicyDetail({ projectId, id, back, initialEdit = false,
       toast.success(titles[operation] + '成功');
       setOperation(null); setValidation(null);
       if (operation === 'delete') back(); else await refresh();
-    } catch (e) { setModalError(e); } finally { setBusy(false); }
+    } catch (e) {
+      setModalError(e);
+      if (operation === 'publish' && e instanceof OpenPlatformApiError) {
+        if (e.code === 'POLICY_VALIDATION_STALE' && draft.data) {
+          setStaleValidationRevision(draft.data.revision);
+          setValidation(null);
+        }
+        if (e.status === 409) await refresh();
+      }
+    } finally { setBusy(false); }
   }
   if (policy.error) return <div className="space-y-4"><Button variant="ghost" onClick={back}><ArrowLeft className="size-4" />返回列表</Button><Failure error={policy.error} retry={() => policy.mutate()} /></div>;
   if (!policy.data) return <Loading />;
   const p = policy.data;
   const writable = p.status !== 'ARCHIVED' && p.ownershipType !== 'SYSTEM_MANAGED';
   const draftPublicationError = draft.data ? publicationError(draft.data.document) : undefined;
-  const publishBlockReason = p.scheduledVersionNo ? '请先处理待生效版本，再发布新版本。'
-    : draft.data?.validationStatus !== 'VALID' ? '请先校验草稿。' : draftPublicationError;
-  const publishDisabled = !writable || busy || !!publishBlockReason;
+  const currentDigest = current.error ? undefined : current.data?.documentDigest;
+  const draftMatchesCurrent = !!currentDigest && currentDigest === draft.data?.documentDigest;
+  const validationIsStale = staleValidationRevision !== null && draft.data?.revision === staleValidationRevision;
+  const draftValidationStatus = validationIsStale ? 'NOT_VALIDATED' : draft.data?.validationStatus ?? 'NOT_VALIDATED';
+  const validationDisabled = !writable || busy || draftMatchesCurrent || draftValidationStatus === 'VALID';
+  const latestValidation = validation?.validatedRevision === draft.data?.revision ? validation : null;
+  function getPublishBlockReason() {
+    if (!writable) return '当前策略不可编辑。';
+    if (publicationRevision !== null && p.revision <= publicationRevision) return '发布成功，正在同步版本。请刷新详情。';
+    if (draft.error || !draft.data) return '无法读取最新草稿，请刷新详情。';
+    if (p.scheduledVersionNo) return '请先处理待生效版本，再发布新版本。';
+    if (draftMatchesCurrent) return `草稿与当前版本 v${p.currentVersionNo} 一致，无需再次校验或发布。`;
+    if (validationIsStale) return '草稿或产品能力已经变化，请重新校验。';
+    if (draftValidationStatus === 'INVALID') return '草稿校验未通过，请修正规则后重新校验。';
+    if (draftValidationStatus !== 'VALID') return '请先校验草稿。';
+    if (p.currentVersionNo && !currentDigest) return '无法确认当前版本的内容，请刷新详情。';
+    return draftPublicationError;
+  }
+  const publishBlockReason = getPublishBlockReason();
+  const publishDisabled = busy || !!publishBlockReason;
   return <div className="flex flex-1 flex-col gap-5 text-xs leading-5">
     <Button variant="ghost" className="self-start" disabled={busy} onClick={leave}><ArrowLeft className="size-4" />返回策略列表</Button>
     <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -231,14 +282,14 @@ export default function PolicyDetail({ projectId, id, back, initialEdit = false,
           <div role="group" aria-label="策略操作" className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-2">
             <div className="flex items-center gap-1">
               <span role="status" className="inline-flex items-center">
-                {draft.data.validationStatus === 'VALID' ? (
+                {draftValidationStatus === 'VALID' ? (
                   <span className="inline-flex items-center gap-1.5 text-xs font-medium whitespace-nowrap text-emerald-700 dark:text-emerald-400">
                     <span className="grid size-5 shrink-0 place-items-center rounded-full bg-emerald-500/15">
                       <Check aria-hidden="true" className="size-3" strokeWidth={2.5} />
                     </span>
                     校验通过
                   </span>
-                ) : <Status value={draft.data.validationStatus} />}
+                ) : <Status value={draftValidationStatus} />}
               </span>
               <PolicyHelp title="草稿编辑说明">
                 <span className="block font-medium text-foreground">草稿 r{draft.data.revision}</span>
@@ -248,7 +299,7 @@ export default function PolicyDetail({ projectId, id, back, initialEdit = false,
               </PolicyHelp>
             </div>
             <Button variant="outline" disabled={!writable || busy} onClick={() => setEditing(true)}>编辑规则</Button>
-            <Button variant="outline" disabled={!writable || busy} onClick={() => void validate()}>校验草稿</Button>
+            <Button variant="outline" disabled={validationDisabled} onClick={() => void validate()}>校验草稿</Button>
             <Button variant="outline" disabled={!writable || busy || !usage.data?.canArchive} onClick={() => open('archive')}>归档策略</Button>
             {p.status === 'DRAFT' && !p.currentVersionNo && !p.scheduledVersionNo && <Button variant="outline" className="text-destructive hover:text-destructive" disabled={!writable || busy} onClick={() => open('delete')}>删除草稿</Button>}
             <span className="inline-flex" title={publishBlockReason}>
@@ -308,7 +359,7 @@ export default function PolicyDetail({ projectId, id, back, initialEdit = false,
         <PolicyRulesTable projectId={projectId} type={p.policyType} rules={draft.data.document?.statements ?? []} />
         <Collapsible><CollapsibleTrigger render={<Button variant="ghost" className="group" />}><ChevronDown className="size-4 transition-transform group-data-panel-open:rotate-180" />查看完整文档（包含约束）</CollapsibleTrigger><CollapsibleContent className="pt-3"><pre className="max-h-80 overflow-auto rounded-lg bg-muted p-4 text-xs">{JSON.stringify(draft.data.document, null, 2)}</pre></CollapsibleContent></Collapsible>
       </>}
-      {validation && <div aria-live="polite" className="space-y-2 rounded-lg border p-4"><p className="flex items-center gap-2 font-medium">{validation.valid && <CheckCircle2 className="size-4 text-emerald-600" />}{validation.valid ? '校验通过' : '请修正规则后重新校验'}</p>{validation.issues?.map((issue, i) => <p key={i} className="break-all text-xs"><span className={issue.severity === 'ERROR' ? 'text-destructive' : 'text-muted-foreground'}>{issue.message}</span><span className="ml-2 text-xs text-muted-foreground">{issue.path} · {issue.code}</span></p>)}</div>}
+      {latestValidation && <div aria-live="polite" className="space-y-2 rounded-lg border p-4"><p className="flex items-center gap-2 font-medium">{latestValidation.valid && <CheckCircle2 className="size-4 text-emerald-600" />}{latestValidation.valid ? '校验通过' : '请修正规则后重新校验'}</p>{latestValidation.issues?.map((issue, i) => <p key={i} className="break-all text-xs"><span className={issue.severity === 'ERROR' ? 'text-destructive' : 'text-muted-foreground'}>{issue.message}</span><span className="ml-2 text-xs text-muted-foreground">{issue.path} · {issue.code}</span></p>)}</div>}
     </>}</>}
     {tab === 'bindings' && <>
       {p.policyType === 'MANAGEMENT' && p.currentVersionNo && <>

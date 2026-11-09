@@ -22,7 +22,7 @@ export interface Statement {
 export interface Document { languageVersion: string; statements: Statement[] }
 export interface Draft { policyId: string; revision: number; document: Document; documentDigest: string; validationStatus: string; updateTime: number }
 export interface Validation { valid: boolean; validatedRevision: number; issues: { path: string; code: string; message: string; severity: string }[] }
-export interface Version { policyId: string; versionNo: number; status: string; effectiveAt: number; changeReason: string; document?: Document; createTime: number }
+export interface Version { policyId: string; versionNo: number; status: string; effectiveAt: number; changeReason: string; document?: Document; documentDigest: string; createTime: number }
 export interface Binding { bindingId: string; policyId: string; principalType: PrincipalType; principalId: string; status: string; effectiveAt: number; expiresAt: number | null; revision: number }
 export interface Usage { canArchive: boolean; blockingReasons: string[]; activeBindingCount: number; scheduledBindingCount: number }
 export interface AtopPermission { id: number; permissionCode: string; name: string; description: string }
