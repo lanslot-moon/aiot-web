@@ -39,7 +39,7 @@ export default function ProjectsPage() {
           columns={[
             {
               label: '项目名称',
-              render: (row) => (
+              render: (row) => row.status === 'CLOSED' ? <span className="font-medium">{row.projectName}</span> : (
                 <Link
                   className="font-medium hover:underline"
                   to={`/projects/${row.projectId}/overview`}
@@ -55,7 +55,7 @@ export default function ProjectsPage() {
             { label: '说明', render: (row) => row.description ?? '—' },
             { label: '状态', render: (row) => <Status value={row.status} /> },
             { label: '创建时间', render: (row) => formatDateTime(row.createTime) },
-            { label: '操作', render: (row) => <Link className="inline-flex items-center rounded-md border px-3 py-1.5 text-sm hover:bg-muted focus-visible:outline focus-visible:outline-ring" to={`/projects/${row.projectId}/overview`}>进入项目</Link> },
+            { label: '操作', render: (row) => row.status === 'CLOSED' ? <span className="text-sm text-muted-foreground">已关闭，无法进入</span> : <Link className="inline-flex items-center rounded-md border px-3 py-1.5 text-sm hover:bg-muted focus-visible:outline focus-visible:outline-ring" to={`/projects/${row.projectId}/overview`}>进入项目</Link> },
           ]}
         />
       </Panel>

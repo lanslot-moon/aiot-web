@@ -1,7 +1,7 @@
 import { formatDateTime } from '@/lib/date-time';
 import { put, segment } from '@/api/iam/client';
 import type { ProjectDetailVO } from '@/api/iam/contracts';
-import { useLocation, useParams } from 'react-router';
+import { useLocation, useNavigate, useParams } from 'react-router';
 import { useSWRConfig } from 'swr';
 import { useIam } from '../../context/iam-context/identity';
 
@@ -16,10 +16,18 @@ export default function ProjectPage() {
   const detail = useResource<ProjectDetailVO>(path, 'project:view');
   const { mutate } = useSWRConfig();
   const location = useLocation();
+  const navigate = useNavigate();
   const data = detail.data;
   const refresh = () => {
     void detail.mutate();
     void mutate((key) => Array.isArray(key) && String(key[0]).startsWith('/api/v1/projects'));
+  };
+  const finishLifecycleChange = (status: string) => {
+    // 停用后的项目不再接受业务授权查询，只刷新平台项目列表和详情。
+    if (status === 'CLOSED') navigate('/projects', { replace: true });
+    else void detail.mutate();
+    void mutate((key) => Array.isArray(key) && /^\/api\/v1\/projects(?:\?|$)/.test(String(key[0])));
+    if (status === 'ACTIVE') void projectAuthorization.mutate();
   };
   const transitions: Record<string, string[]> = {
     ACTIVE: ['SUSPENDED', 'ARCHIVED', 'CLOSED'],
@@ -97,7 +105,7 @@ export default function ProjectPage() {
                   fields={reasonFields}
                   description={`将项目「${data?.project.projectName}」${labels[status].replace('项目', '')}。${status === 'CLOSED' ? '关闭后无法恢复。' : '项目资源使用可能受到影响。'}`}
                   run={(values) => put(`${path}/lifecycle`, { ...values, status, confirm: true })}
-                  done={refresh}
+                  done={() => finishLifecycleChange(status)}
                 />
               ))}
             </div>

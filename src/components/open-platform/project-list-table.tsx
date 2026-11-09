@@ -155,15 +155,17 @@ export function ProjectListTable({
           {projects.map((project) => (
             <TableRow
               key={project.projectId}
-              tabIndex={0}
-              aria-label={`打开项目 ${project.projectName}`}
-              className="cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+              tabIndex={project.status === 'CLOSED' ? undefined : 0}
+              aria-label={project.status === 'CLOSED' ? `项目 ${project.projectName} 已关闭` : `打开项目 ${project.projectName}`}
+              className={project.status === 'CLOSED' ? undefined : 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring'}
               onClick={(event) => {
+                if (project.status === 'CLOSED') return;
                 const target = event.target;
                 if (target instanceof Element && target.closest('button, a, input, select, textarea, [role="button"], [role="menuitem"]')) return;
                 navigate(`/projects/${encodeURIComponent(project.projectId)}/overview`);
               }}
               onKeyDown={(event) => {
+                if (project.status === 'CLOSED') return;
                 if (event.target !== event.currentTarget) return;
                 if (event.key === 'Enter' || event.key === ' ') {
                   event.preventDefault();
@@ -180,13 +182,13 @@ export function ProjectListTable({
                 </div>
               </TableCell>
               <TableCell className="max-w-56 sm:max-w-72">
-                <button
+                {project.status === 'CLOSED' ? <span className="font-medium line-clamp-1">{project.projectName}</span> : <button
                   type="button"
                   className="text-left hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
                   onClick={() => navigate(`/projects/${encodeURIComponent(project.projectId)}/overview`)}
                 >
                   <span className="font-medium line-clamp-1">{project.projectName}</span>
-                </button>
+                </button>}
               </TableCell>
               <TableCell className="min-w-48 max-w-80 whitespace-normal break-words text-muted-foreground">
                 {project.description || '—'}
@@ -201,7 +203,7 @@ export function ProjectListTable({
                 {formatDateTime(project.updateTime)}
               </TableCell>
               <TableCell className="text-start">
-                <div className="inline-flex items-center justify-start gap-1">
+                {project.status === 'CLOSED' ? <span className="text-sm text-muted-foreground">已关闭，无法进入</span> : <div className="inline-flex items-center justify-start gap-1">
                   <Button
                     type="button"
                     size="sm"
@@ -233,7 +235,7 @@ export function ProjectListTable({
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
-                </div>
+                </div>}
               </TableCell>
             </TableRow>
           ))}

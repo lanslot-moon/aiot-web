@@ -47,7 +47,7 @@ const ProjectSwitcher = () => {
     ([path]) => get<CursorResult<ProjectView>>(path),
     { shouldRetryOnError: false },
   );
-  const projects = list.data?.items ?? [];
+  const projects = (list.data?.items ?? []).filter((project) => project.status !== 'CLOSED');
   const listLoading = list.isLoading || (open && !!session && !authorization.data && !authorization.error);
   const listError = list.error ?? authorization.error;
   const nextCursor = list.data?.nextCursor;
