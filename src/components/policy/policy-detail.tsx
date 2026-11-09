@@ -178,7 +178,7 @@ export default function PolicyDetail({ projectId, id, back, initialEdit = false,
   const publishBlockReason = p.scheduledVersionNo ? '请先处理待生效版本，再发布新版本。'
     : draft.data?.validationStatus !== 'VALID' ? '请先校验草稿。' : draftPublicationError;
   const publishDisabled = !writable || busy || !!publishBlockReason;
-  return <div className="space-y-5 text-xs leading-5">
+  return <div className="flex flex-1 flex-col gap-5 text-xs leading-5">
     <Button variant="ghost" className="self-start" disabled={busy} onClick={leave}><ArrowLeft className="size-4" />返回策略列表</Button>
     <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
       <div className="min-w-0 flex-1">
@@ -212,7 +212,7 @@ export default function PolicyDetail({ projectId, id, back, initialEdit = false,
       </div>
     </div>
     {p.scheduledVersionNo && <p className="text-xs text-muted-foreground">待生效版本：v{p.scheduledVersionNo}</p>}
-    <Tabs value={tab} onValueChange={value => setTab(String(value))} className="flex-col! gap-4">
+    <Tabs value={tab} onValueChange={value => setTab(String(value))} className="flex-1 flex-col! gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <TabsList aria-label="策略详情导航" className="h-auto! min-h-9 max-w-full flex-wrap rounded-lg!">
           <TabsTrigger value="current" disabled={busy || editing} className="rounded-md! px-3!">已发布规则{p.currentVersionNo ? ` · v${p.currentVersionNo}` : ''}</TabsTrigger>
@@ -268,7 +268,7 @@ export default function PolicyDetail({ projectId, id, back, initialEdit = false,
           </div>
         )}
       </div>
-      <TabsContent value={tab} className="space-y-4">
+      <TabsContent value={tab} data-fill-tables className="flex min-w-0 flex-col gap-4">
     <Failure error={error} />
     {tab === 'current' && <>
       {!p.currentVersionNo ? (
@@ -290,7 +290,7 @@ export default function PolicyDetail({ projectId, id, back, initialEdit = false,
         <Failure error={current.error} retry={() => current.mutate()} />
         {current.isLoading ? <Loading /> : !current.error && current.data && <>
           {current.data.document ? (
-            <PolicyDocumentView key={p.currentVersionNo} type={p.policyType} document={current.data.document} />
+            <PolicyDocumentView key={p.currentVersionNo} type={p.policyType} document={current.data.document} className="flex-1 rounded-lg border p-4" />
           ) : <p className="text-muted-foreground">未返回此版本的规则内容，请刷新详情后重试。</p>}
           <div className="flex flex-wrap gap-x-6 gap-y-2 border-t pt-3 text-xs text-muted-foreground">
             <p>版本生效时间 <span className="text-foreground">{formatDateTime(current.data.effectiveAt)}</span></p>

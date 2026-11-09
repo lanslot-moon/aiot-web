@@ -547,8 +547,8 @@ export function GatewayDataTable<T>({
     getCoreRowModel: getCoreRowModel(),
   });
   return (
-    <div className="overflow-x-auto rounded-lg border">
-      <Table>
+    <div className="overflow-x-auto rounded-lg border in-data-[fill-tables]:grid in-data-[fill-tables]:flex-1 in-data-[fill-tables]:grid-cols-1">
+      <Table className={rows.length === 0 ? 'in-data-[fill-tables]:h-full' : undefined}>
         <TableHeader>
           {table.getHeaderGroups().map((group) => (
             <TableRow key={group.id}>
@@ -577,9 +577,11 @@ export function GatewayDataTable<T>({
             <TableRow>
               <TableCell
                 colSpan={columns.length}
-                className="h-24 text-center text-muted-foreground"
+                className="h-24 text-center text-muted-foreground in-data-[fill-tables]:h-full"
               >
-                暂无数据，请调整筛选或创建记录。
+                <span className="in-data-[fill-tables]:flex in-data-[fill-tables]:min-h-20 in-data-[fill-tables]:items-center in-data-[fill-tables]:justify-center">
+                  暂无数据，请调整筛选或创建记录。
+                </span>
               </TableCell>
             </TableRow>
           )}

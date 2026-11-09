@@ -73,7 +73,7 @@ const FullLayout: FC = () => {
         
         {/* Content fills the remaining space without assuming header/footer heights. */}
         <div className="flex flex-1 flex-col p-4">
-          <div className="flex-1"><ProjectContent /></div>
+          <div className="flex-1 has-[>[data-fill-page]]:flex has-[>[data-fill-page]]:flex-col"><ProjectContent /></div>
           <div className="shrink-0 pt-6"><Footer /></div>
         </div>
       </SidebarInset>
