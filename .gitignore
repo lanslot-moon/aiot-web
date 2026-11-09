@@ -28,3 +28,6 @@ Thumbs.db
 
 # Vite
 .vite/
+
+# 本地界面截图、调试脚本及验证记录，保留在本机
+/artifacts/
