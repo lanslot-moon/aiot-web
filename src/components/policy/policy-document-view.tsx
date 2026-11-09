@@ -1,12 +1,10 @@
 import { useState } from 'react';
-import useSWR from 'swr';
 import { ChevronDown, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { mqttActionOptions, standardChannels } from '@/api/policy/channels';
-import { policyRequest, type Action, type Document, type PolicyType } from '@/api/policy/client';
-import { Failure } from './shared';
+import { type Document, type PolicyType } from '@/api/policy/client';
 import PolicyOverlapNotice from './policy-overlap-notice';
 import { cn } from '@/lib/utils';
 
@@ -16,17 +14,12 @@ const operatorLabels: Record<string, string> = {
   DATE_BEFORE: '早于', DATE_AFTER: '晚于', BOOL: '为',
 };
 
-export default function PolicyDocumentView({ projectId, type, document }: {
-  projectId: string; type: PolicyType; document: Document;
+export default function PolicyDocumentView({ type, document }: {
+  type: PolicyType; document: Document;
 }) {
   const [showTopics, setShowTopics] = useState(false);
-  const actions = useSWR(type === 'MANAGEMENT' ? [projectId, 'policy-actions', type] : null,
-    () => policyRequest<Action[]>(projectId, 'policy-actions?policyType=' + type));
-  const labels = new Map(type === 'MQTT_DEVICE'
-    ? mqttActionOptions.map(action => [action.value, action.label])
-    : (actions.data ?? []).map(action => [action.action, action.description || action.action]));
+  const labels = new Map(type === 'MQTT_DEVICE' ? mqttActionOptions.map(action => [action.value, action.label]) : []);
   return <div className="space-y-4">
-    <Failure error={actions.error} retry={() => actions.mutate()} />
     <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="text-sm font-semibold">通道规则</h3>{type === 'MQTT_DEVICE' && <Button variant="ghost" size="sm" aria-pressed={showTopics} onClick={() => setShowTopics(value => !value)}>{showTopics ? '收起通道地址' : '查看通道地址'}</Button>}</div>
     <PolicyOverlapNotice type={type} rules={document.statements} />
     {!document.statements.length && <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">此版本没有自定义规则，不额外增加或限制权限。</div>}

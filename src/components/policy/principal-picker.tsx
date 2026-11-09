@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { request } from '@/api/iam/client';
 import type { ProjectMemberVO, RoleVO } from '@/api/iam/contracts';
 import { gatewayPath, type DeviceGroup, type DeviceSummary } from '@/api/device/client';
-import { query, principalLabels, type Page, type PrincipalType } from '@/api/policy/client';
+import { query, principalLabels, type Page, type PolicyType, type PrincipalType } from '@/api/policy/client';
 import { useResource } from '@/components/iam/shared-utils';
 import { Input } from '@/components/ui/input';
 import { Combobox, ComboboxCollection, ComboboxContent, ComboboxEmpty, ComboboxInput, ComboboxItem, ComboboxList } from '@/components/ui/combobox';
@@ -11,7 +11,7 @@ import { Failure, Field, Pager } from './shared';
 interface Target { id: string; name: string }
 interface Product { productId: string; productName: string }
 
-export default function PrincipalPicker({ projectId, type, scopeProductId, value, onChange, disabled }: { projectId: string; type: Exclude<PrincipalType, 'APPLICATION'>; scopeProductId: string | null; value: string; onChange: (id: string) => void; disabled: boolean }) {
+export default function PrincipalPicker({ projectId, type, policyType, scopeProductId, value, onChange, disabled }: { projectId: string; type: PrincipalType; policyType: PolicyType; scopeProductId: string | null; value: string; onChange: (id: string) => void; disabled: boolean }) {
   const [cursors, setCursors] = useState(['']);
   const [selected, setSelected] = useState<Target | null>(null);
   const [search, setSearch] = useState('');
@@ -24,8 +24,9 @@ export default function PrincipalPicker({ projectId, type, scopeProductId, value
   const cursor = cursors[cursors.length - 1];
   const scope = encodeURIComponent(projectId);
   const paging = query({ pageSize: 20, cursor });
-  const paths: Record<Exclude<PrincipalType, 'APPLICATION'>, string | null> = {
-    DEVICE: scopeProductId ? gatewayPath(projectId, 'devices') + query({ productId: scopeProductId, keyword, pageSize: 20, cursor }) : null,
+  const deviceProductId = policyType === 'MQTT_DEVICE' ? scopeProductId : null;
+  const paths: Record<PrincipalType, string | null> = {
+    DEVICE: policyType === 'MANAGEMENT' || deviceProductId ? gatewayPath(projectId, 'devices') + query({ productId: deviceProductId, keyword, pageSize: 20, cursor }) : null,
     PRODUCT: scopeProductId ? `/api/v1/products/${encodeURIComponent(scopeProductId)}` : null,
     STATIC_GROUP: gatewayPath(projectId, 'device-groups') + paging,
     ACCOUNT: `/api/v1/projects/${scope}/members` + query({ status: 'active', pageSize: 20, cursor }),
@@ -40,7 +41,7 @@ export default function PrincipalPicker({ projectId, type, scopeProductId, value
     }
     if (type === 'DEVICE') {
       const page = await get<Page<DeviceSummary>>();
-      return { ...page, items: page.items.filter(device => device.productId === scopeProductId && device.lifecycle !== 'DELETING').map(device => ({ id: device.deviceId, name: device.deviceName })) };
+      return { ...page, items: page.items.filter(device => (!deviceProductId || device.productId === deviceProductId) && device.lifecycle !== 'DELETING').map(device => ({ id: device.deviceId, name: device.deviceName })) };
     }
     if (type === 'STATIC_GROUP') {
       const page = await get<Page<DeviceGroup>>();
@@ -73,7 +74,7 @@ export default function PrincipalPicker({ projectId, type, scopeProductId, value
     <Failure error={resource.error} retry={() => resource.mutate()} />
   </div>;
   return <div className="space-y-2">
-    <Field title={`选择${principalLabels[type]}`} hint={type === 'DEVICE' ? '分页读取策略所属产品的设备，输入名称从服务端搜索。' : type === 'STATIC_GROUP' ? '选择当前项目的静态设备组；此策略仍只适用于所属产品的设备。' : '仅列出当前项目可用的对象；按名称或 ID 搜索当前页。'}>
+    <Field title={`选择${principalLabels[type]}`} hint={type === 'DEVICE' ? (policyType === 'MQTT_DEVICE' ? '仅列出策略所属产品的设备，支持按设备名称前缀搜索。' : '可选择当前项目下任意产品的设备，支持按设备名称前缀搜索。') : type === 'STATIC_GROUP' ? '选择当前项目的静态设备组；此策略仍只适用于所属产品的设备。' : '仅列出当前项目可用的对象；按名称或 ID 搜索当前页。'}>
       <Combobox items={options} value={current} disabled={disabled} itemToStringLabel={(item: Target) => item.name} isItemEqualToValue={(a: Target, b: Target) => a.id === b.id} filter={type === 'DEVICE' ? null : (item: Target, search: string) => `${item.name} ${item.id}`.toLowerCase().includes(search.toLowerCase())} onInputValueChange={(text, details) => { if (details.reason === 'input-change' || details.reason === 'input-clear') setSearch(text); }} onValueChange={(item: Target | null) => { setSelected(item); onChange(item?.id ?? ''); }}>
         <ComboboxInput aria-label={`选择授权${principalLabels[type]}`} className="w-full" placeholder={type === 'DEVICE' ? '选择设备或输入名称搜索' : '选择或搜索当前页名称、ID'} showClear />
         <ComboboxContent>

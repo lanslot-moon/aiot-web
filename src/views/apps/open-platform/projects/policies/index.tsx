@@ -18,8 +18,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import PolicyDetail from '@/components/policy/policy-detail';
 import Diagnostics from '@/components/policy/diagnostics';
-import { Status, Failure, Field, Loading, Pager } from '@/components/policy/shared';
-import { policyRequest, query, type Policy, type PolicyType, type Page } from '@/api/policy/client';
+import { Status, Failure, Field, Loading, Pager, PolicySelect } from '@/components/policy/shared';
+import { managementScopeOptions, policyRequest, query, type ManagementScope, type Policy, type PolicyType, type Page } from '@/api/policy/client';
 import { standardChannels } from '@/api/policy/channels';
 
 function Workspace({ projectId }: { projectId: string }) {
@@ -33,6 +33,8 @@ function Workspace({ projectId }: { projectId: string }) {
   const [cursors, setCursors] = useState<string[]>(['']);
   const [create, setCreate] = useState(false);
   const [createType, setCreateType] = useState<PolicyType>('MQTT_DEVICE');
+  const [createScope, setCreateScope] = useState<ManagementScope | null>(null);
+  const [createdScope, setCreatedScope] = useState<{ policyId: string; scope: ManagementScope } | null>(null);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [productId, setProductId] = useState('');
@@ -40,16 +42,18 @@ function Workspace({ projectId }: { projectId: string }) {
   const [error, setError] = useState<unknown>();
   const path = 'policies' + query({ policyType: type, status, name: search, pageSize: 20, cursor: cursors[cursors.length - 1] });
   const list = useSWR(section === 'policies' && !id ? [projectId, path] : null, () => policyRequest<Page<Policy>>(projectId, path));
-  function openCreate() { setCreateType(type); setName(''); setDescription(''); setProductId(''); setError(undefined); setCreate(true); }
+  function openCreate() { setCreateType(type); setCreateScope(null); setName(''); setDescription(''); setProductId(''); setError(undefined); setCreate(true); }
   async function save() {
     if (!name.trim() || createType === 'MQTT_DEVICE' && !productId.trim()) { setError(new Error('请填写策略名称和设备通信策略所属的产品 ID。')); return; }
+    if (createType === 'MANAGEMENT' && !createScope) { setError(new Error('请先选择授权主体。')); return; }
     setBusy(true); setError(undefined);
     try {
       const result = await policyRequest<Policy>(projectId, 'policies', 'POST', { name: name.trim(), description: description.trim(), policyType: createType, scopeProductId: createType === 'MQTT_DEVICE' ? productId.trim() : null });
-      setCreate(false); setParams({ policy: result.policyId, edit: '1' }); toast.success('策略草稿已创建，继续编辑权限规则。');
+      setCreatedScope(createType === 'MANAGEMENT' && createScope ? { policyId: result.policyId, scope: createScope } : null);
+      setType(createType); setCursors(['']); setCreate(false); setParams({ policy: result.policyId, edit: '1' }); toast.success('策略草稿已创建，继续编辑权限规则。');
     } catch (e) { setError(e); } finally { setBusy(false); }
   }
-  if (id) return <PolicyDetail key={id} projectId={projectId} id={id} initialEdit={params.get('edit') === '1'} back={() => setParams({})} />;
+  if (id) return <PolicyDetail key={id} projectId={projectId} id={id} initialEdit={params.get('edit') === '1'} initialScope={createdScope?.policyId === id ? createdScope.scope : null} back={() => { setCreatedScope(null); setParams({}); }} />;
   return <div className="space-y-6">
     <Tabs value={section} onValueChange={value => setParams(value === 'policies' ? {} : { section: String(value) })} className="flex-col! gap-4">
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b">
@@ -81,10 +85,9 @@ function Workspace({ projectId }: { projectId: string }) {
         <Button type="button" variant="outline" size="icon" aria-label="刷新策略" disabled={list.isValidating} onClick={() => void list.mutate()}><RefreshCw className="size-4" /></Button>
         </form>
       </div>
-      {type === 'MANAGEMENT' && <p className="text-sm text-muted-foreground">资源操作策略用于账号、应用和项目角色，不改变设备 MQTT 通道。</p>}
       <Failure error={list.error} retry={() => list.mutate()} />
       {list.isLoading ? <Loading /> : !list.error && list.data && <>
-        {!list.data.items.length ? <div className="rounded-lg border border-dashed px-6 py-12 text-center"><ShieldCheck className="mx-auto mb-3 size-7 text-muted-foreground" /><h3 className="font-medium">{search || status ? '没有符合条件的策略' : '还没有自定义策略'}</h3><p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-muted-foreground">{search || status ? '调整名称或状态后重新查找。' : '这不会影响标准设备接入。需要禁止某台设备上报、按组调整权限时，再创建策略。'}</p>{!search && !status && <Button variant="outline" className="mt-5" onClick={openCreate}>创建第一条自定义策略<ArrowRight className="size-4" /></Button>}</div> : <GatewayDataTable rows={list.data.items} columns={[{ label: '策略名称', render: p => <Button variant="link" className="h-auto! max-w-64 min-w-0 p-0! font-medium" title={p.name} onClick={() => setParams({ policy: p.policyId })}><span className="truncate">{p.name}</span></Button> }, { label: '描述', render: p => <span className="block max-w-64 truncate text-muted-foreground" title={p.description || undefined}>{p.description || '—'}</span> }, { label: '状态', render: p => <Status value={p.status} /> }, { label: type === 'MQTT_DEVICE' ? '产品 ID' : '所属资源', render: p => p.scopeProductId ? <Link className="text-primary underline-offset-4 hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-ring" to={`/projects/${encodeURIComponent(projectId)}/products/${encodeURIComponent(p.scopeProductId)}`}>{p.scopeProductId}</Link> : <span>当前项目资源</span> }, { label: '发布版本', render: p => <span className="whitespace-nowrap">{p.currentVersionNo ? 'v' + p.currentVersionNo : '尚未发布'}{p.scheduledVersionNo && <span className="block text-xs text-muted-foreground">v{p.scheduledVersionNo} 待生效</span>}</span> }, { label: '更新时间', render: p => <span className="whitespace-nowrap text-xs text-muted-foreground">{formatDateTime(p.updateTime)}</span> }, { label: '操作', render: p => <div className="flex items-center gap-1 whitespace-nowrap"><Button size="sm" variant="ghost" onClick={() => setParams({ policy: p.policyId })}>查看</Button>{p.status !== 'ARCHIVED' && p.ownershipType !== 'SYSTEM_MANAGED' && <Button size="sm" variant="ghost" onClick={() => setParams({ policy: p.policyId, edit: '1' })}>编辑规则</Button>}</div> }]} />}
+        {!list.data.items.length ? <div className="rounded-lg border border-dashed px-6 py-12 text-center"><ShieldCheck className="mx-auto mb-3 size-7 text-muted-foreground" /><h3 className="font-medium">{search || status ? '没有符合条件的策略' : '还没有自定义策略'}</h3><p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-muted-foreground">{search || status ? '调整名称或状态后重新查找。' : type === 'MQTT_DEVICE' ? '需要限制某台设备上报或按设备组调整通信权限时，可以创建策略。' : '可以创建策略，为用户或项目角色配置平台资源权限，或限制设备访问指定 ATOP 接口。'}</p>{!search && !status && <Button variant="outline" className="mt-5" onClick={openCreate}>创建第一条自定义策略<ArrowRight className="size-4" /></Button>}</div> : <GatewayDataTable rows={list.data.items} columns={[{ label: '策略名称', render: p => <Button variant="link" className="h-auto! max-w-64 min-w-0 p-0! font-medium" title={p.name} onClick={() => setParams({ policy: p.policyId })}><span className="truncate">{p.name}</span></Button> }, { label: '描述', render: p => <span className="block max-w-64 truncate text-muted-foreground" title={p.description || undefined}>{p.description || '—'}</span> }, { label: '状态', render: p => <Status value={p.status} /> }, { label: type === 'MQTT_DEVICE' ? '产品 ID' : '所属资源', render: p => p.scopeProductId ? <Link className="text-primary underline-offset-4 hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-ring" to={`/projects/${encodeURIComponent(projectId)}/products/${encodeURIComponent(p.scopeProductId)}`}>{p.scopeProductId}</Link> : <span>当前项目资源</span> }, { label: '发布版本', render: p => <span className="whitespace-nowrap">{p.currentVersionNo ? 'v' + p.currentVersionNo : '尚未发布'}{p.scheduledVersionNo && <span className="block text-xs text-muted-foreground">v{p.scheduledVersionNo} 待生效</span>}</span> }, { label: '更新时间', render: p => <span className="whitespace-nowrap text-xs text-muted-foreground">{formatDateTime(p.updateTime)}</span> }, { label: '操作', render: p => <div className="flex items-center gap-1 whitespace-nowrap"><Button size="sm" variant="ghost" onClick={() => setParams({ policy: p.policyId })}>查看</Button>{p.status !== 'ARCHIVED' && p.ownershipType !== 'SYSTEM_MANAGED' && <Button size="sm" variant="ghost" onClick={() => setParams({ policy: p.policyId, edit: '1' })}>编辑规则</Button>}</div> }]} />}
         <Pager previous={cursors.length > 1 ? () => setCursors(c => c.slice(0, -1)) : undefined} next={list.data.hasMore && list.data.nextCursor ? () => setCursors(c => [...c, list.data!.nextCursor!]) : undefined} busy={list.isValidating} />
       </>}
     </div>}
@@ -105,6 +108,9 @@ function Workspace({ projectId }: { projectId: string }) {
               <SelectContent className="rounded-md!" alignItemWithTrigger={false}><SelectItem value="MQTT_DEVICE">设备通信</SelectItem><SelectItem value="MANAGEMENT">资源操作</SelectItem></SelectContent>
             </Select>
           </Field>
+          {createType === 'MANAGEMENT' && <Field title="授权主体" hint="设备使用 ATOP 接口权限；用户和项目角色使用平台权限。">
+            <PolicySelect label="授权主体" placeholder="选择授权主体" value={createScope} disabled={busy} options={managementScopeOptions} onValueChange={value => setCreateScope(value as ManagementScope)} />
+          </Field>}
           <Field title="策略名称"><Input value={name} maxLength={128} disabled={busy} placeholder="例如：限制诊断消息上报" onChange={e => setName(e.target.value)} /></Field>
           {createType === 'MQTT_DEVICE' && <ProductPicker projectId={projectId} value={productId} disabled={busy} onChange={setProductId} />}
           <Field title="用途说明（选填）"><Textarea className="min-h-24 resize-y" placeholder="说明策略的使用场景，方便后续维护" value={description} disabled={busy} maxLength={512} onChange={e => setDescription(e.target.value)} /></Field>
@@ -112,7 +118,7 @@ function Workspace({ projectId }: { projectId: string }) {
         </div>
         <DialogFooter className="m-0 px-6 py-4">
           <Button variant="outline" disabled={busy} onClick={() => setCreate(false)}>取消</Button>
-          <Button disabled={busy} onClick={() => void save()}>{busy ? '创建中…' : '创建并编辑规则'}</Button>
+          <Button disabled={busy || (createType === 'MANAGEMENT' && !createScope)} onClick={() => void save()}>{busy ? '创建中…' : '创建并编辑规则'}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
