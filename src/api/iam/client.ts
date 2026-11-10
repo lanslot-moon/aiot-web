@@ -59,7 +59,7 @@ const errorCopy: Record<string, string> = {
   NOTIFICATION_PROVIDER_UNAVAILABLE: '邮件或短信服务尚未配置，暂时无法发送验证码。',
   ROUTE_NOT_ENABLED: '网关尚未开放此接口，请检查路由配置。',
 };
-export async function parseResponse<T>(response: Response, successCode: '200' | 'OK' = '200'): Promise<T> {
+export async function parseResponse<T>(response: Response, successCode: '200' | 'OK' | 'SUCCESS' = '200'): Promise<T> {
   let payload: {
     code?: string;
     message?: string;
@@ -219,7 +219,7 @@ export async function request<T>(
   path: string,
   method = 'GET',
   body?: unknown,
-  options: { anonymous?: boolean; signal?: AbortSignal; projectId?: string; successCode?: '200' | 'OK' } = {},
+  options: { anonymous?: boolean; signal?: AbortSignal; projectId?: string; successCode?: '200' | 'OK' | 'SUCCESS' } = {},
 ): Promise<T> {
   const response = await requestResponse(path, method, body, options);
   return parseResponse<T>(response, options.successCode);
