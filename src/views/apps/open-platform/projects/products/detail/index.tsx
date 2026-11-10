@@ -808,6 +808,7 @@ const ProductDetailPage = () => {
                 <FileKey2 className="size-3.5" aria-hidden />
                 凭证与量产
               </Button>
+            <Button type="button" variant="ghost" size="sm" nativeButton={false} render={<Link to={`/projects/${projectId}/ota?section=firmware&product=${product.productId}`} />}>OTA 固件</Button>
             </nav>
 
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1.05fr)_minmax(18rem,0.95fr)]">

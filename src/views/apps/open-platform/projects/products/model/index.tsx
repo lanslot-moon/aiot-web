@@ -519,6 +519,7 @@ function ProductModelNav({ projectId, productId }: { projectId: string; productI
         <FileKey2 className="size-3.5" aria-hidden />
         凭证与量产
       </Button>
+            <Button type="button" variant="ghost" size="sm" nativeButton={false} render={<Link to={`/projects/${projectId}/ota?section=firmware&product=${productId}`} />}>OTA 固件</Button>
     </nav>
   );
 }

@@ -1418,6 +1418,7 @@ const ProductCredentialsPage = () => {
             <Button type="button" variant="ghost" size="sm" className={PRODUCT_TAB_CLASS} nativeButton={false} render={<Link to={`/projects/${projectId}/products/${productId}`} />}><Boxes className="size-3.5" aria-hidden />产品概览</Button>
             <Button type="button" variant="ghost" size="sm" className={PRODUCT_TAB_CLASS} nativeButton={false} render={<Link to={`/projects/${projectId}/products/${productId}/model`} />}><KeyRound className="size-3.5" aria-hidden />物模型</Button>
             <Button type="button" variant="secondary" size="sm" className={`${PRODUCT_TAB_CLASS} bg-background shadow-sm`} nativeButton={false} render={<Link to={`/projects/${projectId}/products/${productId}/credentials`} />}><FileKey2 className="size-3.5" aria-hidden />凭证与量产</Button>
+            <Button type="button" variant="ghost" size="sm" nativeButton={false} render={<Link to={`/projects/${projectId}/ota?section=firmware&product=${productId}`} />}>OTA 固件</Button>
           </nav>
 
           {product.lifecycleStatus === 'DRAFT' ? (
