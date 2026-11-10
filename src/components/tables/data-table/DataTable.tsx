@@ -532,9 +532,11 @@ export default DataTable
 export function GatewayDataTable<T>({
   rows,
   columns,
+  embedded = false,
 }: {
   rows: T[];
   columns: { label: string; render: (row: T) => React.ReactNode }[];
+  embedded?: boolean;
 }) {
   const definitions: ColumnDef<T>[] = columns.map((column, i) => ({
     id: String(i),
@@ -547,7 +549,7 @@ export function GatewayDataTable<T>({
     getCoreRowModel: getCoreRowModel(),
   });
   return (
-    <div className="overflow-x-auto rounded-lg border in-data-[fill-tables]:grid in-data-[fill-tables]:flex-1 in-data-[fill-tables]:grid-cols-1">
+    <div className={embedded ? undefined : 'overflow-x-auto rounded-lg border in-data-[fill-tables]:grid in-data-[fill-tables]:flex-1 in-data-[fill-tables]:grid-cols-1'}>
       <Table className={rows.length === 0 ? 'in-data-[fill-tables]:h-full' : undefined}>
         <TableHeader>
           {table.getHeaderGroups().map((group) => (

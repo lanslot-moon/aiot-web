@@ -14,14 +14,14 @@ export function DetailField({ label, children, fullWidth = false }: {
   </div>;
 }
 
-export function DeviceTable<T>({ rows, columns, stickyActions = false }: {
-  rows: T[]; columns: { label: string; render: (row: T) => ReactNode }[]; stickyActions?: boolean;
+export function DeviceTable<T>({ rows, columns, stickyActions = false, embedded = false }: {
+  rows: T[]; columns: { label: string; render: (row: T) => ReactNode }[]; stickyActions?: boolean; embedded?: boolean;
 }) {
   return <div className={cn(
     'min-w-0',
     stickyActions && '[&_td:last-child]:sticky [&_td:last-child]:right-0 [&_td:last-child]:bg-background [&_th:last-child]:sticky [&_th:last-child]:right-0 [&_th:last-child]:bg-background [&_td:last-child]:border-l [&_th:last-child]:border-l',
   )}>
-    <GatewayDataTable rows={rows} columns={columns} />
+    <GatewayDataTable rows={rows} columns={columns} embedded={embedded} />
   </div>;
 }
 
