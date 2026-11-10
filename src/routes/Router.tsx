@@ -51,6 +51,7 @@ const ProjectProductCategories = Loadable(
   lazy(() => import('../views/apps/open-platform/projects/products/categories')),
 );
 const ProjectDevices = Loadable(lazy(() => import('../views/apps/open-platform/projects/devices')));
+const ProjectOta = Loadable(lazy(() => import('../views/apps/open-platform/projects/ota')));
 const ProjectPolicies = Loadable(lazy(() => import('../views/apps/open-platform/projects/policies')));
 const ProjectSettings = Loadable(lazy(() => import('../views/iam/project')));
 const ProjectMembers = Loadable(lazy(() => import('../views/iam/members')));
@@ -162,6 +163,7 @@ const Router = [
       },
       { path: '/projects/:projectId/products', element: <ProjectProducts /> },
       { path: '/projects/:projectId/devices', element: <ProjectDevices /> },
+      { path: '/projects/:projectId/ota', element: <ProjectOta /> },
       { path: '/projects/:projectId/policies', element: <ProjectPolicies /> },
       { path: '/projects/:projectId/settings', element: <ProjectSettings /> },
       { path: '/projects/:projectId/overview', element: <ProjectOverview /> },

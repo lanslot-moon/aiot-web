@@ -67,6 +67,7 @@ type PrimaryTab =
   | 'categories'
   | 'parserProfiles'
   | 'devices'
+  | 'ota'
   | 'policies'
   | 'settings';
 
@@ -115,6 +116,9 @@ const PRIMARY_NAV: {
     path: (id) => `/projects/${id}/devices`,
   },
   {
+    id: 'ota', label: 'OTA 升级', icon: Package, path: (id) => `/projects/${id}/ota`,
+  },
+  {
     id: 'policies',
     label: '策略与授权',
     icon: ShieldCheck,
@@ -149,6 +153,7 @@ const SETTINGS_NAV: {
 ];
 
 function primaryFromPath(pathname: string): PrimaryTab {
+  if (pathname.includes('/ota')) return 'ota';
   if (pathname.includes('/policies')) return 'policies';
   if (pathname.includes('/categories')) return 'categories';
   if (pathname.includes('/parser-profiles')) return 'parserProfiles';

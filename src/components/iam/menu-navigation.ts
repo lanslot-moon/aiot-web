@@ -53,6 +53,7 @@ const permissions: Record<string, string[]> = {
   devices: ['device:view'],
   // Policy 请求经网关执行权限校验；此处仅提供项目内导航入口。
   policies: [],
+  ota: ['ota:view'],
   members: ['project-member:view'],
   'access-requests': ['project-member:review'],
   authorization: ['project-credential:manage', 'project-credential:network-policy'],
@@ -80,6 +81,7 @@ export function projectNavigation(projectId: string): MenuItem[] {
       { name: '品类', icon: ListTree, url: `${base}/categories` },
       { name: '协议解析', icon: Braces, url: `${base}/parser-profiles` },
       { name: '设备', icon: Cpu, url: `${base}/devices` },
+      { name: 'OTA 升级', icon: Package, url: `${base}/ota` },
     ] },
     { heading: '项目协作', items: [
       { name: '成员与邀请', icon: Users, url: `${base}/members` },
@@ -122,5 +124,5 @@ export function authorizedNavigation(groups: MenuItem[], menus: MenuItemVO[], co
 export function projectSection(pathname: string): string {
   const id = projectIdFromPath(pathname);
   const section = id ? pathname.slice(`/projects/${id}/`.length).split('/')[0] : '';
-  return ['overview', 'members', 'access-requests', 'authorization', 'settings', 'products', 'devices', 'policies', 'categories', 'parser-profiles'].includes(section) ? section : 'overview';
+  return ['overview', 'members', 'access-requests', 'authorization', 'settings', 'products', 'devices', 'ota', 'policies', 'categories', 'parser-profiles'].includes(section) ? section : 'overview';
 }
