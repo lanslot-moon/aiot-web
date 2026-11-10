@@ -1,0 +1,8 @@
+/* Preview-only shell. Business controls and tokens come from the application. */
+html { color-scheme: light dark; }
+body { margin: 0; min-width: 0; }
+#aiot-ota-preview { min-width: 0; font-family: Geist, system-ui, sans-serif; }
+#aiot-ota-preview main { overflow-wrap: anywhere; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}

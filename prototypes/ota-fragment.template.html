@@ -1,0 +1,10 @@
+<div id="aiot-ota-preview"></div>
+<style>/* OTA_PREVIEW_CSS */</style>
+<script>
+document.body.classList.add('style-lyra');
+const otaAppearance = matchMedia('(prefers-color-scheme: dark)');
+function otaSyncAppearance() { document.documentElement.classList.toggle('dark', otaAppearance.matches); }
+otaSyncAppearance();
+otaAppearance.addEventListener('change', otaSyncAppearance);
+/* OTA_PREVIEW_JS */
+</script>
