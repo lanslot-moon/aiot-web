@@ -39,6 +39,7 @@ export interface IamFileUploaderProps {
   managed?: boolean;
   showProgress?: boolean;
   compact?: boolean;
+  compactSelection?: boolean;
   embedded?: boolean;
   externalBusy?: boolean;
   onStageChange?: (stage: 'uploading' | 'confirming') => void;
@@ -53,11 +54,12 @@ export interface IamFileUploaderProps {
 }
 
 /** Shared upload control; its owning feature saves the confirmed file reference. */
-export function IamFileUploader({ storageType: visibility = 'private', directory = '/uploads', accept, maxSize, onUploaded, onBusyChange, onFileChange, prepareFile, uploadRef, managed = false, showProgress = true, compact = false, embedded = false, externalBusy = false, onStageChange }: IamFileUploaderProps) {
+export function IamFileUploader({ storageType: visibility = 'private', directory = '/uploads', accept, maxSize, onUploaded, onBusyChange, onFileChange, prepareFile, uploadRef, managed = false, showProgress = true, compact = false, compactSelection = false, embedded = false, externalBusy = false, onStageChange }: IamFileUploaderProps) {
   const identity = useIam();
   const authorization = permissionAuthorization(identity, 'file:upload');
   const allowed = authorization.data?.permissionCodes.includes('file:upload') ?? false;
-  const [preparing, setPreparing] = useState(false);
+  const [preparingFile, setPreparingFile] = useState<File | null>(null);
+  const preparing = !!preparingFile;
   const selection = useRef(0);
   const [file, setFile] = useState<File | null>(null);
   const [phase, setPhase] = useState<Phase>('idle');
@@ -94,12 +96,12 @@ export function IamFileUploader({ storageType: visibility = 'private', directory
   async function selectFile(selected: File) {
     if (!prepareFile) { reset(selected); return; }
     const ticket = ++selection.current;
-    setPreparing(true); setError(null);
+    setPreparingFile(selected); setError(null);
     try {
       const prepared = await prepareFile(selected);
       if (ticket === selection.current && prepared) reset(prepared);
     } catch (failure) { if (ticket === selection.current) setError(failure); }
-    finally { if (ticket === selection.current) setPreparing(false); }
+    finally { if (ticket === selection.current) setPreparingFile(null); }
   }
   const { getRootProps, getInputProps, open, isDragActive } = useDropzone({
     multiple: false, noClick: true, noKeyboard: true, accept, maxSize,
@@ -169,8 +171,11 @@ export function IamFileUploader({ storageType: visibility = 'private', directory
     if (phase === 'confirming') return;
     controller.current?.abort(); xhrRef.current?.abort();
   }
+  const displayedFile = compactSelection ? preparingFile ?? file : file;
+  const compactStatus = phase === 'idle' ? '待上传' : phase === 'success' ? '已上传' : stages[phase];
+  const canReplace = !externalBusy && !preparing && !busy && !needsConfirmation && allowed;
   return <div className="min-w-0 space-y-4">
-    <div {...getRootProps()} className={cn('rounded-lg transition-colors', embedded ? 'flex min-h-9 flex-wrap items-center gap-2' : compact ? 'flex min-h-20 items-center gap-3 border border-dashed px-3 py-2' : 'border border-dashed p-6 text-center', isDragActive ? 'border-primary bg-primary/5 ring-2 ring-primary/30' : !embedded && 'border-border bg-background', compact && file && 'hidden')}>
+    <div {...getRootProps()} className={cn('rounded-lg transition-colors', embedded ? 'flex min-h-9 flex-wrap items-center gap-2' : compact ? 'flex min-h-20 items-center gap-3 border border-dashed px-3 py-2' : 'border border-dashed p-6 text-center', isDragActive ? 'border-primary bg-primary/5 ring-2 ring-primary/30' : !embedded && 'border-border bg-background', (compact || compactSelection) && displayedFile && 'hidden')}>
       <input {...getInputProps({ 'aria-label': '选择本地文件' })} />
       {!embedded && <UploadCloud className={cn('shrink-0 text-muted-foreground', compact ? 'size-7' : 'mx-auto mb-3 size-8')} aria-hidden="true" />}
       <div className={compact ? 'min-w-0 flex-1' : undefined}>
@@ -178,26 +183,33 @@ export function IamFileUploader({ storageType: visibility = 'private', directory
         {compact && !embedded && <p className="mt-1 text-xs text-muted-foreground">或选择本地文件</p>}
         {!compact && <p className="mt-1 text-xs text-muted-foreground">每次上传一个文件，文件名自动读取</p>}
       </div>
-      <Button type="button" variant="outline" size={compact ? 'sm' : 'default'} className={compact ? 'shrink-0' : 'mt-4'} disabled={externalBusy || preparing || busy || needsConfirmation || !allowed} onClick={open}>{file ? '更换文件' : embedded ? '选择图片' : '选择文件'}</Button>
+      <Button type="button" variant="outline" size={compact ? 'sm' : 'default'} className={compact ? 'shrink-0' : 'mt-4'} disabled={!canReplace} onClick={open}>{file ? '更换文件' : embedded ? '选择图片' : '选择文件'}</Button>
     </div>
     {!allowed && authorization.data && <p className="text-sm text-muted-foreground">当前账号没有上传文件的权限。</p>}
-    {file && <>
-      <div className={cn('flex w-full min-w-0 flex-wrap items-center gap-3 rounded-lg', embedded ? 'border bg-background/70 px-3 py-2' : 'max-w-xl border p-3')}>
+    {displayedFile && <>
+      <div className={cn('flex w-full min-w-0 flex-wrap items-center gap-3 rounded-lg', embedded || compactSelection ? 'border bg-background/70 px-3 py-2' : 'max-w-xl border p-3')}>
         <div className="flex min-w-0 flex-1 basis-40 items-center gap-2">
-        {phase === 'success' ? <CheckCircle2 className="mt-0.5 size-5 shrink-0" /> : <FileIcon className="mt-0.5 size-5 shrink-0 text-muted-foreground" />}
-        <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium" title={file.name}>{file.name}</p><p className="mt-1 whitespace-nowrap text-xs text-muted-foreground">{sizeLabel(file.size)}</p></div>
+        {!preparing && phase === 'success' ? <CheckCircle2 className="mt-0.5 size-5 shrink-0" /> : <FileIcon className="mt-0.5 size-5 shrink-0 text-muted-foreground" />}
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium" title={displayedFile.name}>{displayedFile.name}</p>
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+            <span>{sizeLabel(displayedFile.size)}</span>
+            {compactSelection && showProgress && <span role="status">{preparing ? '正在读取文件…' : compactStatus}</span>}
+          </div>
+        </div>
         </div>
         <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
-        {compact && <Button type="button" size="icon-sm" variant="ghost" className="shrink-0" aria-label="更换图片" title="更换图片" disabled={externalBusy || preparing || busy || needsConfirmation || !allowed} onClick={open}><RefreshCw className="size-4" /></Button>}
+        {compactSelection ? (
+          <Button type="button" size="sm" variant="outline" className="shrink-0" disabled={!canReplace} onClick={open}>更换文件</Button>
+        ) : compact && <Button type="button" size="icon-sm" variant="ghost" className="shrink-0" aria-label="更换图片" title="更换图片" disabled={!canReplace} onClick={open}><RefreshCw className="size-4" /></Button>}
         {!managed && phase !== 'success' && <Button type="button" size="sm" className="shrink-0" disabled={externalBusy || preparing || busy || !allowed} onClick={() => void run()}>{busy && <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />}{needsConfirmation ? '重试云端确认' : phase === 'upload-error' || phase === 'cancelled' ? '重新上传' : '开始上传'}</Button>}
         {!managed && (phase === 'requesting' || phase === 'uploading') && <Button type="button" size="icon-sm" variant="outline" className="shrink-0" aria-label="取消上传" title="取消上传" onClick={cancel}><X className="size-4" /></Button>}
         {!(phase === 'requesting' || phase === 'uploading') && <Button type="button" size="icon-sm" variant="ghost" className="shrink-0" aria-label="移除所选文件" disabled={externalBusy || preparing || busy || needsConfirmation} onClick={() => reset(null)}><X className="size-4" /></Button>}
         </div>
       </div>
-      {showProgress && <p role="status" className="text-sm text-muted-foreground">{managed && phase === 'idle' ? '头像已选好，点击保存头像即可完成上传和保存。' : stages[phase]}</p>}
-      {showProgress && ['uploading', 'confirming', 'success'].includes(phase) && <Progress value={progress} aria-label="文件上传进度" />}
-      <ErrorNotice error={error} />
-
+      {showProgress && !compactSelection && <p role="status" className="text-sm text-muted-foreground">{managed && phase === 'idle' ? '头像已选好，点击保存头像即可完成上传和保存。' : stages[phase]}</p>}
+      {showProgress && (phase === 'uploading' || phase === 'confirming' || (!compactSelection && phase === 'success')) && <Progress value={progress} aria-label="文件上传进度" />}
     </>}
+    <ErrorNotice error={error} />
   </div>;
 }
