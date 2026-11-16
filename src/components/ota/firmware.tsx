@@ -545,7 +545,7 @@ export default function Firmware({
                         render: (p) => (
                           <div className="flex flex-wrap items-center gap-1">
                             <Button
-                              variant="ghost"
+                              variant="outline"
                               size="sm"
                               onClick={() =>
                                 navigate({ module: moduleId, version: versionId, package: p.id })

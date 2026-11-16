@@ -5,10 +5,11 @@ import { Pager } from '@/components/policy/shared';
 import { by, useAction, usePage } from './hooks';
 import { useState, useRef } from 'react';
 import useSWR from 'swr';
-import { ArrowLeft, ChevronDown, ChevronUp, Info, RefreshCw } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronUp, ClipboardList, Info, RefreshCw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@/components/ui/popover';
 import { IamFileUploader } from '@/components/iam/file-uploader';
 import { DeviceTable, DetailField } from '@/components/device/layout';
@@ -325,11 +326,11 @@ export default function PackageDetail({
     },
   );
   const data = pkg.data;
-  const sealed = data?.state === 'SEALED';
-  const revoked = data?.state === 'REVOKED';
+  const verified = data?.state === 'VERIFIED';
+  const sealed = data?.state === 'SEALED' || verified;
   const verifications = usePage<Verification>(
     projectId,
-    sealed || revoked ? by('verifications', { packageId: id }) : null,
+    sealed ? by('verifications', { packageId: id }) : null,
     sealed ? 5000 : 0,
   );
   const [picker, setPicker] = useState(false);
@@ -347,7 +348,7 @@ export default function PackageDetail({
       refreshInterval: (result) => (result?.state === 'RUNNING' ? 5000 : 0),
       onSuccess: (result) => {
         if (result.state === 'PASSED' || result.state === 'FAILED') void verifications.mutate();
-        if (result.state === 'PASSED' && !data?.verificationPassed) void pkg.mutate();
+        if (result.state === 'PASSED' && !verified) void pkg.mutate();
       },
     },
   );
@@ -382,7 +383,7 @@ export default function PackageDetail({
   const readyToSeal = isDelta
     ? data?.state === 'READY_TO_SEAL'
     : data?.state === 'DRAFT' && files.some((file) => file.fileRole === 'FIRMWARE');
-  const needsPreparation = !sealed && !revoked && !readyToSeal;
+  const needsPreparation = !sealed && !readyToSeal;
   const buildTask = build.data;
   const building = !!buildTask && activeBuildStates.includes(buildTask.status);
   const canRetryBuild = !!buildTask && ['FAILED', 'CANCELED'].includes(buildTask.status);
@@ -399,7 +400,12 @@ export default function PackageDetail({
   ].filter(Boolean);
   const verifying = !!runningVerification || record.data?.state === 'RUNNING';
   const waitingForVerification =
-    verifications.data && !verifications.rows.length && !verifications.hasPrevious;
+    verifications.data &&
+    !verifications.error &&
+    verifications.rows.length === 0 &&
+    !verifications.hasPrevious &&
+    !verifications.data.hasMore;
+  const canStartVerification = sealed && create && update;
   return (
     <div className="flex min-w-0 flex-1 flex-col gap-4">
       <header className="flex items-start justify-between gap-3">
@@ -527,15 +533,15 @@ export default function PackageDetail({
               </div>
             </section>
           )}
-          {(sealed || revoked) && (
+          {sealed && (
             <section
               aria-label="样机验证"
-              className={verification ? 'flex min-w-0 flex-1 flex-col gap-3' : 'space-y-3'}
+              className="flex min-w-0 flex-1 flex-col gap-3"
             >
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="font-semibold">{revoked ? '样机验证记录' : '样机验证'}</h3>
-                  {sealed && data.verificationPassed && <Status value="PASSED" />}
+                  <h3 className="font-semibold">样机验证</h3>
+                  {verified && <Status value="VERIFIED" />}
                   {sealed && verifying && (
                     <Badge
                       variant="outline"
@@ -544,15 +550,11 @@ export default function PackageDetail({
                       验证中
                     </Badge>
                   )}
-                  {sealed && waitingForVerification && !verifying && !data.verificationPassed && (
+                  {sealed && waitingForVerification && !verifying && !verified && (
                     <Badge variant="outline">待验证</Badge>
                   )}
                   <Help label="样机验证">
-                    {revoked
-                      ? waitingForVerification
-                        ? '暂无历史验证记录。'
-                        : '查看此升级包的历史验证结果。'
-                      : data.verificationPassed
+                    {verified
                         ? targetVersion?.lifecycleState === 'DRAFT'
                           ? '发布固件版本后即可创建升级批次。'
                           : '创建升级批次，设置设备范围和执行时间。'
@@ -563,19 +565,19 @@ export default function PackageDetail({
                 </div>
                 {sealed && (
                   <div className="flex flex-wrap gap-2">
-                    {create && update && (
+                    {canStartVerification && (
                       <Button
-                        variant={data.verificationPassed ? 'outline' : 'default'}
+                        variant={verified ? 'outline' : 'default'}
                         disabled={action.busy || verifying}
                         onClick={() => {
                           action.setError(undefined);
                           setPicker(true);
                         }}
                       >
-                        {data.verificationPassed ? '再次验证' : '开始样机验证'}
+                        {verified ? '再次验证' : '开始样机验证'}
                       </Button>
                     )}
-                    {data.verificationPassed &&
+                    {verified &&
                       targetVersion?.lifecycleState === 'DRAFT' &&
                       update && (
                         <Button
@@ -585,7 +587,7 @@ export default function PackageDetail({
                           发布固件版本
                         </Button>
                       )}
-                    {data.verificationPassed &&
+                    {verified &&
                       targetVersion?.lifecycleState === 'PUBLISHED' &&
                       create && <Button onClick={() => setReleaseOpen(true)}>创建升级批次</Button>}
                   </div>
@@ -612,18 +614,43 @@ export default function PackageDetail({
                     },
                     {
                       label: '操作',
-                      render: (r) =>
-                        r.id === verification ? (
-                          <Badge variant="secondary">已展开</Badge>
-                        ) : (
-                          <Button variant="outline" size="sm" onClick={() => setVerification(r.id)}>
-                            <ChevronDown />
-                            {sealed && update && r.state === 'DRAFT' ? '继续验证' : '查看设备任务'}
-                          </Button>
-                        ),
+                      render: (r) => (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-32 justify-start"
+                          aria-expanded={r.id === verification}
+                          onClick={() => setVerification(r.id === verification ? '' : r.id)}
+                        >
+                          {r.id === verification ? <ChevronUp /> : <ChevronDown />}
+                          {r.id === verification
+                            ? '收起设备任务'
+                            : sealed && update && r.state === 'DRAFT'
+                              ? '继续验证'
+                              : '查看设备任务'}
+                        </Button>
+                      ),
                     },
                   ]}
                 />
+              ) : verifications.data && !verifications.error ? (
+                <Empty className="min-h-44 flex-none rounded-lg border">
+                  <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                      <ClipboardList aria-hidden="true" />
+                    </EmptyMedia>
+                    <EmptyTitle>
+                      {waitingForVerification ? '暂无样机验证记录' : '本页暂无样机验证记录'}
+                    </EmptyTitle>
+                    <EmptyDescription>
+                      {!waitingForVerification
+                        ? '可通过下方分页查看其他页的验证记录。'
+                        : canStartVerification
+                          ? `点击「${verified ? '再次验证' : '开始样机验证'}」选择试装设备。验证启动后，可在这里查看验证批次和设备任务进度。`
+                          : '此升级包的验证批次和设备任务进度会在这里显示。'}
+                    </EmptyDescription>
+                  </EmptyHeader>
+                </Empty>
               ) : null}
               {(verifications.data?.hasMore || verifications.hasPrevious) && (
                 <Pager {...verifications.pagerProps} />
@@ -636,6 +663,7 @@ export default function PackageDetail({
                     projectId={projectId}
                     sourceType="VERIFICATION"
                     sourceId={verification}
+                    requireAppConfirm={false}
                     toolbarActions={
                       <>
                         {sealed && record.data?.state === 'DRAFT' && update && (

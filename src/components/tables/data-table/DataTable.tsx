@@ -535,12 +535,12 @@ export function GatewayDataTable<T>({
   embedded = false,
 }: {
   rows: T[];
-  columns: { label: string; render: (row: T) => React.ReactNode }[];
+  columns: { label: React.ReactNode; render: (row: T) => React.ReactNode }[];
   embedded?: boolean;
 }) {
   const definitions: ColumnDef<T>[] = columns.map((column, i) => ({
     id: String(i),
-    header: column.label,
+    header: () => column.label,
     cell: ({ row }) => column.render(row.original),
   }));
   const table = useReactTable({

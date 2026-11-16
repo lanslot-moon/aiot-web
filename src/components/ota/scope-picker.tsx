@@ -40,7 +40,8 @@ export default function ScopePicker({
   const path =
     (group ? 'device-groups' : 'devices') +
     query({
-      ...(group ? { keyword: search } : { productId, deviceName: search }),
+      productId: group ? undefined : productId,
+      keyword: search,
       cursor: cursors[cursors.length - 1],
       pageSize: 20,
     });

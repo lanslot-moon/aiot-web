@@ -1,6 +1,10 @@
 import { Pager } from '@/components/policy/shared';
 import { by, useAction, usePage } from './hooks';
 import { useState, type ReactNode } from 'react';
+import useSWR from 'swr';
+import { History } from 'lucide-react';
+import { dispatchResultLabel } from './task-dispatch-reasons';
+import AttemptTimeline from './attempt-timeline';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -11,9 +15,9 @@ import {
   SheetDescription,
 } from '@/components/ui/sheet';
 import { DeviceTable } from '@/components/device/layout';
-import { formatDateTime } from '@/lib/date-time';
+import { CopyIdButton } from '@/components/open-platform/copy-id-button';
 import { usePermission } from '@/context/iam-context/identity';
-import { otaRequest, type Task, type Attempt } from '@/api/ota/client';
+import { otaRequest, type Task, type Attempt, type AttemptEventTimeline, type Page } from '@/api/ota/client';
 import { Choice, Failure, Help, Loading, Modal, Status } from './shared';
 const eligible: Record<string, string[]> = {
   confirm: ['WAIT_CONFIRM'],
@@ -25,25 +29,67 @@ const labels: Record<string, string> = {
   cancel: '取消任务',
   retry: '重试任务',
 };
+function attemptRefreshInterval(data: Page<Attempt> | undefined) {
+  return !data?.items.length || data.items.some((attempt) => attempt.finishedAt == null) ? 5000 : 0;
+}
 function Attempts({ projectId, task }: { projectId: string; task: Task }) {
-  const page = usePage<Attempt>(projectId, by('tasks/attempts', { taskId: task.id }));
+  const page = usePage<Attempt>(
+    projectId,
+    by('tasks/attempts', { taskId: task.id }),
+    attemptRefreshInterval,
+  );
+  const [selectedAttemptNo, setSelectedAttemptNo] = useState<number | null>();
+  const activeAttemptNo = selectedAttemptNo === undefined ? task.attemptNo : selectedAttemptNo;
+  const activeAttempt = page.rows.find((attempt) => attempt.attemptNo === activeAttemptNo);
+  const eventsPath = activeAttempt && `tasks/${task.id}/attempts/${activeAttempt.attemptNo}/events`;
+  const events = useSWR(
+    eventsPath ? [projectId, 'ota', eventsPath] : null,
+    () => otaRequest<AttemptEventTimeline>(projectId, eventsPath!),
+    {
+      refreshInterval: (timeline) => {
+        if (activeAttempt?.finishedAt == null) return 5000;
+        const expiry = Math.min(...(timeline?.events.map((event) => event.expiresAt) ?? []));
+        return Number.isFinite(expiry) ? Math.max(5000, expiry - Date.now()) : 0;
+      },
+      shouldRetryOnError: false,
+    },
+  );
   return (
     <>
-      <Failure error={page.error} retry={() => page.mutate()} />
-      {page.isLoading ? (
-        <Loading />
-      ) : (
-        <DeviceTable
-          rows={page.rows}
-          columns={[
-            { label: '执行轮次', render: (r) => `第 ${r.attemptNo} 轮` },
-            { label: '结果', render: (r) => <Status value={r.state} /> },
-            { label: '开始时间', render: (r) => (r.startedAt ? formatDateTime(r.startedAt) : '—') },
-            { label: '失败原因', render: (r) => r.failureCode ?? '—' },
-          ]}
-        />
-      )}
-      <Pager {...page.pagerProps} />
+      <SheetHeader className="gap-2 pb-2 pt-3">
+        <div className="flex items-center justify-between gap-3 pr-10">
+          <SheetTitle>执行记录</SheetTitle>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={page.isValidating || events.isValidating}
+            onClick={() => void Promise.all([page.mutate(), events.mutate()])}
+          >
+            刷新记录
+          </Button>
+        </div>
+        <SheetDescription className="space-y-1 break-all">
+          <span className="block">{task.deviceId}</span>
+          <span className="block">任务 ID {task.id}</span>
+        </SheetDescription>
+      </SheetHeader>
+      <div className="px-4 pb-4">
+        <Failure error={page.error} retry={() => page.mutate()} />
+        {page.isLoading ? (
+          <Loading />
+        ) : (
+          <AttemptTimeline
+            attempts={page.rows}
+            activeAttemptNo={activeAttemptNo}
+            onToggle={(attemptNo) => setSelectedAttemptNo(activeAttemptNo === attemptNo ? null : attemptNo)}
+            timeline={events.data}
+            loading={events.isLoading}
+            error={events.error}
+            retry={() => events.mutate()}
+          />
+        )}
+        {(page.data?.hasMore || page.hasPrevious) && <Pager {...page.pagerProps} />}
+      </div>
     </>
   );
 }
@@ -51,11 +97,13 @@ export default function Tasks({
   projectId,
   sourceType,
   sourceId,
+  requireAppConfirm,
   toolbarActions,
 }: {
   projectId: string;
   sourceType: 'RELEASE' | 'VERIFICATION';
   sourceId: string;
+  requireAppConfirm: boolean;
   toolbarActions?: ReactNode;
 }) {
   const [state, setState] = useState('');
@@ -66,6 +114,15 @@ export default function Tasks({
   const action = useAction();
   const update = usePermission('ota:update');
   const current = page.rows.filter((t) => selected.includes(t.id));
+  const allSelected = current.length > 0 && current.length === page.rows.length;
+  const detailTask = page.rows.find((task) => task.id === detail?.id) ?? detail;
+  function changePage(navigate?: () => void) {
+    if (!navigate) return undefined;
+    return () => {
+      setSelected([]);
+      navigate();
+    };
+  }
   async function submit() {
     await action.run(async () => {
       await otaRequest(projectId, `tasks/batch/${operation}`, 'POST', {
@@ -83,17 +140,12 @@ export default function Tasks({
     >
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 px-4 py-3">
         <div className="flex flex-wrap items-center gap-3">
-          <div>
-            <div className="flex items-center gap-1">
-              <h3 className="text-sm font-semibold">设备任务</h3>
-              <Help label="任务进度">
-                进度 100%
-                仍需等待设备上报目标版本。重试会保留原任务和每轮执行结果。仅对当前页选中的任务执行操作。
-              </Help>
-            </div>
-            {sourceType === 'VERIFICATION' && (
-              <p className="text-xs text-muted-foreground">验证批次 {sourceId}</p>
-            )}
+          <div className="flex items-center gap-1">
+            <h3 className="text-sm font-semibold">设备任务</h3>
+            <Help label="任务进度">
+              进度 100%
+              仍需等待设备上报目标版本。重试会保留原任务和每轮执行结果。仅对当前页选中的任务执行操作。
+            </Help>
           </div>
           <div className="w-36">
             <Choice
@@ -115,7 +167,7 @@ export default function Tasks({
                   'TIMED_OUT',
                   'RETRY_WAIT',
                   'CANCELED',
-                ].map((value) => ({
+                ].filter((value) => value !== 'WAIT_CONFIRM' || requireAppConfirm).map((value) => ({
                   value,
                   label: (
                     {
@@ -134,11 +186,16 @@ export default function Tasks({
               ]}
             />
           </div>
+          {sourceType === 'VERIFICATION' && (
+            <p className="text-xs text-muted-foreground [overflow-wrap:anywhere]">
+              验证批次 {sourceId}
+            </p>
+          )}
         </div>
         {(update || toolbarActions) && (
           <div className="flex flex-wrap items-center gap-2">
             {update &&
-              Object.keys(labels).map((op) => (
+              Object.keys(labels).filter((op) => op !== 'confirm' || requireAppConfirm).map((op) => (
                 <Button
                   key={op}
                   variant="outline"
@@ -148,7 +205,10 @@ export default function Tasks({
                     !current.length ||
                     !current.every((t) => eligible[op].includes(t.state))
                   }
-                  onClick={() => setOperation(op)}
+                  onClick={() => {
+                    action.setError(undefined);
+                    setOperation(op);
+                  }}
                 >
                   {labels[op]}
                   {current.length ? ` (${current.length})` : ''}
@@ -164,7 +224,7 @@ export default function Tasks({
         </div>
       )}
       <div className="relative min-h-40 flex-1 bg-muted/45">
-        <div className="max-h-96 overflow-auto lg:absolute lg:inset-0 lg:max-h-none [&_[data-slot=table-container]]:overflow-visible [&_thead]:sticky [&_thead]:top-0 [&_thead]:z-10 [&_thead]:bg-muted [&_tbody]:bg-card [&_tr]:border-0 [&_tbody_tr:nth-child(even)]:bg-muted/40 [&_tbody_tr:hover]:bg-muted/60 [&_td]:px-4 [&_th]:px-4">
+        <div className="max-h-96 overflow-auto lg:absolute lg:inset-0 lg:max-h-none [&_[data-slot=table-container]]:overflow-visible [&_thead]:sticky [&_thead]:top-0 [&_thead]:z-10 [&_thead]:bg-muted [&_tbody]:bg-card [&_tr]:border-0 [&_tbody_tr:nth-child(even)]:bg-muted/40 [&_tbody_tr:hover]:bg-muted/60 [&_td]:px-4 [&_th]:px-4 [&_th:first-child]:w-10 [&_th:first-child]:px-3 [&_td:first-child:not([colspan])]:px-3">
           {page.isLoading ? (
             <Loading />
           ) : (
@@ -173,11 +233,23 @@ export default function Tasks({
               rows={page.rows}
               columns={[
                 {
-                  label: '选择',
+                  label: (
+                    <Checkbox
+                      aria-label="全选本页"
+                      title="全选本页"
+                      checked={allSelected}
+                      indeterminate={current.length > 0 && !allSelected}
+                      disabled={page.rows.length === 0 || action.busy}
+                      onCheckedChange={(checked) =>
+                        setSelected(checked ? page.rows.map((task) => task.id) : [])
+                      }
+                    />
+                  ),
                   render: (r) => (
                     <Checkbox
                       aria-label={`选择任务 ${r.deviceId}`}
                       checked={selected.includes(r.id)}
+                      disabled={action.busy}
                       onCheckedChange={(v) =>
                         setSelected((ids) => (v ? [...ids, r.id] : ids.filter((id) => id !== r.id)))
                       }
@@ -186,7 +258,12 @@ export default function Tasks({
                 },
                 {
                   label: '设备',
-                  render: (r) => <span className="font-mono text-xs">{r.deviceId}</span>,
+                  render: (r) => (
+                    <div className="inline-flex items-center gap-1">
+                      <code className="font-mono text-xs">{r.deviceId}</code>
+                      <CopyIdButton value={r.deviceId} label="设备 ID" />
+                    </div>
+                  ),
                 },
                 { label: '状态', render: (r) => <Status value={r.state} /> },
                 {
@@ -198,11 +275,23 @@ export default function Tasks({
                     </span>
                   ),
                 },
-                { label: '失败原因', render: (r) => r.lastErrorCode ?? '—' },
+                {
+                  label: '处理情况',
+                  render: (r) => (
+                    <span className="block max-w-64 whitespace-normal text-xs leading-5">
+                      {r.state === 'WAIT_DISPATCH'
+                        ? r.dispatchReasonCode
+                          ? dispatchResultLabel(r.dispatchReasonCode)
+                          : '暂无近期下发诊断'
+                        : r.lastErrorCode ?? '—'}
+                    </span>
+                  ),
+                },
                 {
                   label: '操作',
                   render: (r) => (
-                    <Button size="sm" variant="ghost" onClick={() => setDetail(r)}>
+                    <Button size="sm" variant="outline" onClick={() => setDetail(r)}>
+                      <History aria-hidden="true" />
                       执行记录
                     </Button>
                   ),
@@ -214,7 +303,11 @@ export default function Tasks({
       </div>
       {(page.data?.hasMore || page.hasPrevious) && (
         <div className="shrink-0 px-4 py-2">
-          <Pager {...page.pagerProps} />
+          <Pager
+            busy={page.pagerProps.busy || action.busy}
+            previous={changePage(page.pagerProps.previous)}
+            next={changePage(page.pagerProps.next)}
+          />
         </div>
       )}
       <Modal
@@ -245,14 +338,8 @@ export default function Tasks({
           if (!v) setDetail(undefined);
         }}
       >
-        <SheetContent className="w-full overflow-y-auto sm:max-w-2xl">
-          <SheetHeader>
-            <SheetTitle>执行记录</SheetTitle>
-            <SheetDescription>{detail?.deviceId}</SheetDescription>
-          </SheetHeader>
-          <div className="p-6">
-            {detail && <Attempts key={detail.id} projectId={projectId} task={detail} />}
-          </div>
+        <SheetContent className="w-full! max-w-lg! gap-2 overflow-y-auto">
+          {detailTask && <Attempts key={detailTask.id} projectId={projectId} task={detailTask} />}
         </SheetContent>
       </Sheet>
     </section>

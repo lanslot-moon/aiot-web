@@ -216,7 +216,12 @@ function ReleaseDetail({
               查看升级包
             </Button>
           </details>
-          <Tasks projectId={projectId} sourceType="RELEASE" sourceId={id} />
+          <Tasks
+            projectId={projectId}
+            sourceType="RELEASE"
+            sourceId={id}
+            requireAppConfirm={config.requireAppConfirm}
+          />
         </>
       )}
       <Modal

@@ -25,7 +25,11 @@ export function useAction() {
   }
   return { busy, error, run, setError };
 }
-export function usePage<T>(projectId: string, path: string | null, refreshInterval = 0) {
+export function usePage<T>(
+  projectId: string,
+  path: string | null,
+  refreshInterval: number | ((data: Page<T> | undefined) => number) = 0,
+) {
   const [position, setPosition] = useState({ path, cursors: [''] });
   const cursors = position.path === path ? position.cursors : [''];
   const cursor = cursors[cursors.length - 1];

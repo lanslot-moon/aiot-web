@@ -57,14 +57,19 @@ export function Field({
   );
 }
 export function Status({ value }: { value: string }) {
+  const failed = value === 'FAILED' || value === 'TIMED_OUT';
   return (
     <Badge
-      variant="outline"
+      variant={failed ? 'destructive' : 'outline'}
       className={cn(
         'whitespace-nowrap font-normal',
-        ['PASSED', 'SUCCEEDED', 'SEALED', 'PUBLISHED', 'ACTIVE'].includes(value) &&
-          'border-emerald-500/25 bg-emerald-500/5 text-emerald-700 dark:text-emerald-400',
-        ['FAILED', 'TIMED_OUT'].includes(value) && 'border-red-500/25 text-red-600',
+        ['PASSED', 'SUCCEEDED', 'SEALED', 'VERIFIED', 'PUBLISHED', 'ACTIVE'].includes(value) &&
+          'border-emerald-500/25! bg-emerald-500/10! text-emerald-700! dark:text-emerald-400!',
+        failed && 'border-destructive/30!',
+        ['RUNNING', 'NOTIFIED'].includes(value) &&
+          'border-blue-500/25! bg-blue-500/10! text-blue-700! dark:text-blue-400!',
+        ['WAIT_CONFIRM', 'WAIT_DISPATCH', 'RETRY_WAIT'].includes(value) &&
+          'border-amber-500/25! bg-amber-500/10! text-amber-800! dark:text-amber-300!',
       )}
     >
       {states[value] ?? value}

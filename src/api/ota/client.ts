@@ -23,7 +23,6 @@ export interface FirmwareVersion {
   createTime: number;
 }
 export interface Package {
-  verificationPassed?: boolean;
   id: string;
   targetVersionId: string;
   packageType: 'FULL' | 'DELTA';
@@ -116,6 +115,22 @@ export interface Task {
   attemptNo: number;
   lastErrorCode?: string;
   nextActionAt?: number;
+  createTime?: number;
+  lastDispatchAt?: number | null;
+  dispatchReasonCode?: string | null;
+}
+export interface AttemptEvent {
+  eventId: string;
+  type: string;
+  reasonCode: string | null;
+  message: string | null;
+  occurredAt: number;
+  expiresAt: number;
+}
+export interface AttemptEventTimeline {
+  events: AttemptEvent[];
+  historyOutsideRetention: boolean;
+  truncated: boolean;
 }
 export interface Attempt {
   id: string;
@@ -124,6 +139,7 @@ export interface Attempt {
   failureCode?: string;
   startedAt?: number;
   finishedAt?: number;
+  createTime: number;
 }
 export interface Statistics {
   matchedDevices: number;
@@ -141,13 +157,14 @@ export function otaRequest<T>(
   return request<T>('/api/v1/ota/' + path, method, body, { projectId, successCode: 'SUCCESS' });
 }
 export const states: Record<string, string> = {
+  CREATED: '轮次已建立',
   ACTIVE: '已激活',
   DRAFT: '草稿',
   BUILDING: '构建中',
   READY_TO_SEAL: '待封存',
   PUBLISHED: '已发布',
   SEALED: '已封存',
-  REVOKED: '已撤销',
+  VERIFIED: '验证成功',
   PAUSED: '已暂停',
   STOPPED: '已停止',
   LOST: '执行失联',

@@ -115,7 +115,7 @@ export default function ReleaseWizard({
       step === 0 &&
       (!policy.productId || !policy.moduleId || !policy.targetVersionId || !policy.packageId)
     )
-      throw new Error('请选择产品、已发布版本及已封存升级包。');
+      throw new Error('请选择产品、已发布版本及验证成功的升级包。');
     if (step >= 1) {
       if (scope === 'devices' && !splitValues(deviceText).length)
         throw new Error('请填写至少一个设备 ID。');
@@ -287,7 +287,7 @@ export default function ReleaseWizard({
                 projectId={projectId}
                 path={
                   policy.targetVersionId
-                    ? by('packages', { targetVersionId: policy.targetVersionId, state: 'SEALED' })
+                    ? by('packages', { targetVersionId: policy.targetVersionId, state: 'VERIFIED' })
                     : null
                 }
                 value={policy.packageId}

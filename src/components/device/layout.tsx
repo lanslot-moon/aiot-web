@@ -15,7 +15,7 @@ export function DetailField({ label, children, fullWidth = false }: {
 }
 
 export function DeviceTable<T>({ rows, columns, stickyActions = false, embedded = false }: {
-  rows: T[]; columns: { label: string; render: (row: T) => ReactNode }[]; stickyActions?: boolean; embedded?: boolean;
+  rows: T[]; columns: { label: ReactNode; render: (row: T) => ReactNode }[]; stickyActions?: boolean; embedded?: boolean;
 }) {
   return <div className={cn(
     'min-w-0',
