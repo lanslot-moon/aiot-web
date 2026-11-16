@@ -5,15 +5,22 @@ import { Pager } from '@/components/policy/shared';
 import { by, useAction, usePage } from './hooks';
 import { useState, useRef } from 'react';
 import useSWR from 'swr';
-import { ArrowLeft, ChevronDown, ChevronUp, ClipboardList, Info, RefreshCw } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronUp, ClipboardList, Download, Info, RefreshCw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@/components/ui/popover';
 import { IamFileUploader } from '@/components/iam/file-uploader';
 import { DeviceTable, DetailField } from '@/components/device/layout';
 import { usePermission } from '@/context/iam-context/identity';
+import { downloadPrivateFile } from '@/api/iam/files';
 import {
   otaRequest,
   type Package,
@@ -337,6 +344,8 @@ export default function PackageDetail({
   const [selectedVerification, setVerification] = useState<string>();
   const [releaseOpen, setReleaseOpen] = useState(false);
   const action = useAction();
+  const download = useAction();
+  const canDownload = usePermission('file:view');
   const create = usePermission('ota:create');
   const update = usePermission('ota:update');
   const runningVerification = verifications.rows.find((r) => r.state === 'RUNNING');
@@ -408,7 +417,7 @@ export default function PackageDetail({
   const canStartVerification = sealed && create && update;
   return (
     <div className="flex min-w-0 flex-1 flex-col gap-4">
-      <header className="flex items-start justify-between gap-3">
+      <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-2">
           <Button
             variant="ghost"
@@ -485,17 +494,50 @@ export default function PackageDetail({
             )}
           </div>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={pkg.isValidating}
-          onClick={() => void refresh()}
-        >
-          <RefreshCw /> 刷新
-        </Button>
+        <div className="ml-auto flex flex-wrap justify-end gap-2">
+          {canDownload && files.length === 1 && (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={download.busy}
+              onClick={() => void download.run(() => downloadPrivateFile(files[0].fileId))}
+            >
+              <Download /> {download.busy ? '正在获取下载地址…' : '下载升级包'}
+            </Button>
+          )}
+          {canDownload && files.length > 1 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={<Button variant="outline" size="sm" />}
+                disabled={download.busy}
+              >
+                <Download /> {download.busy ? '正在获取下载地址…' : '下载升级包'} <ChevronDown />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-auto">
+                {files.map((file) => (
+                  <DropdownMenuItem
+                    key={file.fileId}
+                    onClick={() => void download.run(() => downloadPrivateFile(file.fileId))}
+                  >
+                    {file.fileRole} · {file.fileId}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={pkg.isValidating}
+            onClick={() => void refresh()}
+          >
+            <RefreshCw /> 刷新
+          </Button>
+        </div>
       </header>
       <Failure error={pkg.error} retry={() => pkg.mutate()} />
       <Failure error={action.error} />
+      <Failure error={download.error} />
       {!data ? (
         pkg.isLoading ? (
           <Loading />
