@@ -146,7 +146,7 @@ const ProjectOverviewPage = () => {
                   </div>
                   {summaryError ? (
                     <ApiErrorAlert
-                      code={(summaryError as OpenPlatformApiError).code}
+                      error={summaryError}
                       message={summaryError.message}
                       onRetry={() => void mutateSummary()}
                     />
@@ -175,7 +175,7 @@ const ProjectOverviewPage = () => {
               <CardContent className="space-y-4">
                 {authzError ? (
                   <ApiErrorAlert
-                    code={(authzError as OpenPlatformApiError).code}
+                    error={authzError}
                     message={authzError.message}
                     onRetry={() => void mutateAuthz()}
                   />

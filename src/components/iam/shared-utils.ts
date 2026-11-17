@@ -1,3 +1,4 @@
+import { apiCode } from '@/api/response';
 import { get, OpenPlatformApiError } from '@/api/iam/client';
 import useSWR from 'swr';
 import { permissionAuthorization, useIam } from '../../context/iam-context/identity';
@@ -34,7 +35,7 @@ export function useResource<T>(
   if (permission && authorization.data && !allowed)
     return {
       ...resource,
-      error: new OpenPlatformApiError('FORBIDDEN', '当前账号没有访问此功能的权限。', 403),
+      error: new OpenPlatformApiError(apiCode.forbidden, '当前账号没有访问此功能的权限。', 403),
     };
   return {
     ...resource,

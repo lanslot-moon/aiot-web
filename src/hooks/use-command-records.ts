@@ -154,7 +154,7 @@ export function useCommandRecords(projectId: string, deviceId: string, filter: s
         try {
           const response = await requestResponse(base + '/commands/stream', 'GET', undefined,
             { projectId, signal, accept: 'text/event-stream' });
-          if (!response.ok) await parseResponse(response);
+          if (!response.ok || response.headers.get('content-type')?.includes('application/json')) await parseResponse(response);
           if (!response.headers.get('content-type')?.toLowerCase().startsWith('text/event-stream') || !response.body) {
             await response.body?.cancel();
             throw new Error('实时记录接口未返回事件流，请检查网关配置。');

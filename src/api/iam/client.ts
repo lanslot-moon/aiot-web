@@ -1,4 +1,5 @@
 import type { AuthResultVO, TokenVO } from './contracts';
+import { apiCode, type FieldError, type RestResult } from '../response';
 
 const SESSION_KEY = 'aiot:iam:session';
 export const SESSION_EVENT = 'aiot:iam:session-changed';
@@ -44,44 +45,45 @@ export function setSession(value: TokenVO | null) {
 }
 export class OpenPlatformApiError extends Error {
   constructor(
-    public code: string,
+    public code: number | undefined,
     message: string,
     public status = 0,
-    public errors: { field: string; message: string }[] = [],
+    public errors: FieldError[] = [],
+    public traceId?: string,
   ) {
     super(message);
     this.name = 'OpenPlatformApiError';
   }
 }
-const errorCopy: Record<string, string> = {
-  UNAUTHENTICATED: '登录已失效，请重新登录。',
-  FORBIDDEN: '当前账号没有执行此操作的权限。',
-  NOTIFICATION_PROVIDER_UNAVAILABLE: '邮件或短信服务尚未配置，暂时无法发送验证码。',
-  ROUTE_NOT_ENABLED: '网关尚未开放此接口，请检查路由配置。',
+const errorCopy: Partial<Record<number, string>> = {
+  [apiCode.unauthenticated]: '登录已失效，请重新登录。',
+  [apiCode.forbidden]: '当前账号没有执行此操作的权限。',
+  [apiCode.notificationUnavailable]: '邮件或短信服务尚未配置，暂时无法发送验证码。',
 };
-export async function parseResponse<T>(response: Response, successCode: '200' | 'OK' | 'SUCCESS' = '200'): Promise<T> {
-  let payload: {
-    code?: string;
-    message?: string;
-    data: T;
-    errors?: { field: string; message: string }[];
-  };
+export async function parseResponse<T>(response: Response): Promise<T> {
+  let payload: RestResult<T> | null = null;
   try {
     payload = await response.json();
   } catch {
+    // 网关或代理可能直接返回 HTTP 错误页面。
+  }
+  if (!payload || typeof payload.code !== 'number' || !Number.isInteger(payload.code) ||
+      typeof payload.success !== 'boolean') {
     throw new OpenPlatformApiError(
-      'INVALID_RESPONSE',
-      `接口响应格式异常（HTTP ${response.status}），请检查网关入口。`,
+      undefined,
+      response.ok
+        ? `接口响应格式异常（HTTP ${response.status}），请检查网关入口。`
+        : errorCopy[response.status] ?? `请求失败（HTTP ${response.status}）`,
       response.status,
     );
   }
-  if (!response.ok || payload.code !== successCode) {
-    const code = payload.code ?? String(response.status);
+  if (!response.ok || !payload.success) {
     throw new OpenPlatformApiError(
-      code,
-      errorCopy[code] ?? payload.message ?? `请求失败（HTTP ${response.status}）`,
+      payload.code,
+      errorCopy[payload.code] ?? payload.msg ?? `请求失败（业务码 ${payload.code}）`,
       response.status,
       payload.errors ?? [],
+      payload.traceId ?? undefined,
     );
   }
   return payload.data;
@@ -107,10 +109,10 @@ export async function renewSession(): Promise<TokenVO> {
   if (renewal) return renewal;
   const previous = session;
   if (!previous?.refreshToken)
-    throw new OpenPlatformApiError('UNAUTHENTICATED', errorCopy.UNAUTHENTICATED, 401);
+    throw new OpenPlatformApiError(apiCode.unauthenticated, '登录已失效，请重新登录。');
   const refresh = async (): Promise<TokenVO> => {
     if (session?.sessionId !== previous.sessionId)
-      throw new OpenPlatformApiError('SESSION_CHANGED', '登录状态已发生变化，请重试。');
+      throw new OpenPlatformApiError(undefined, '登录状态已发生变化，请重试。');
     // 锁等待期间其他标签页可能已完成轮换；请求其当前令牌，避免消费旧的单次刷新令牌。
     if (sessionChannel && session.refreshToken === previous.refreshToken) {
       await new Promise<void>((resolve) => {
@@ -129,7 +131,7 @@ export async function renewSession(): Promise<TokenVO> {
       });
     }
     if (session?.sessionId !== previous.sessionId)
-      throw new OpenPlatformApiError('SESSION_CHANGED', '登录状态已发生变化，请重试。');
+      throw new OpenPlatformApiError(undefined, '登录状态已发生变化，请重试。');
     if (session.refreshToken !== previous.refreshToken) return session;
     const initialRevision = revision;
     try {
@@ -138,7 +140,7 @@ export async function renewSession(): Promise<TokenVO> {
         { refreshToken: previous.refreshToken }, { anonymous: true },
       );
       if (revision !== initialRevision)
-        throw new OpenPlatformApiError('SESSION_CHANGED', '登录状态已发生变化，请重试。');
+        throw new OpenPlatformApiError(undefined, '登录状态已发生变化，请重试。');
       setSession(result.token);
       sessionChannel?.postMessage({ type: 'renewed', sessionId: previous.sessionId,
         previousRefreshToken: previous.refreshToken, token: result.token });
@@ -146,8 +148,8 @@ export async function renewSession(): Promise<TokenVO> {
     } catch (error) {
       // 仅认证明确失效才退出；路由、限流和依赖故障保留会话供重试。
       if (revision === initialRevision && error instanceof OpenPlatformApiError &&
-        ((error.status === 401 && ['REFRESH_INVALID', 'TOKEN_INVALID', 'UNAUTHENTICATED'].includes(error.code)) ||
-          (error.status === 403 && error.code === 'ACCOUNT_DISABLED')))
+        (error.status === 401 || error.code === apiCode.unauthenticated ||
+          error.code === apiCode.refreshInvalid || error.code === apiCode.accountDisabled))
         setSession(null);
       throw error;
     }
@@ -179,7 +181,7 @@ export async function requestResponse(
     ? decodeURIComponent(projectPath[1])
     : undefined;
   if (options.projectId && pathProjectId && options.projectId !== pathProjectId)
-    throw new OpenPlatformApiError('PARAM_INVALID', '路径项目与选择的项目不一致。');
+    throw new OpenPlatformApiError(apiCode.invalidArgument, '路径项目与选择的项目不一致。');
   const projectId = options.projectId ?? pathProjectId;
   const send = () =>
     fetch(path, {
@@ -212,17 +214,17 @@ export async function requestResponse(
       (error instanceof DOMException && error.name === 'AbortError')
     )
       throw error;
-    throw new OpenPlatformApiError('NETWORK_ERROR', '无法连接服务，请检查网络后重试。');
+    throw new OpenPlatformApiError(undefined, '无法连接服务，请检查网络后重试。');
   }
 }
 export async function request<T>(
   path: string,
   method = 'GET',
   body?: unknown,
-  options: { anonymous?: boolean; signal?: AbortSignal; projectId?: string; successCode?: '200' | 'OK' | 'SUCCESS' } = {},
+  options: { anonymous?: boolean; signal?: AbortSignal; projectId?: string } = {},
 ): Promise<T> {
   const response = await requestResponse(path, method, body, options);
-  return parseResponse<T>(response, options.successCode);
+  return parseResponse<T>(response);
 }
 export const get = <T>(path: string) => request<T>(path);
 export const post = <T>(path: string, body?: unknown) => request<T>(path, 'POST', body);

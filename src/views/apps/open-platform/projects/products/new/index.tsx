@@ -385,7 +385,7 @@ const CreateProductPage = () => {
 
               {submitError ? (
                 <ApiErrorAlert
-                  code={apiError?.code}
+                  error={apiError}
                   message={submitError.message}
                   onRetry={() => {
                     const formElement = document.querySelector<HTMLFormElement>(
@@ -527,7 +527,7 @@ const CreateProductPage = () => {
                         <Field data-invalid={Boolean(errors.categoryCode) || undefined}>
                           {categoriesError ? (
                             <ApiErrorAlert
-                              code={categoryApiError?.code}
+                              error={categoryApiError}
                               message={categoriesError.message}
                               onRetry={() => void mutateCategories()}
                             />
@@ -577,7 +577,7 @@ const CreateProductPage = () => {
                           <div className="min-h-0 flex-1 [&>div]:h-full">
                             {selectedCategoryVersionsError ? (
                               <ApiErrorAlert
-                                code={selectedVersionsApiError?.code}
+                                error={selectedVersionsApiError}
                                 message={selectedCategoryVersionsError.message}
                                 onRetry={() => void mutateSelectedCategoryVersions()}
                               />

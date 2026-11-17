@@ -1,3 +1,4 @@
+import { apiCode } from '@/api/response';
 import { v4 as uuidv4 } from 'uuid';
 import { useEffect, useRef, useState } from 'react';
 import { OpenPlatformApiError } from '@/api/iam/client';
@@ -112,6 +113,8 @@ export function usePropertyReport(projectId: string) {
 function isDefiniteRejection(failure: unknown): boolean {
   if (!(failure instanceof OpenPlatformApiError)) return false;
   const rejectedByClientError = failure.status >= 400 && failure.status < 500;
-  const mayAlreadyBeAccepted = failure.code === 'IDEMPOTENT_REQUEST_IN_PROGRESS';
-  return rejectedByClientError && !mayAlreadyBeAccepted;
+  const mayAlreadyBeAccepted = failure.code === apiCode.simulationReportInProgress;
+  const rejectedByService = [apiCode.simulationInvalidArgument, apiCode.simulationIdempotencyConflict,
+    apiCode.simulationResourceNotFound, apiCode.simulationSessionChanged].some(code => code === failure.code);
+  return !mayAlreadyBeAccepted && (rejectedByClientError || rejectedByService);
 }

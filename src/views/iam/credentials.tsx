@@ -1,3 +1,4 @@
+import { apiCode } from '@/api/response';
 import { formatDateTime } from '@/lib/date-time';
 import { get, OpenPlatformApiError, post, put, remove, segment } from '@/api/iam/client';
 import type {
@@ -33,8 +34,7 @@ function ProjectCredentials({ projectId }: { projectId: string }) {
   const available = !!metadata.data?.clientId && metadata.data.status !== 'REVOKED';
   const uninitialized =
     metadata.error instanceof OpenPlatformApiError &&
-    metadata.error.status === 404 &&
-    metadata.error.code === 'NOT_FOUND';
+    metadata.error.code === apiCode.notFound;
   const usage = useResource<AuthorizationLastUsedVO>(
     available ? `${base}/api-credential-usage` : null,
     permission,

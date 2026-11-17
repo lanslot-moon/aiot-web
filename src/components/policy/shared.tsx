@@ -1,3 +1,4 @@
+import { apiCode } from '@/api/response';
 import type { ReactNode } from 'react';
 import { Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -34,9 +35,7 @@ export function CatalogFailure({ projectId, source, error, retry }: {
   const catalog = source === 'platform' ? '平台权限目录' : '设备 ATOP 接口目录';
   let description: string | undefined;
   if (error instanceof OpenPlatformApiError) {
-    if (error.code === 'ROUTE_NOT_ENABLED') {
-      description = `网关尚未开放${catalog}，请联系管理员检查路由。`;
-    } else if (error.code === 'FORBIDDEN' || error.status === 403) {
+    if (error.code === apiCode.forbidden || error.status === 403) {
       if (!projectAuthorization) description = `无法读取${catalog}。请确认当前项目角色有「查看授权策略」权限；若能打开策略草稿，请联系管理员检查目录接口登记。`;
       else if (projectAuthorization.permissionCodes.includes('policy:read')) description = `当前项目已有「查看授权策略」权限，但${catalog}请求仍被拒绝。请联系管理员检查目录接口是否已登记并生效。`;
       else description = `当前项目角色缺少「查看授权策略」权限，无法读取${catalog}。`;

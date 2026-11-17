@@ -1,7 +1,7 @@
 import { http, HttpResponse } from 'msw';
+import { apiCode, type RestResult } from 'src/api/response';
 import { categoryLabel } from 'src/lib/open-platform-category';
 import {
-  REST_SUCCESS_CODE,
   type AccountView,
   type AuthorizationMetadataView,
   type CategoryVersionView,
@@ -44,7 +44,6 @@ import {
   type RefreshRequest,
   type RegisterRequest,
   type RegisterResult,
-  type RestResult,
   type TokenResponse,
   type ThingModelDefinition,
   type UpdateProjectRequest,
@@ -59,15 +58,21 @@ type ParserProfileVersionRecord = ParserProfileVersionView;
 const now = Date.UTC(2026, 7, 1, 8, 0, 0);
 
 function ok<T>(data: T): RestResult<T> {
-  return { code: REST_SUCCESS_CODE, message: 'Success', data };
+  return { code: apiCode.success, success: true, msg: null, data };
 }
 
-function fail(code: string, message: string, status = 400) {
+function fail(reason: string, msg: string, status = 400) {
+  const code = mockBusinessCodes[reason] ?? status;
   return HttpResponse.json(
-    { code, message, data: null } satisfies RestResult<null>,
+    { code, success: false, msg, data: null } satisfies RestResult<null>,
     { status },
   );
 }
+
+const mockBusinessCodes: Partial<Record<string, number>> = {
+  MODEL_NOT_PUBLISHED: apiCode.modelNotPublished,
+  PRODUCT_MODEL_NOT_PUBLISHED: apiCode.productModelNotPublished,
+};
 
 function newId(prefix: string): string {
   return `${prefix}_${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36)}`;
@@ -2371,7 +2376,7 @@ function findPublishedModel(productId: string): ModelVersionRecord | undefined {
 function productPublishPrecheckFailure(product: ProductRecord) {
   if (!findPublishedModel(product.productId)) {
     return {
-      code: 'MODEL_NOT_PUBLISHED',
+      code: 'PRODUCT_MODEL_NOT_PUBLISHED',
       message: '产品物模型尚未发布',
       status: 409,
     };

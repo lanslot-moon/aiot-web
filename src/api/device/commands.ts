@@ -10,7 +10,7 @@ export interface CommandRecord {
 export interface CommandSubmission { requestId: string; responseDeadlineAt: number; evaluatedAt: number }
 export const commandPath = (id: string) => `/api/v1/commands/${encodeURIComponent(id)}`;
 export function commandRequest<T>(projectId: string, path: string, method = 'GET', body?: unknown) {
-  return request<T>(path, method, body, { projectId, successCode: '200' });
+  return request<T>(path, method, body, { projectId });
 }
 export const deliveryLabels: Record<string, string> = { DISPATCHING: '正在投递', BROKER_ACCEPTED: '消息代理已接收', NOT_SENT: '未发送', UNKNOWN: '投递结果未知' };
 export const executionLabels: Record<string, string> = { PENDING: '等待设备结果', SUCCEEDED: '执行成功', FAILED: '执行失败', REJECTED: '设备拒绝', NOT_EXECUTED: '未执行' };

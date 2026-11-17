@@ -93,7 +93,7 @@ const CategoryCatalogPage = () => {
               <CardContent className="py-4">
                 {categoriesError ? (
                   <ApiErrorAlert
-                    code={categoryError?.code}
+                    error={categoryError}
                     message={categoriesError.message}
                     onRetry={() => void mutateCategories()}
                   />
@@ -148,12 +148,12 @@ const CategoryCatalogPage = () => {
             <div className="min-w-0">
               {detailError ? (
                 <ApiErrorAlert
-                  code={selectedCategoryError?.code}
+                  error={selectedCategoryError}
                   message={detailError.message}
                 />
               ) : versionsError ? (
                 <ApiErrorAlert
-                  code={selectedVersionError?.code}
+                  error={selectedVersionError}
                   message={versionsError.message}
                   onRetry={() => void mutateVersions()}
                 />

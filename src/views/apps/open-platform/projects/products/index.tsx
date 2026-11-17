@@ -237,7 +237,7 @@ const ProjectProductsPage = () => {
                   <TableRow>
                     <TableCell colSpan={8} className="h-32 px-6">
                       <ApiErrorAlert
-                        code={productError?.code}
+                        error={productError}
                         message={error.message}
                         onRetry={() => void mutate()}
                       />

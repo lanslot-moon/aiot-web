@@ -45,7 +45,7 @@ export function useSimulationEvents(projectId: string, instanceId?: string) {
         const after = cursor.current.key === key ? cursor.current.id : undefined;
         const path = simulationPath(`instances/${encodeURIComponent(instanceId!)}/events/stream`) + (after ? `?after=${encodeURIComponent(after)}` : '');
         const response = await requestResponse(path, 'GET', undefined, { projectId, signal: controller.signal, accept: 'text/event-stream' });
-        if (!response.ok) await parseResponse(response);
+        if (!response.ok || response.headers.get('content-type')?.includes('application/json')) await parseResponse(response);
         if (!response.body || !response.headers.get('content-type')?.includes('text/event-stream')) throw new Error('服务未返回模拟事件流');
         const reader = response.body.getReader();
         const decoder = new TextDecoder();

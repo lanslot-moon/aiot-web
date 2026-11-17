@@ -1380,7 +1380,7 @@ const ProductCredentialsPage = () => {
     return (
       <StyleAwareWrapper lyraClassName="flex flex-col gap-px bg-border p-px" defaultClassName="flex flex-col gap-4">
         <ProjectWorkspaceShell activePrimary="products" breadcrumbs={<BreadcrumbTrail title="凭证与量产" items={breadcrumbItems} />}>
-          <ApiErrorAlert code={(productError as OpenPlatformApiError | undefined)?.code} message={productError?.message ?? '产品不存在。'} />
+          <ApiErrorAlert error={productError} message={productError?.message ?? '产品不存在。'} />
         </ProjectWorkspaceShell>
       </StyleAwareWrapper>
     );
@@ -1390,7 +1390,7 @@ const ProductCredentialsPage = () => {
     <StyleAwareWrapper lyraClassName="flex flex-col gap-px bg-border p-px" defaultClassName="flex flex-col gap-4">
       <ProjectWorkspaceShell activePrimary="products" breadcrumbs={<BreadcrumbTrail title="凭证与量产" items={breadcrumbItems} />}>
         <div className="space-y-4">
-          {hasErrors ? <ApiErrorAlert code="CREDENTIAL_DATA_ERROR" message="凭证数据加载失败，请刷新后重试。" /> : null}
+          {hasErrors ? <ApiErrorAlert message="凭证数据加载失败，请刷新后重试。" /> : null}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
               <Button type="button" variant="ghost" size="sm" className="-ml-2 mb-1 gap-1 px-2 text-muted-foreground" nativeButton={false} render={<Link to={`/projects/${projectId}/products/${productId}`} />}>

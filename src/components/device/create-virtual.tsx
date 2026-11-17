@@ -1,3 +1,4 @@
+import { apiCode } from '@/api/response';
 import { useRef, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import { usePermission } from '@/context/iam-context/identity';
@@ -42,7 +43,8 @@ export default function CreateVirtualDevice({ projectId, done }: { projectId: st
     } catch (failure) {
       setError(failure);
       // Creation has only short-window deduplication. Do not blindly repeat an uncertain request.
-      if (failure instanceof OpenPlatformApiError && (failure.status >= 500 || ['NETWORK_ERROR', 'INVALID_RESPONSE'].includes(failure.code))) setUncertain(true);
+      if (failure instanceof OpenPlatformApiError && (failure.status >= 500 || (failure.code === undefined && failure.status < 400) ||
+        [500, apiCode.deviceDependencyTimeout, apiCode.deviceResultUnknown].some(code => code === failure.code))) setUncertain(true);
     } finally { pending.current = false; setBusy(false); }
   }
   return <>

@@ -373,7 +373,7 @@ export function ProjectWorkspaceShell({
   if (error && !project) {
     return (
       <ApiErrorAlert
-        code={(error as OpenPlatformApiError).code}
+        error={error}
         message={error.message}
         onRetry={() => mutate()}
       />

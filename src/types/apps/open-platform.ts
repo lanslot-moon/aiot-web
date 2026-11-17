@@ -1,10 +1,3 @@
-export interface RestResult<T> {
-  code: string;
-  message: string;
-  data: T;
-}
-export const REST_SUCCESS_CODE = "200";
-
 export interface CursorResult<T> {
   items: T[];
   nextCursor: string | null;

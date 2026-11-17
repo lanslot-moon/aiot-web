@@ -385,7 +385,7 @@ const ParserProfileDetailPage = () => {
     return (
       <StyleAwareWrapper lyraClassName="flex flex-col gap-px bg-border p-px" defaultClassName="flex flex-col gap-4">
         <ProjectWorkspaceShell activePrimary="parserProfiles">
-          <ApiErrorAlert code={apiError?.code} message={apiError?.message} />
+          <ApiErrorAlert error={apiError} message={apiError?.message} />
         </ProjectWorkspaceShell>
       </StyleAwareWrapper>
     );
@@ -397,7 +397,7 @@ const ParserProfileDetailPage = () => {
       defaultClassName="flex flex-col gap-4"
     >
       <ProjectWorkspaceShell activePrimary="parserProfiles" breadcrumbs={<BreadcrumbTrail title="协议解析详情" items={[{ to: profileListPath, title: '协议解析' }, { title: profile?.profileName ?? '详情' }]} />}>
-        {apiError ? <ApiErrorAlert code={apiError.code} message={apiError.message} /> : null}
+        {apiError ? <ApiErrorAlert error={apiError} message={apiError.message} /> : null}
         {profileLoading ? <RequestLoading label="正在加载 Profile…" /> : profile ? (
         <div className="space-y-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">

@@ -148,7 +148,7 @@ const ParserProfilesPage = () => {
           </AlertAction>
         </Alert>}
 
-        {apiError ? <ApiErrorAlert code={apiError.code} message={apiError.message} /> : null}
+        {apiError ? <ApiErrorAlert error={apiError} message={apiError.message} /> : null}
 
         <div className="flex flex-col gap-4">
           <div className="flex flex-wrap items-center justify-between gap-3">

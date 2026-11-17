@@ -1,3 +1,4 @@
+import { apiCode } from '@/api/response';
 import { FC } from 'react';
 import Sidebar from './vertical/sidebar/Sidebar';
 import Header from './vertical/header/Header';
@@ -26,7 +27,7 @@ function ProjectContent() {
   if (projectId) {
     if (platformAuthorization.error) return <ErrorNotice error={platformAuthorization.error} retry={() => platformAuthorization.mutate()} />;
     if (!platformAuthorization.data) return <Loading />;
-    if (!platformAuthorization.data.permissionCodes.includes('project:view')) return <ErrorNotice error={new OpenPlatformApiError('FORBIDDEN', '当前账号没有查看项目的权限。', 403)} />;
+    if (!platformAuthorization.data.permissionCodes.includes('project:view')) return <ErrorNotice error={new OpenPlatformApiError(apiCode.forbidden, '当前账号没有查看项目的权限。', 403)} />;
     if (detail?.error) return <ErrorNotice title="项目加载失败" error={detail.error} retry={() => detail.mutate()} />;
     if (!detail?.data) return <Loading />;
     const status = detail.data.project.status;
@@ -52,8 +53,8 @@ function ProjectContent() {
   }
   if (pageAuthorization?.error) return <ErrorNotice presentation="empty" title={section === 'settings' ? '项目管理权限加载失败' : '项目权限加载失败'} error={pageAuthorization.error} retry={() => pageAuthorization.mutate()} />;
   if (pageAuthorization && !pageAuthorization.data) return <Loading />;
-  if (pageAuthorization?.data && !canNavigate(section, codes ?? [])) return <ErrorNotice error={new OpenPlatformApiError('FORBIDDEN', '当前账号没有访问此功能的权限。', 403)} />;
-  if (authorization?.data && pathname.endsWith('/model') && !authorization.data.permissionCodes.includes('thing-model:view')) return <ErrorNotice error={new OpenPlatformApiError('FORBIDDEN', '当前项目角色没有查看物模型的权限。', 403)} />;
+  if (pageAuthorization?.data && !canNavigate(section, codes ?? [])) return <ErrorNotice error={new OpenPlatformApiError(apiCode.forbidden, '当前账号没有访问此功能的权限。', 403)} />;
+  if (authorization?.data && pathname.endsWith('/model') && !authorization.data.permissionCodes.includes('thing-model:view')) return <ErrorNotice error={new OpenPlatformApiError(apiCode.forbidden, '当前项目角色没有查看物模型的权限。', 403)} />;
   return <Outlet />;
 }
 

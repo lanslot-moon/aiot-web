@@ -2,11 +2,11 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { CircleAlert, CloudOff, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { OpenPlatformApiError } from '@/api/iam/client';
+import { apiCode } from '@/api/response';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription, EmptyContent } from '@/components/ui/empty';
 
-const unavailableCodes = ['503', '502', '504', 'NETWORK_ERROR', 'AUTHZ_UNAVAILABLE', 'SERVICE_UNAVAILABLE', 'ROUTE_NOT_ENABLED'];
 export function ErrorNotice({ error, retry, title, description, retryLabel = '重试', presentation = 'inline' }: {
   error?: unknown;
   retry?: () => unknown | Promise<unknown>;
@@ -21,10 +21,14 @@ export function ErrorNotice({ error, retry, title, description, retryLabel = '�
   const toastId = useId();
   const lastError = useRef('');
   const apiError = error instanceof OpenPlatformApiError ? error : null;
-  const unavailable = !!apiError && ([502, 503, 504].includes(apiError.status) || unavailableCodes.includes(apiError.code));
-  const heading = title ?? (apiError?.status === 401 ? '登录已失效' : apiError?.status === 403 ? '没有访问权限' : unavailable ? '服务暂时不可用' : '操作未完成');
+  const unavailable = !!apiError && [502, 503, 504].some(code => code === apiError.status || code === apiError.code);
+  const unauthenticated = apiError?.status === 401 || apiError?.code === apiCode.unauthenticated;
+  const forbidden = apiError?.status === 403 || apiError?.code === apiCode.forbidden;
+  const heading = title ?? (unauthenticated ? '登录已失效' : forbidden ? '没有访问权限' : unavailable ? '服务暂时不可用' : '操作未完成');
   const message = description ?? (unavailable ? '请稍后重试。' : error instanceof Error ? error.message : '操作失败，请重试。');
-  const diagnostic = [apiError?.code, apiError?.status ? `HTTP ${apiError.status}` : '', error instanceof Error ? error.message : '未知错误'].filter(Boolean).join(' · ');
+  const diagnostic = [apiError?.code, apiError?.status ? `HTTP ${apiError.status}` : '',
+    apiError?.traceId ? `traceId ${apiError.traceId}` : '',
+    error instanceof Error ? error.message : '未知错误'].filter(Boolean).join(' · ');
 
   useEffect(() => {
     if (!error || presentation !== 'toast') {

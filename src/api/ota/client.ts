@@ -154,7 +154,7 @@ export function otaRequest<T>(
   method = 'GET',
   body?: unknown,
 ): Promise<T> {
-  return request<T>('/api/v1/ota/' + path, method, body, { projectId, successCode: 'SUCCESS' });
+  return request<T>('/api/v1/ota/' + path, method, body, { projectId });
 }
 export const states: Record<string, string> = {
   CREATED: '轮次已建立',

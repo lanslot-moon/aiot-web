@@ -978,7 +978,7 @@ const ProductModelPage = () => {
       <ProjectWorkspaceShell activePrimary="products" breadcrumbs={<BreadcrumbTrail title="物模型" items={breadcrumbItems} />}>
         {productError ? (
           <ApiErrorAlert
-            code={error?.code}
+            error={error}
             message={productError.message}
             onRetry={() => void mutateProduct()}
           />
@@ -1034,13 +1034,13 @@ const ProductModelPage = () => {
 
             {draftApiError ? (
               <ApiErrorAlert
-                code={draftApiError.code}
+                error={draftApiError}
                 message={draftError?.message}
                 onRetry={() => void mutateDraft()}
               />
             ) : null}
             {actionErrorMessage ? (
-              <ApiErrorAlert code={actionError?.code} message={actionErrorMessage} />
+              <ApiErrorAlert error={actionError} message={actionErrorMessage} />
             ) : null}
 
             <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">

@@ -1,3 +1,4 @@
+import { apiCode } from '@/api/response';
 import { OpenPlatformApiError, request } from '@/api/iam/client';
 import type { VerificationChallengeVO } from '@/api/iam/contracts';
 import { ErrorNotice, FieldsForm, type Values } from '@/components/iam/shared';
@@ -92,7 +93,7 @@ export default function AuthRegister() {
       fieldErrors={{ ...sendErrors, ...(expired ? { code: '验证码已过期，请重新获取。' } : {}) }}
       errorToFields={(failure) => {
         if (!(failure instanceof OpenPlatformApiError)) return {};
-        if (failure.code === 'VERIFICATION_INVALID') return { code: failure.message };
+        if (failure.code === apiCode.verificationInvalid) return { code: failure.message };
         return Object.fromEntries(failure.errors.map((entry) => [
           ['email', 'phone'].includes(entry.field) ? 'target' : entry.field === 'verificationId' ? 'code' : entry.field,
           entry.message,

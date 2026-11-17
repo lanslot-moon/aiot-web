@@ -30,7 +30,6 @@ TableHead,
 TableHeader,
 TableRow,
 } from '@/components/ui/table';
-import { OpenPlatformApiError } from '../../context/open-platform-context/project-resources';
 
 import type { ProjectVO } from '@/api/iam/contracts';
 import { cn } from '@/lib/utils';
@@ -87,10 +86,9 @@ export function ProjectListTable({
   }
 
   if (error && projects.length === 0) {
-    const apiErr = error instanceof OpenPlatformApiError ? error : null;
     return (
       <ApiErrorAlert
-        code={apiErr?.code}
+        error={error}
         message={error.message}
         onRetry={onRetry}
       />
@@ -244,9 +242,7 @@ export function ProjectListTable({
 
       {loadMoreError ? (
         <ApiErrorAlert
-          code={
-            loadMoreError instanceof OpenPlatformApiError ? loadMoreError.code : undefined
-          }
+          error={loadMoreError}
           message={loadMoreError.message}
           onRetry={onLoadMore}
         />

@@ -1,3 +1,4 @@
+import { apiCode } from '@/api/response';
 import { OpenPlatformApiError } from '@/api/iam/client';
 import type { CursorResult } from '@/api/iam/contracts';
 import { Eye, EyeOff, Loader2, X } from 'lucide-react';
@@ -390,7 +391,7 @@ export function FieldsForm({
         );
       })}
       {children}
-      {compactErrors && error && (!(error instanceof OpenPlatformApiError) || [400, 409].includes(error.status))
+      {compactErrors && error && (!(error instanceof OpenPlatformApiError) || [400, 409].some(code => code === error.code || code === error.status))
         ? <FieldError className="text-xs">{error instanceof Error ? error.message : '操作失败，请重试。'}</FieldError>
         : <ErrorNotice error={error} />}
       {footer ? footer(submitButton) : submitButton}
@@ -610,7 +611,7 @@ export function CursorTable<T>({
       )}
       {!allowed && !resource.isLoading ? (
         <ErrorNotice
-          error={new OpenPlatformApiError('FORBIDDEN', '当前账号没有查看此列表的权限。', 403)}
+          error={new OpenPlatformApiError(apiCode.forbidden, '当前账号没有查看此列表的权限。', 403)}
         />
       ) : resource.isLoading ? (
         <Loading />

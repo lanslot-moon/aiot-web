@@ -13,7 +13,7 @@ export async function latestProperties(projectId: string, device: DeviceDetail, 
   for (let offset = 0; offset < codes.length; offset += 50) {
     const page = await request<{ values: Record<string, TelemetryPoint> }>('/api/v1/telemetry/properties/latest:query', 'POST', {
       ...telemetryScope(device), deviceId: device.deviceId, codes: codes.slice(offset, offset + 50),
-    }, { projectId, successCode: '200' });
+    }, { projectId });
     Object.assign(values, page.values);
   }
   return Object.fromEntries(properties.map(property => [property.code, latestPropertyValue(property, values)]));
@@ -23,8 +23,8 @@ export function reportPage(projectId: string, device: DeviceDetail, kind: 'prope
   const base = `/api/v1/telemetry/devices/${encodeURIComponent(device.deviceId)}`;
   const scope = { ...telemetryScope(device), pageSize: 20, cursor };
   return kind === 'property'
-    ? request<CursorPage<PropertyReport>>(`${base}/properties/history:query`, 'POST', { ...scope, codes, from, to }, { projectId, successCode: '200' })
-    : request<CursorPage<EventReport>>(`${base}/events:query`, 'POST', { ...scope, startAt: from, endAt: to, order: 'DESC', eventCodes: codes, filters: [] }, { projectId, successCode: '200' });
+    ? request<CursorPage<PropertyReport>>(`${base}/properties/history:query`, 'POST', { ...scope, codes, from, to }, { projectId })
+    : request<CursorPage<EventReport>>(`${base}/events:query`, 'POST', { ...scope, startAt: from, endAt: to, order: 'DESC', eventCodes: codes, filters: [] }, { projectId });
 }
 
 export type ReportRow = { kind: 'property'; data: PropertyReport } | { kind: 'event'; data: EventReport };
@@ -83,5 +83,5 @@ export function propertyChartPage(projectId: string, device: DeviceDetail, code:
   }
   return request<CursorPage<PropertyReport>>(`/api/v1/telemetry/devices/${encodeURIComponent(device.deviceId)}/properties/history:query`, 'POST', {
     ...telemetryScope(device), codes: [code], from, to, pageSize: 1000, cursor: null,
-  }, { projectId, successCode: '200' });
+  }, { projectId });
 }

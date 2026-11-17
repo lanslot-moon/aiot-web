@@ -1,3 +1,4 @@
+import { apiCode } from '@/api/response';
 import { formatDateTime } from '@/lib/date-time';
 import {
 Archive,
@@ -514,7 +515,7 @@ const ProductDetailPage = () => {
   };
 
   const showActionError = (error: unknown) => {
-    if (error instanceof OpenPlatformApiError && error.code === 'MODEL_NOT_PUBLISHED') {
+    if (error instanceof OpenPlatformApiError && error.code === apiCode.productModelNotPublished) {
       toast.error('暂时无法发布产品', {
         description: '请先发布该产品的物模型，再发布产品。',
         action: {
@@ -635,7 +636,7 @@ const ProductDetailPage = () => {
       <ProjectWorkspaceShell activePrimary="products" breadcrumbs={<BreadcrumbTrail title="产品详情" items={breadcrumbItems} />}>
         {productError ? (
           <ApiErrorAlert
-            code={error?.code}
+            error={error}
             message={productError.message}
             onRetry={() => void mutateProduct()}
           />

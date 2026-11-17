@@ -1,3 +1,4 @@
+import { apiCode } from '@/api/response';
 import { formatDateTime } from '@/lib/date-time';
 import { cn } from '@/lib/utils';
 import { DeviceTable as DataTable } from './layout';
@@ -37,7 +38,7 @@ function useDeviceProduct(projectId: string, productId?: string) {
 }
 
 function DeviceProduct({ projectId, productId, product }: { projectId: string; productId: string; product: ReturnType<typeof useDeviceProduct> }) {
-  const denied = product.error instanceof OpenPlatformApiError && product.error.status === 403;
+  const denied = product.error instanceof OpenPlatformApiError && (product.error.status === 403 || product.error.code === apiCode.forbidden);
   return <div className="min-w-0 space-y-1">
     {product.data ? (
       <Link className="break-words underline-offset-4 hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-ring"
@@ -101,7 +102,7 @@ export default function DeviceDetails({ projectId, id, back, openGroup, backLabe
       } catch (error) {
         if (cancelled) return;
         if (error instanceof OpenPlatformApiError) {
-          if (error.status === 404) { back(); return; }
+          if (error.status === 404 || error.code === apiCode.deviceNotFound) { back(); return; }
           if (error.status === 401 || error.status === 403) return;
         }
       }

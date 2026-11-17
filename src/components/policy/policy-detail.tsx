@@ -1,3 +1,4 @@
+import { apiCode } from '@/api/response';
 import { formatDateTime } from '@/lib/date-time';
 import { useEffect, useState, type ReactNode } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
@@ -196,7 +197,7 @@ export default function PolicyDetail({ projectId, id, back, initialEdit = false,
     } catch (e) {
       setModalError(e);
       if (operation === 'publish' && e instanceof OpenPlatformApiError) {
-        if (e.code === 'POLICY_VALIDATION_STALE' && draft.data) {
+        if (e.code === apiCode.policyValidationStale && draft.data) {
           setStaleValidationRevision(draft.data.revision);
           setValidation(null);
         }

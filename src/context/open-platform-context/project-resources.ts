@@ -1,3 +1,4 @@
+import { apiCode } from '@/api/response';
 import { get, getSession, request, OpenPlatformApiError } from '@/api/iam/client';
 import type { ProjectDetailVO, TokenVO } from '@/api/iam/contracts';
 import { createContext, useContext } from 'react';
@@ -40,10 +41,7 @@ function projectRequest<T>(path: string, method: string, body?: unknown) {
   // context only; the gateway still verifies membership and scoped capabilities.
   const domainResource = /^\/api\/v1\/(products|categories|parser-profiles|devices|credentials|credential-batches|credential-distributions|credential-exports|pre-registrations|rotation-tasks)(?:\/|\?|$)/.test(path);
   const projectId = domainResource ? window.location.pathname.match(/^\/projects\/([^/]+)/)?.[1] : undefined;
-  // 凭证服务正式信封使用 OK；IAM 与产品服务使用 200，各自严格校验所属契约。
-  const credentialResource = /^\/api\/v1\/(credentials|credential-batches|credential-distributions|credential-exports|pre-registrations|rotation-tasks)(?:\/|\?|$)/.test(path)
-    || /^\/api\/v1\/products\/[^/]+\/pre-registrations(?:\?|$)/.test(path);
-  return request<T>(path, method, body, { projectId: projectId ? decodeURIComponent(projectId) : undefined, successCode: credentialResource ? 'OK' : '200' });
+  return request<T>(path, method, body, { projectId: projectId ? decodeURIComponent(projectId) : undefined });
 }
 export const openPlatformGetFetcher = <T>(path: string) => projectRequest<T>(path, 'GET');
 export const openPlatformPost = <T>(path: string, body?: unknown) => projectRequest<T>(path, 'POST', body);
@@ -102,6 +100,6 @@ export function useProjectDetail(projectId: string | undefined | null) {
     data: project,
     isLoading: resource.isLoading || (!!session && !!projectId && !platformAuthorization.data && !platformAuthorization.error),
     error: resource.error ?? platformAuthorization.error ?? (platformAuthorization.data && !allowed
-      ? new OpenPlatformApiError('FORBIDDEN', '当前账号没有查看项目的权限。', 403) : undefined),
+      ? new OpenPlatformApiError(apiCode.forbidden, '当前账号没有查看项目的权限。', 403) : undefined),
   };
 }
