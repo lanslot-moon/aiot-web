@@ -1,5 +1,5 @@
 import { apiCode } from '@/api/response';
-import type { ReactNode } from 'react';
+import { useId, useRef, useState, type ReactNode } from 'react';
 import { Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,18 +9,45 @@ import { OpenPlatformApiError } from '@/api/iam/client';
 import { statusLabels } from '@/api/policy/client';
 import { useIam } from '@/context/iam-context/identity';
 import { cn } from '@/lib/utils';
-export function PolicySelect({ value, options, onValueChange, disabled, label, placeholder }: {
+export function PolicySelect({ value, options, onValueChange, disabled, label, placeholder, required, errorMessage }: {
   value: string | null;
   options: { value: string; label: string }[];
   onValueChange: (value: string) => void;
   disabled?: boolean;
   label: string;
   placeholder?: string;
+  required?: boolean;
+  errorMessage?: string;
 }) {
-  return <Select value={value} disabled={disabled} onValueChange={next => { if (next !== null) onValueChange(next); }}>
-    <SelectTrigger className="w-full min-w-0" aria-label={label}><SelectValue className="min-w-0"><span className="truncate">{options.find(option => option.value === value)?.label ?? value ?? placeholder}</span></SelectValue></SelectTrigger>
-    <SelectContent className="rounded-md!" alignItemWithTrigger={false}>{options.map(option => <SelectItem key={option.value} value={option.value}><span className="truncate">{option.label}</span></SelectItem>)}</SelectContent>
-  </Select>;
+  const [touched, setTouched] = useState(false);
+  const open = useRef(false);
+  const messageId = useId();
+  const message = errorMessage || (required && !disabled && touched && !value ? `请选择${label}。` : '');
+  return <>
+    <Select value={value} disabled={disabled} required={required}
+      onOpenChange={(next) => {
+        open.current = next;
+        if (required && !next) setTouched(true);
+      }}
+      onValueChange={(next) => { if (next !== null) onValueChange(next); }}>
+      <SelectTrigger
+        className="w-full min-w-0 aria-invalid:disabled:opacity-100"
+        aria-label={label}
+        aria-required={required}
+        aria-invalid={message ? true : undefined}
+        aria-describedby={message ? messageId : undefined}
+        onBlur={() => { if (required && !open.current) setTouched(true); }}
+      >
+        <SelectValue className="min-w-0">
+          <span className="truncate">{options.find(option => option.value === value)?.label ?? value ?? placeholder}</span>
+        </SelectValue>
+      </SelectTrigger>
+      <SelectContent className="rounded-md!" alignItemWithTrigger={false}>
+        {options.map(option => <SelectItem key={option.value} value={option.value}><span className="truncate">{option.label}</span></SelectItem>)}
+      </SelectContent>
+    </Select>
+    {message && <p id={messageId} role="alert" className="text-sm text-destructive">{message}</p>}
+  </>;
 }
 export function Status({ value }: { value: string }) {
   return <Badge variant="outline" className={cn('whitespace-nowrap font-normal', ['ACTIVE', 'CURRENT', 'VALID'].includes(value) && 'border-emerald-600/25 bg-emerald-600/5 text-emerald-700 dark:text-emerald-400')}>{statusLabels[value] ?? value}</Badge>;

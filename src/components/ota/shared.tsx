@@ -40,16 +40,19 @@ export function Help({ children, label }: { children: ReactNode; label: string }
 export function Field({
   title,
   help,
+  required,
   children,
 }: {
   title: string;
   help?: string;
+  required?: boolean;
   children: ReactNode;
 }) {
   return (
     <div className="min-w-0 space-y-2">
       <div className="flex min-h-6 items-center gap-1 text-xs font-medium">
         {title}
+        {required && <span aria-hidden="true" className="text-destructive">*</span>}
         {help && <Help label={title}>{help}</Help>}
       </div>
       {children}
@@ -79,6 +82,9 @@ export function Status({ value }: { value: string }) {
 export function RemoteChoice<T extends { id: string }>({
   projectId,
   path,
+  excludeId,
+  filterItem,
+  required,
   value,
   onChange,
   label,
@@ -87,6 +93,9 @@ export function RemoteChoice<T extends { id: string }>({
 }: {
   projectId: string;
   path: string | null;
+  excludeId?: string;
+  filterItem?: (item: T) => boolean;
+  required?: boolean;
   value: string;
   onChange: (value: string, item?: T) => void;
   label: string;
@@ -95,20 +104,24 @@ export function RemoteChoice<T extends { id: string }>({
 }) {
   const page = usePage<T>(projectId, path);
   const [selected, setSelected] = useState<T>();
-  const options = page.rows.map((item) => ({ value: item.id, label: text(item) }));
-  if (value && !options.some((item) => item.value === value))
+  const eligible = (item: T) => item.id !== excludeId && (!filterItem || filterItem(item));
+  const options = page.rows.filter(eligible).map((item) => ({ value: item.id, label: text(item) }));
+  const cached = page.rows.find((item) => item.id === value) ?? (selected?.id === value ? selected : undefined);
+  if (value && value !== excludeId && !options.some((item) => item.value === value) && (!filterItem || (cached && eligible(cached))))
     options.unshift({ value, label: selected?.id === value ? text(selected) : value });
   return (
     <div className="space-y-2">
       <PolicySelect
+        required={required && !page.error}
         label={label}
-        value={value || null}
+        value={options.some((item) => item.value === value) ? value : null}
         placeholder={page.isLoading ? '读取中…' : `选择${label}`}
         disabled={disabled || !path || page.isLoading}
         options={options}
         onValueChange={(id) => {
           const item =
             page.rows.find((row) => row.id === id) ?? (selected?.id === id ? selected : undefined);
+          if (id && (!item || !eligible(item))) return;
           setSelected(item);
           onChange(id, item);
         }}

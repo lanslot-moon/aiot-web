@@ -1,3 +1,6 @@
+import { isDeltaSource } from '@/api/ota/firmware-version';
+import { FullPackagePicker } from './full-package-picker';
+import { useFullPackageInput } from './use-full-package-input';
 import BuildAttempts from './build-attempts';
 import VerificationInfo from './verification-info';
 import { formatDateTime } from '@/lib/date-time';
@@ -98,17 +101,21 @@ export function CreatePackage({
   const [kind, setKind] = useState('FULL');
   const [source, setSource] = useState<FirmwareVersion>();
   const [algorithm, setAlgorithm] = useState('BSDIFF');
-  const [targetFile, setTargetFile] = useState<Upload>();
-  const [sourceFile, setSourceFile] = useState<Upload>();
+  const [upload, setUpload] = useState<Upload>();
+  const isDelta = kind === 'DELTA';
+  const target = useFullPackageInput(projectId, isDelta ? version.id : undefined, true);
+  const base = useFullPackageInput(projectId, isDelta ? source?.id : undefined, false);
+  const sourceFile = base.image;
+  const targetFile = isDelta ? target.image : upload;
   const [created, setCreated] = useState<Package>();
   const action = useAction();
   async function save() {
     await action.run(
       async () => {
-        if (source?.id === version.id && kind === 'DELTA')
-          throw new Error('源版本不能与目标版本相同。');
+        if (isDelta && (!source || !isDeltaSource(source, version)))
+          throw new Error('源版本必须属于同一模块，且版本号低于目标版本，不允许同版本升级或降级。');
         if (!targetFile || (kind === 'DELTA' && (!source || !sourceFile)))
-          throw new Error('请完成所需固件文件的上传，并选择源版本。');
+          throw new Error(isDelta ? '请选择源版本和两端的全量包。' : '请上传目标固件文件。');
         const pkg =
           created ??
           (await otaRequest<Package>(projectId, 'packages', 'POST', {
@@ -160,13 +167,13 @@ export function CreatePackage({
           >
             {created ? '查看已创建的包' : '取消'}
           </Button>
-          <Button disabled={action.busy || !targetFile} onClick={() => void save()}>
+          <Button disabled={action.busy || !targetFile || (isDelta && (!sourceFile || !source || !isDeltaSource(source, version)))} onClick={() => void save()}>
             {action.busy
               ? '提交中…'
               : created
                 ? '继续处理'
                 : kind === 'DELTA'
-                  ? '创建并构建'
+                  ? '生成差分包'
                   : '创建升级包'}
           </Button>
         </>
@@ -177,7 +184,10 @@ export function CreatePackage({
           <Choice
             label="升级包类型"
             value={kind}
-            onValueChange={setKind}
+            onValueChange={(value) => {
+              setKind(value);
+              setUpload(undefined);
+            }}
             options={[
               { value: 'FULL', label: '全量包' },
               { value: 'DELTA', label: '差分包' },
@@ -186,14 +196,21 @@ export function CreatePackage({
         </Field>
         {kind === 'DELTA' && (
           <>
-            <Field title="源固件版本">
+            <Field title="源固件版本" required>
+              <p className="text-xs text-muted-foreground">仅可选择同一模块中低于目标版本的固件，与录入时间无关。</p>
               <RemoteChoice<FirmwareVersion>
+                required
                 projectId={projectId}
                 path={by('firmware/versions', { moduleId })}
                 value={source?.id ?? ''}
                 label="源版本"
                 text={(v) => v.versionText}
-                onChange={(_, v) => setSource(v)}
+                excludeId={version.id}
+                filterItem={(item) => isDeltaSource(item, version)}
+                onChange={(_, v) => {
+                  setSource(v);
+                  base.selectPackage('');
+                }}
               />
             </Field>
             <Field
@@ -210,10 +227,13 @@ export function CreatePackage({
                 }))}
               />
             </Field>
-            <FirmwareUpload label="源固件文件" onChange={setSourceFile} />
+            {source && <FullPackagePicker key={source.id} input={base} title="源全量包"
+              empty={`${source.versionText} 没有已封存的全量包，无法生成这条差分包。`} />}
+            <FullPackagePicker input={target} title="目标全量包" empty="请先为当前版本创建并封存全量包。" />
+            {source && <p className="text-sm">适用升级路径：{source.versionText} → {version.versionText}</p>}
           </>
         )}
-        <FirmwareUpload label="目标固件文件" onChange={setTargetFile} />
+        {!isDelta && <FirmwareUpload label="目标固件文件" onChange={setUpload} />}
       </fieldset>
       {created && (
         <p className="text-xs text-muted-foreground">
@@ -237,18 +257,22 @@ function ResumePreparation({
   onDone: () => Promise<void>;
 }) {
   const [source, setSource] = useState<FirmwareVersion>();
-  const [sourceFile, setSourceFile] = useState<Upload>();
-  const [targetFile, setTargetFile] = useState<Upload>();
+  const [upload, setUpload] = useState<Upload>();
+  const isDelta = pkg.packageType === 'DELTA';
+  const target = useFullPackageInput(projectId, isDelta ? pkg.targetVersionId : undefined, true, pkg.targetImageSha256);
+  const base = useFullPackageInput(projectId, source?.id, false, pkg.sourceImageSha256);
+  const targetFile = isDelta ? target.image : upload;
+  const sourceFile = base.image;
   const action = useAction();
   async function save() {
     await action.run(async () => {
-      if (!targetFile) throw new Error('请先上传目标固件文件。');
-      if (pkg.targetImageSha256 && targetFile.sha256 !== pkg.targetImageSha256)
+      if (!targetFile) throw new Error(isDelta ? '请选择目标全量包。' : '请先上传目标固件文件。');
+      if (pkg.targetImageSha256 && targetFile.sha256.toLowerCase() !== pkg.targetImageSha256.toLowerCase())
         throw new Error('目标文件摘要与当前升级包不一致。');
       if (pkg.packageType === 'DELTA') {
         if (!source || source.versionText !== pkg.sourceVersionText || !sourceFile)
-          throw new Error('请选择与升级包一致的源版本，并上传源文件。');
-        if (sourceFile.sha256 !== pkg.sourceImageSha256)
+          throw new Error('请选择与升级包一致的源版本和源全量包。');
+        if (sourceFile.sha256.toLowerCase() !== pkg.sourceImageSha256?.toLowerCase())
           throw new Error('源文件摘要与当前升级包不一致。');
         await otaRequest(projectId, 'delta-builds', 'POST', {
           packageId: pkg.id,
@@ -273,22 +297,25 @@ function ResumePreparation({
     <div className="space-y-4">
       {pkg.packageType === 'DELTA' && (
         <>
-          <Field title={`源固件版本 · ${pkg.sourceVersionText}`}>
+          <Field title={`源固件版本 · ${pkg.sourceVersionText}`} required>
             <RemoteChoice<FirmwareVersion>
+                required
               projectId={projectId}
               path={by('firmware/versions', { moduleId, version: pkg.sourceVersionText })}
               value={source?.id ?? ''}
               label="源版本"
               text={(v) => v.versionText}
+              filterItem={(item) => item.versionText === pkg.sourceVersionText}
               onChange={(_, item) => setSource(item)}
             />
           </Field>
-          <FirmwareUpload label="源固件文件" onChange={setSourceFile} disabled={action.busy} />
+          {source && <FullPackagePicker key={source.id} input={base} title="源全量包" empty="源版本没有与此草稿镜像摘要匹配的已封存全量包。" />}
+          <FullPackagePicker input={target} title="目标全量包" empty="目标版本没有与此草稿匹配的已封存全量包。" />
         </>
       )}
-      <FirmwareUpload label="目标固件文件" onChange={setTargetFile} disabled={action.busy} />
+      {!isDelta && <FirmwareUpload label="目标固件文件" onChange={setUpload} disabled={action.busy} />}
       <Failure error={action.error} />
-      <Button disabled={action.busy || !targetFile} onClick={() => void save()}>
+      <Button disabled={action.busy || !targetFile || (isDelta && (!sourceFile || !source))} onClick={() => void save()}>
         {pkg.packageType === 'DELTA' ? '提交差分构建' : '关联固件文件'}
       </Button>
     </div>
@@ -402,8 +429,9 @@ export default function PackageDetail({
     (isDelta ? buildTask === null && !build.error : !readyToSeal);
   const targetVersion = version?.id === data?.targetVersionId ? version : undefined;
   const summary = [
-    targetVersion && `目标版本 ${targetVersion.versionText}`,
-    data?.sourceVersionText && `源版本 ${data.sourceVersionText}`,
+    isDelta && data?.sourceVersionText
+      ? `适用升级路径：${data.sourceVersionText} → ${targetVersion?.versionText ?? '…'}`
+      : targetVersion && `目标版本 ${targetVersion.versionText}`,
     files.length > 0 &&
       `文件大小 ${formatFirmwareSize(files.reduce((sum, file) => sum + file.sizeBytes, 0))}`,
   ].filter(Boolean);
@@ -816,7 +844,7 @@ export default function PackageDetail({
                 ) : (
                   !build.error && (
                     <p className="text-sm text-muted-foreground">
-                      上传源固件和目标固件后，提交差分构建。
+                      选择源版本和目标版本的已封存全量包后，生成差分包。
                     </p>
                   )
                 )}

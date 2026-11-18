@@ -293,7 +293,7 @@ export default function ReleaseWizard({
                 value={policy.packageId}
                 label="升级包"
                 text={(p) =>
-                  `${p.packageType === 'FULL' ? '全量' : '差分 ' + p.sourceVersionText} · ${p.id}`
+                  `${p.packageType === 'FULL' ? '全量' : `差分 ${p.sourceVersionText} → ${versionName}`} · ${p.id}`
                 }
                 onChange={(id, p) => {
                   patch({ packageId: id });
@@ -521,7 +521,7 @@ export default function ReleaseWizard({
             ['目标固件', `${moduleName} / ${versionName}`],
             [
               '升级包',
-              `${pkg?.packageType === 'DELTA' ? '差分包' : '全量包'} · ${policy.packageId}`,
+              `${pkg?.packageType === 'DELTA' ? `差分包 ${pkg.sourceVersionText} → ${versionName}` : '全量包'} · ${policy.packageId}`,
             ],
             [
               '设备范围',

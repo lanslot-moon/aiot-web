@@ -156,6 +156,38 @@ export function otaRequest<T>(
 ): Promise<T> {
   return request<T>('/api/v1/ota/' + path, method, body, { projectId });
 }
+
+// 查询独立于列表当前页，避免其他分页中的可用包被遗漏。
+export async function findPublishablePackage(projectId: string, versionId: string) {
+  if (!versionId) throw new Error('请选择要发布的固件版本。');
+  let cursor = '';
+  const visited = new Set<string>();
+  while (true) {
+    const params = new URLSearchParams({
+      targetVersionId: versionId,
+      state: 'VERIFIED',
+      pageSize: '20',
+      ...(cursor ? { cursor } : {}),
+    });
+    const page = await otaRequest<Page<Package>>(projectId, `packages?${params}`);
+    const pkg = page.items.find(
+      (item) => item.targetVersionId === versionId && item.state === 'VERIFIED' && item.files.length > 0,
+    );
+    if (pkg) return pkg;
+    if (!page.hasMore) return null;
+    if (!page.nextCursor || visited.has(page.nextCursor))
+      throw new Error('无法确认升级包状态，请刷新后重试。');
+    cursor = page.nextCursor;
+    visited.add(cursor);
+  }
+}
+
+export async function publishFirmwareVersion(projectId: string, versionId: string) {
+  // 点击时重新查询，不能依赖页面缓存中的升级包状态。
+  if (!(await findPublishablePackage(projectId, versionId)))
+    throw new Error('该固件版本没有可发布的升级包，请先准备升级包并完成样机验证。');
+  await otaRequest(projectId, `firmware/versions/${versionId}/publish`, 'POST');
+}
 export const states: Record<string, string> = {
   CREATED: '轮次已建立',
   ACTIVE: '已激活',

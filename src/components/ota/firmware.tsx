@@ -1,3 +1,4 @@
+import { firmwareVersionHint, isFirmwareVersion } from '@/api/ota/firmware-version';
 import { Pager } from '@/components/policy/shared';
 import { by, useAction, usePage } from './hooks';
 import { useState, type ReactNode } from 'react';
@@ -37,6 +38,8 @@ import { usePermission } from '@/context/iam-context/identity';
 import { cn } from '@/lib/utils';
 import {
   otaRequest,
+  findPublishablePackage,
+  publishFirmwareVersion,
   splitValues,
   states,
   type FirmwareModule,
@@ -179,11 +182,18 @@ export default function Firmware({
     versions.rows.find((v) => v.id === versionId) ??
     selectedResource.data ??
     (version?.id === versionId ? version : undefined);
+  const publishablePackage = useSWR(
+    selectedVersion?.lifecycleState === 'DRAFT' && update
+      ? [projectId, 'ota-publishable-package', versionId]
+      : null,
+    () => findPublishablePackage(projectId, versionId),
+    { shouldRetryOnError: false },
+  );
   function navigate(values: Record<string, string>) {
     setParams({ section: 'firmware', product: productId, ...values });
   }
   function openForm(type: string) {
-    setName('');
+    setName(type === 'version' ? '1.0.0' : '');
     setManualCode(null);
     setChannel('0');
     setCustomChannel('');
@@ -217,6 +227,7 @@ export default function Firmware({
         });
         navigate({ module: result.id });
       } else {
+        if (!isFirmwareVersion(name)) throw new Error(firmwareVersionHint);
         if (!hardwareScope) throw new Error('请选择硬件兼容范围。');
         const hardwareVersions = hardwareScope === 'specified' ? splitValues(hardwareText) : [];
         if (hardwareScope === 'specified' && !hardwareVersions.length) {
@@ -224,7 +235,7 @@ export default function Firmware({
         }
         const result = await otaRequest<FirmwareVersion>(projectId, 'firmware/versions', 'POST', {
           moduleId,
-          version: name.trim(),
+          version: name,
           hardwareConstraintJson: JSON.stringify({ hardwareVersions }),
           description: description.trim(),
         });
@@ -283,7 +294,7 @@ export default function Firmware({
     });
   }
   async function publishVersion() {
-    await otaRequest(projectId, `firmware/versions/${versionId}/publish`, 'POST');
+    await publishFirmwareVersion(projectId, versionId);
     await Promise.all([versions.mutate(), selectedResource.mutate()]);
   }
   if (packageId)
@@ -300,6 +311,7 @@ export default function Firmware({
         onBack={() => {
           navigate({ module: moduleId, version: versionId });
           void packages.mutate();
+          void publishablePackage.mutate();
         }}
       />
     );
@@ -482,7 +494,12 @@ export default function Firmware({
                   <Button
                     size="sm"
                     variant="outline"
-                    disabled={action.busy}
+                    disabled={
+                      action.busy ||
+                      !publishablePackage.data ||
+                      !!publishablePackage.error ||
+                      publishablePackage.isValidating
+                    }
                     onClick={() => void action.run(publishVersion, '固件版本已发布')}
                   >
                     发布版本
@@ -521,6 +538,16 @@ export default function Firmware({
               </div>
             </header>
             <div className="flex min-h-0 flex-1 flex-col p-3">
+              {selectedVersion?.lifecycleState === 'DRAFT' && update && (
+                <>
+                  <Failure error={publishablePackage.error} retry={() => publishablePackage.mutate()} />
+                  {!publishablePackage.isLoading && !publishablePackage.error && !publishablePackage.data && (
+                    <p className="mb-3 text-sm text-muted-foreground">
+                      发布前请先准备升级包并完成样机验证。
+                    </p>
+                  )}
+                </>
+              )}
               <Failure error={packages.error} retry={() => packages.mutate()} />
               {packages.isLoading ? (
                 <Loading />
@@ -538,7 +565,12 @@ export default function Firmware({
                           </div>
                         ),
                       },
-                      { label: '源版本', render: (p) => p.sourceVersionText ?? '—' },
+                      {
+                        label: '升级路径',
+                        render: (p) => p.packageType === 'DELTA'
+                          ? `${p.sourceVersionText} → ${selectedVersion?.versionText ?? '…'}`
+                          : selectedVersion?.versionText ?? '—',
+                      },
                       { label: '状态', render: (p) => <Status value={packageStatus(p)} /> },
                       {
                         label: '操作',
@@ -625,9 +657,14 @@ export default function Firmware({
           </>
         }
       >
-        <Field title={form === 'module' ? '模块名称' : '版本号'}>
+        <Field
+          title={form === 'module' ? '模块名称' : '版本号'}
+          help={form === 'version' ? firmwareVersionHint : undefined}
+        >
           <Input
             aria-label={form === 'module' ? '模块名称' : '版本号'}
+            placeholder={form === 'version' ? '例如 1.0.0' : undefined}
+            maxLength={form === 'version' ? 32 : undefined}
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
