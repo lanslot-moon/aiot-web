@@ -24,6 +24,7 @@ export interface FirmwareVersion {
 }
 export interface Package {
   id: string;
+  packageName: string;
   targetVersionId: string;
   packageType: 'FULL' | 'DELTA';
   state: string;
@@ -169,9 +170,10 @@ export async function findPublishablePackage(projectId: string, versionId: strin
       pageSize: '20',
       ...(cursor ? { cursor } : {}),
     });
-    const page = await otaRequest<Page<Package>>(projectId, `packages?${params}`);
+    const page = await otaRequest<Page<Omit<Package, 'files'>>>(projectId, `packages?${params}`);
+    // 验证成功以封存和完整的样机验证为前提，列表摘要足以判断是否可发布。
     const pkg = page.items.find(
-      (item) => item.targetVersionId === versionId && item.state === 'VERIFIED' && item.files.length > 0,
+      (item) => item.targetVersionId === versionId && item.state === 'VERIFIED',
     );
     if (pkg) return pkg;
     if (!page.hasMore) return null;

@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import useSWR from 'swr';
+import useSWR, { type SWRConfiguration } from 'swr';
 import { toast } from 'sonner';
 import { otaRequest, query, type Page } from '@/api/ota/client';
 export function useAction() {
@@ -29,6 +29,7 @@ export function usePage<T>(
   projectId: string,
   path: string | null,
   refreshInterval: number | ((data: Page<T> | undefined) => number) = 0,
+  revalidation: Pick<SWRConfiguration, 'revalidateOnFocus' | 'revalidateOnReconnect'> = {},
 ) {
   const [position, setPosition] = useState({ path, cursors: [''] });
   const cursors = position.path === path ? position.cursors : [''];
@@ -41,7 +42,7 @@ export function usePage<T>(
   const resource = useSWR(
     url ? [projectId, 'ota', url] : null,
     () => otaRequest<Page<T>>(projectId, url!),
-    { refreshInterval, shouldRetryOnError: false },
+    { refreshInterval, shouldRetryOnError: false, ...revalidation },
   );
   const pagerProps = {
     busy: resource.isValidating,

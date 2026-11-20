@@ -72,6 +72,7 @@ export interface FileUploadVO {
   downloadUrl: string | null;
   contentType?: string | null;
   'Content-Type'?: string | null;
+  uploadHeaders?: Record<string, string> | null;
   expireTime: number | null;
 }
 

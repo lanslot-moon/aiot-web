@@ -28,6 +28,7 @@ export default function ProductPicker({
   disabled,
   publishedOnly = true,
   compact = false,
+  showSearchHint = true,
 }: {
   projectId: string;
   value: string;
@@ -35,6 +36,7 @@ export default function ProductPicker({
   disabled?: boolean;
   publishedOnly?: boolean;
   compact?: boolean;
+  showSearchHint?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [cursors, setCursors] = useState<string[]>(['']);
@@ -177,7 +179,7 @@ export default function ProductPicker({
             {compact && pagination && <div className="border-t p-2">{pagination}</div>}
           </ComboboxContent>
         </Combobox>
-        {!compact && (
+        {!compact && showSearchHint && (
           <p className="text-xs text-muted-foreground">
             {publishedOnly
               ? '仅显示已发布产品，可搜索当前页的名称或 ID。'

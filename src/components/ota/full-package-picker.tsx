@@ -16,7 +16,7 @@ export function FullPackagePicker({ input, title, empty }: {
     <Choice label={title} required={!input.error} errorMessage={errorMessage} value={input.selected?.id ?? null} disabled={!input.packages.length}
       placeholder={input.loading ? '正在读取…' : `选择${title}`}
       options={input.packages.map((pkg) => ({
-        value: pkg.id, label: `全量包 ${pkg.id} · ${states[pkg.state]}`,
+        value: pkg.id, label: `${pkg.packageName} · ${pkg.id} · ${states[pkg.state]}`,
       }))}
       onValueChange={input.selectPackage}
     />

@@ -260,6 +260,12 @@ html[data-card-shadow="false"] [data-slot="card"] {
 
 @theme inline {
   --animate-scroll: scroll var(--animation-duration, 40s) var(--animation-direction, forwards) linear infinite;
+  --animate-ota-confirm: ota-confirm 2.4s ease-in-out infinite;
+
+  @keyframes ota-confirm {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(300%); }
+  }
 
   @keyframes scroll {
     to {

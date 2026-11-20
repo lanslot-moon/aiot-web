@@ -1,5 +1,9 @@
-import { by, useAction } from './hooks';
+import { by, useAction, usePage } from './hooks';
+import { ChevronDown, X } from 'lucide-react';
+import { Pager } from '@/components/policy/shared';
+import { Combobox, ComboboxContent, ComboboxItem, ComboboxList, ComboboxTrigger } from '@/components/ui/combobox';
 import ScopePicker from './scope-picker';
+import UpgradeRoute from './upgrade-route';
 import { useDraftRegistration } from '@/components/iam/drafts';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -39,6 +43,59 @@ const initial = (productId: string): ReleasePolicy => ({
   upgradeType: 1,
   execTime: 0,
 });
+function SourceVersionPicker({ projectId, moduleId, selected, locked, onChange }: {
+  projectId: string;
+  moduleId: string;
+  selected: string[];
+  locked: boolean;
+  onChange: (values: string[]) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const page = usePage<FirmwareVersion>(projectId, open && !locked ? by('firmware/versions', { moduleId }) : null);
+  const summary = selected.join('、') || '不限制';
+  if (locked) {
+    return (
+      <Button type="button" variant="outline" disabled className="h-8! w-full justify-between"
+        aria-label={`源版本条件：${summary}`}>
+        <span className="truncate text-xs" title={summary}>{summary}</span>
+        <ChevronDown aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+      </Button>
+    );
+  }
+  return (
+    <Combobox multiple open={open} onOpenChange={setOpen} value={selected} onValueChange={onChange}
+      items={page.rows.map((version) => version.versionText)}>
+      <div className="relative">
+        <ComboboxTrigger aria-label={`源版本条件：${summary}`}
+          render={<Button type="button" variant="outline" className="absolute inset-0 h-full! w-full justify-end px-3" />} />
+        <div className="pointer-events-none relative flex min-h-8 flex-wrap items-center gap-1 py-0.5 pr-9 pl-2">
+          {selected.length === 0 && <span className="px-1 text-xs text-muted-foreground">不限制</span>}
+          {selected.map((version) => (
+            <span key={version} className="inline-flex max-w-full items-center gap-1 rounded-md border bg-muted px-1.5 py-0.5 text-xs">
+              <span className="truncate" title={version}>{version}</span>
+              <button type="button" aria-label={`移除源版本 ${version}`}
+                className="pointer-events-auto inline-flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-background hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+                onClick={() => onChange(selected.filter((value) => value !== version))}>
+                <X aria-hidden="true" className="size-3" />
+              </button>
+            </span>
+          ))}
+        </div>
+      </div>
+      <ComboboxContent align="start" sideOffset={4} aria-label="选择源版本" className="min-w-0 rounded-md!">
+        <Failure error={page.error} retry={() => page.mutate()} />
+        {page.isLoading && <p className="p-2 text-muted-foreground">正在读取版本…</p>}
+        {page.data && !page.rows.length && <p className="p-2 text-muted-foreground">暂无固件版本</p>}
+        <ComboboxList className="max-h-56 p-0">
+          {(version: string) => <ComboboxItem key={version} value={version} className="cn-select-item"><span className="truncate">{version}</span></ComboboxItem>}
+        </ComboboxList>
+        {(page.hasPrevious || page.data?.hasMore) && <Pager {...page.pagerProps} />}
+        {selected.length > 0 && <Button type="button" size="sm" variant="ghost" onClick={() => onChange([])}>清空选择</Button>}
+      </ComboboxContent>
+    </Combobox>
+  );
+}
+
 export default function ReleaseWizard({
   projectId,
   productId,
@@ -68,7 +125,7 @@ export default function ReleaseWizard({
   const [versionName, setVersionName] = useState(prepared?.version.versionText ?? '');
   const [scope, setScope] = useState('all');
   const [deviceText, setDeviceText] = useState('');
-  const [sourceText, setSourceText] = useState('');
+  const sourceVersions = pkg?.packageType === 'DELTA' ? [pkg.sourceVersionText!] : policy.sourceVersions;
   const [hardwareText, setHardwareText] = useState('');
   const [tagText, setTagText] = useState('');
   const [start, setStart] = useState('');
@@ -93,8 +150,7 @@ export default function ReleaseWizard({
     }
     const result = {
       ...policy,
-      sourceVersions:
-        pkg?.packageType === 'DELTA' ? [pkg.sourceVersionText!] : splitValues(sourceText),
+      sourceVersions,
       hardwareVersions: splitValues(hardwareText),
       deviceIds: scope === 'devices' ? splitValues(deviceText) : [],
       groupId: scope === 'group' ? policy.groupId : undefined,
@@ -235,10 +291,11 @@ export default function ReleaseWizard({
       {step === 0 && (
         <div className="space-y-4">
           <ProductPicker
+            showSearchHint={false}
             projectId={projectId}
             value={policy.productId}
             onChange={(id) => {
-              patch({ productId: id, moduleId: '', targetVersionId: '', packageId: '' });
+              patch({ productId: id, moduleId: '', targetVersionId: '', packageId: '', sourceVersions: [] });
               setPkg(undefined);
             }}
           />
@@ -254,7 +311,7 @@ export default function ReleaseWizard({
               label="固件模块"
               text={(m) => m.displayName}
               onChange={(id, m) => {
-                patch({ moduleId: id, targetVersionId: '', packageId: '' });
+                patch({ moduleId: id, targetVersionId: '', packageId: '', sourceVersions: [] });
                 setModuleName(m?.displayName ?? id);
                 setPkg(undefined);
               }}
@@ -292,9 +349,7 @@ export default function ReleaseWizard({
                 }
                 value={policy.packageId}
                 label="升级包"
-                text={(p) =>
-                  `${p.packageType === 'FULL' ? '全量' : `差分 ${p.sourceVersionText} → ${versionName}`} · ${p.id}`
-                }
+                text={(p) => p.packageName}
                 onChange={(id, p) => {
                   patch({ packageId: id });
                   setPkg(p);
@@ -362,15 +417,11 @@ export default function ReleaseWizard({
           <div className="grid gap-4 sm:grid-cols-2">
             <Field
               title="源版本条件"
-              help="多个值用逗号分隔，留空表示不限制。差分包固定匹配其源版本。"
+              help="可选择多个源版本，留空表示不限制。差分包固定匹配其源版本。"
             >
-              <Input
-                aria-label="源版本条件"
-                value={pkg?.packageType === 'DELTA' ? pkg.sourceVersionText : sourceText}
-                disabled={pkg?.packageType === 'DELTA'}
-                onChange={(e) => setSourceText(e.target.value)}
-                placeholder="不限制"
-              />
+              <SourceVersionPicker projectId={projectId} moduleId={policy.moduleId}
+                selected={sourceVersions} locked={pkg?.packageType === 'DELTA'}
+                onChange={(values) => patch({ sourceVersions: values })} />
             </Field>
             <Field title="灰度比例（%）">
               <Input
@@ -383,6 +434,7 @@ export default function ReleaseWizard({
               />
             </Field>
           </div>
+          <UpgradeRoute sources={sourceVersions} target={versionName} />
           <Collapsible>
             <CollapsibleTrigger render={<Button variant="ghost" size="sm" />}>
               更多匹配条件
@@ -519,10 +571,7 @@ export default function ReleaseWizard({
         <dl className="grid gap-4 rounded-lg border p-5 text-sm sm:grid-cols-2">
           {[
             ['目标固件', `${moduleName} / ${versionName}`],
-            [
-              '升级包',
-              `${pkg?.packageType === 'DELTA' ? `差分包 ${pkg.sourceVersionText} → ${versionName}` : '全量包'} · ${policy.packageId}`,
-            ],
+            ['升级包', pkg?.packageName],
             [
               '设备范围',
               scope === 'all'
@@ -533,7 +582,7 @@ export default function ReleaseWizard({
             ],
             ['灰度比例', `${policy.rolloutPercent}%`],
             ['匹配方式', policy.mode === 'STATIC' ? '仅本次设备' : '持续匹配'],
-            ['源版本', pkg?.sourceVersionText || sourceText || '不限制'],
+            ['源版本', sourceVersions.join('、') || '不限制'],
             ['硬件版本', hardwareText || '不限制'],
             ['标签', tagText || '不限制'],
             ['开始 / 截止', `${start || '激活后立即'} / ${end || '不限制'}`],

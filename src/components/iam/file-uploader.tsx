@@ -51,10 +51,11 @@ export interface IamFileUploaderProps {
   onBusyChange?: (busy: boolean) => void;
   onFileChange?: (file: File | null) => void;
   prepareFile?: (file: File) => Promise<File | null>;
+  getUploadSha256?: (file: File) => string;
 }
 
 /** Shared upload control; its owning feature saves the confirmed file reference. */
-export function IamFileUploader({ storageType: visibility = 'private', directory = '/uploads', accept, maxSize, onUploaded, onBusyChange, onFileChange, prepareFile, uploadRef, managed = false, showProgress = true, compact = false, compactSelection = false, embedded = false, externalBusy = false, onStageChange }: IamFileUploaderProps) {
+export function IamFileUploader({ storageType: visibility = 'private', directory = '/uploads', accept, maxSize, onUploaded, onBusyChange, onFileChange, prepareFile, getUploadSha256, uploadRef, managed = false, showProgress = true, compact = false, compactSelection = false, embedded = false, externalBusy = false, onStageChange }: IamFileUploaderProps) {
   const identity = useIam();
   const authorization = permissionAuthorization(identity, 'file:upload');
   const allowed = authorization.data?.permissionCodes.includes('file:upload') ?? false;
@@ -126,9 +127,16 @@ export function IamFileUploader({ storageType: visibility = 'private', directory
         onStageChange?.('uploading');
         setPhase('requesting'); setProgress(0);
         // The selected local file is the source of truth for the filename.
-        const signed = await request<FileUploadVO>(`/api/v1/${visibility}-files`, 'POST', { name: file.name, path }, { signal: operation.signal });
+        const sha256 = getUploadSha256?.(file);
+        if (getUploadSha256 && !/^[0-9a-f]{64}$/.test(sha256 ?? '')) throw new Error('无法获取所选文件的 SHA-256。');
+        const signed = await request<FileUploadVO>(`/api/v1/${visibility}-files`, 'POST', {
+          name: file.name, path, ...(sha256 ? { sha256 } : {}),
+        }, { signal: operation.signal });
         if (operation.signal.aborted) throw new DOMException('上传已取消', 'AbortError');
         if (!signed.fileId || !signed.uploadUrl || !/^https?:\/\//i.test(signed.uploadUrl)) throw new Error('上传地址不可用，请重新尝试。');
+        const sha256Header = 'x-oss-meta-sha256';
+        const signedSha256 = signed.uploadHeaders?.[sha256Header];
+        if (sha256 && signedSha256 !== sha256) throw new Error('上传签名缺少匹配的 SHA-256 请求头。');
         receipt.current = signed;
         setPhase('uploading');
         await new Promise<void>((resolve, reject) => {
@@ -136,6 +144,7 @@ export function IamFileUploader({ storageType: visibility = 'private', directory
           xhr.open('PUT', signed.uploadUrl!); xhr.timeout = 120000;
           const contentType = signed['Content-Type'] ?? signed.contentType;
           if (contentType) xhr.setRequestHeader('Content-Type', contentType);
+          if (sha256 && signedSha256) xhr.setRequestHeader(sha256Header, signedSha256);
           // No IAM Authorization header, cookies, FormData or rewritten signed URL.
           xhr.upload.onprogress = (event) => { if (event.lengthComputable) setProgress(Math.min(99, Math.round(event.loaded / event.total * 100))); };
           xhr.onload = () => xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`文件上传失败（HTTP ${xhr.status}），尚未调用云端确认。`));

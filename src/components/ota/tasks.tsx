@@ -1,10 +1,11 @@
 import { Pager } from '@/components/policy/shared';
 import { by, useAction, usePage } from './hooks';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import useSWR from 'swr';
-import { History } from 'lucide-react';
+import { History, RefreshCw } from 'lucide-react';
 import { dispatchResultLabel } from './task-dispatch-reasons';
 import AttemptTimeline from './attempt-timeline';
+import { verificationTableLayout } from './verification-table-layout';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -17,6 +18,7 @@ import {
 import { DeviceTable } from '@/components/device/layout';
 import { CopyIdButton } from '@/components/open-platform/copy-id-button';
 import { usePermission } from '@/context/iam-context/identity';
+import { cn } from '@/lib/utils';
 import { otaRequest, type Task, type Attempt, type AttemptEventTimeline, type Page } from '@/api/ota/client';
 import { Choice, Failure, Help, Loading, Modal, Status } from './shared';
 const eligible: Record<string, string[]> = {
@@ -32,6 +34,71 @@ const labels: Record<string, string> = {
 function attemptRefreshInterval(data: Page<Attempt> | undefined) {
   return !data?.items.length || data.items.some((attempt) => attempt.finishedAt == null) ? 5000 : 0;
 }
+
+function VerificationTaskProgress({ task }: { task: Task }) {
+  const completed = task.state === 'SUCCEEDED';
+  const percent = completed ? 100 : task.progressPercent;
+  const confirming = task.state === 'RUNNING' && percent === 100;
+  if (percent == null || (percent === 100 && !completed && !confirming)) {
+    return <span className="text-xs text-muted-foreground">—</span>;
+  }
+
+  return (
+    <div className="flex items-center gap-3">
+      <div
+        role="progressbar"
+        aria-label={`设备 ${task.deviceId} 的升级进度${confirming ? '，等待确认目标版本' : ''}`}
+        aria-valuenow={confirming ? undefined : percent}
+        className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-slate-200/80 dark:bg-slate-700"
+      >
+        <div
+          className={cn(
+            'relative h-full rounded-full motion-safe:transition-[width]',
+            completed ? 'bg-emerald-500 dark:bg-emerald-400' : 'bg-sky-500 dark:bg-sky-400',
+          )}
+          style={{ width: `${percent}%` }}
+        >
+          {confirming && (
+            <span className="absolute inset-y-0 left-0 w-1/3 bg-linear-to-r from-transparent via-white/60 to-transparent motion-safe:animate-ota-confirm motion-reduce:hidden" />
+          )}
+        </div>
+      </div>
+      <span
+        aria-hidden="true"
+        className={cn(
+          'w-20 shrink-0 whitespace-nowrap text-right text-sm font-medium tabular-nums',
+          confirming && 'text-xs',
+          completed ? 'text-emerald-700 dark:text-emerald-400' : 'text-foreground',
+        )}
+      >
+        {confirming ? '等待版本确认' : `${percent}%`}
+      </span>
+    </div>
+  );
+}
+
+function verificationTaskNote(task: Task) {
+  if (task.state === 'SUCCEEDED') return '目标版本已确认';
+  if (task.state === 'WAIT_DISPATCH' && task.dispatchReasonCode) {
+    return dispatchResultLabel(task.dispatchReasonCode);
+  }
+  if (task.lastErrorCode) return `错误码 ${task.lastErrorCode}`;
+
+  switch (task.state) {
+    case 'WAIT_CONFIRM': return '等待确认下发';
+    case 'WAIT_DISPATCH': return '等待平台下发升级通知';
+    case 'NOTIFIED': return '等待设备首次上报进度';
+    case 'RUNNING':
+      if (task.progressPercent === 100) return '等待设备上报目标版本';
+      return task.progressPercent == null ? '等待设备上报进度' : '设备正在执行升级';
+    case 'RETRY_WAIT': return '等待下一轮下发';
+    case 'FAILED': return '验证失败，详情见执行记录';
+    case 'TIMED_OUT': return '在规定时间内未完成验证';
+    case 'CANCELED': return '任务已取消';
+    default: return '—';
+  }
+}
+
 function Attempts({ projectId, task }: { projectId: string; task: Task }) {
   const page = usePage<Attempt>(
     projectId,
@@ -110,7 +177,24 @@ export default function Tasks({
   const [selected, setSelected] = useState<string[]>([]);
   const [detail, setDetail] = useState<Task>();
   const [operation, setOperation] = useState('');
-  const page = usePage<Task>(projectId, by('tasks', { sourceType, sourceId, state }), 5000);
+  const isVerification = sourceType === 'VERIFICATION';
+  const page = usePage<Task>(
+    projectId,
+    by('tasks', { sourceType, sourceId, state }),
+    0,
+    { revalidateOnFocus: false, revalidateOnReconnect: false },
+  );
+  const hasRunningVerification = isVerification && page.rows.some((task) => task.state === 'RUNNING');
+  const { mutate: refreshTasks, isValidating } = page;
+  useEffect(() => {
+    if (!hasRunningVerification || isValidating) return;
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'visible' && navigator.onLine) {
+        void refreshTasks().catch(() => undefined);
+      }
+    }, 5000);
+    return () => window.clearInterval(timer);
+  }, [hasRunningVerification, isValidating, refreshTasks]);
   const action = useAction();
   const update = usePermission('ota:update');
   const current = page.rows.filter((t) => selected.includes(t.id));
@@ -136,15 +220,18 @@ export default function Tasks({
   return (
     <section
       aria-label="设备任务"
-      className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-lg border bg-muted/30"
+      className={cn(
+        'flex min-w-0 flex-col overflow-hidden rounded-lg border bg-muted/30',
+        isVerification ? 'w-full shrink-0' : 'flex-1',
+      )}
     >
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 px-4 py-3">
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-1">
             <h3 className="text-sm font-semibold">设备任务</h3>
             <Help label="任务进度">
-              进度 100%
-              仍需等待设备上报目标版本。重试会保留原任务和每轮执行结果。仅对当前页选中的任务执行操作。
+              {isVerification ? '设备上报进度 100% 后显示「等待版本确认」，平台确认目标版本后显示 100%。' : '设备上报进度 100% 后，仍需等待目标版本确认。'}
+              重试会保留原任务和每轮执行结果。仅对当前页选中的任务执行操作。
             </Help>
           </div>
           <div className="w-36">
@@ -192,39 +279,56 @@ export default function Tasks({
             </p>
           )}
         </div>
-        {(update || toolbarActions) && (
-          <div className="flex flex-wrap items-center gap-2">
-            {update &&
-              Object.keys(labels).filter((op) => op !== 'confirm' || requireAppConfirm).map((op) => (
-                <Button
-                  key={op}
-                  variant="outline"
-                  size="sm"
-                  disabled={
-                    action.busy ||
-                    !current.length ||
-                    !current.every((t) => eligible[op].includes(t.state))
-                  }
-                  onClick={() => {
-                    action.setError(undefined);
-                    setOperation(op);
-                  }}
-                >
-                  {labels[op]}
-                  {current.length ? ` (${current.length})` : ''}
-                </Button>
-              ))}
-            {toolbarActions}
-          </div>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {update &&
+            Object.keys(labels).filter((op) => op !== 'confirm' || requireAppConfirm).map((op) => (
+              <Button
+                key={op}
+                variant="outline"
+                size="sm"
+                disabled={
+                  action.busy ||
+                  !current.length ||
+                  !current.every((t) => eligible[op].includes(t.state))
+                }
+                onClick={() => {
+                  action.setError(undefined);
+                  setOperation(op);
+                }}
+              >
+                {labels[op]}
+                {current.length ? ` (${current.length})` : ''}
+              </Button>
+            ))}
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={page.isValidating || action.busy}
+            onClick={() => void page.mutate()}
+          >
+            <RefreshCw className="size-4" />
+            {page.isValidating ? '刷新中…' : '刷新'}
+          </Button>
+          {toolbarActions}
+        </div>
       </div>
       {page.error && (
         <div className="px-4 pb-3">
           <Failure error={page.error} retry={() => page.mutate()} />
         </div>
       )}
-      <div className="relative min-h-40 flex-1 bg-muted/45">
-        <div className="max-h-96 overflow-auto lg:absolute lg:inset-0 lg:max-h-none [&_[data-slot=table-container]]:overflow-visible [&_thead]:sticky [&_thead]:top-0 [&_thead]:z-10 [&_thead]:bg-muted [&_tbody]:bg-card [&_tr]:border-0 [&_tbody_tr:nth-child(even)]:bg-muted/40 [&_tbody_tr:hover]:bg-muted/60 [&_td]:px-4 [&_th]:px-4 [&_th:first-child]:w-10 [&_th:first-child]:px-3 [&_td:first-child:not([colspan])]:px-3">
+      <div className={cn('relative', !isVerification && 'min-h-40 flex-1 bg-muted/45')}>
+        <div className={cn(
+          'max-h-96 overflow-auto [&_[data-slot=table-container]]:overflow-visible [&_thead]:sticky [&_thead]:top-0 [&_thead]:z-10 [&_thead]:bg-muted [&_tbody]:bg-card [&_tr]:border-0 [&_tbody_tr:nth-child(even)]:bg-muted/40 [&_tbody_tr:hover]:bg-muted/60 [&_td]:px-4 [&_th]:px-4 [&_th:first-child]:w-10 [&_th:first-child]:px-3 [&_td:first-child:not([colspan])]:px-3',
+          isVerification
+            ? cn(
+                verificationTableLayout,
+                'md:[&_td]:py-3 md:[&_th:first-child]:px-2! md:[&_td:first-child:not([colspan])]:px-2!',
+                'max-md:[&_table]:block max-md:[&_thead]:sr-only max-md:[&_tbody]:block max-md:[&_tbody_tr]:grid max-md:[&_tbody_tr]:grid-cols-[1.25rem_minmax(0,1fr)_auto] max-md:[&_tbody_tr]:items-center max-md:[&_tbody_tr]:gap-x-2 max-md:[&_tbody_tr]:gap-y-2 max-md:[&_tbody_tr]:px-3 max-md:[&_tbody_tr]:py-3',
+                'max-md:[&_tbody_td]:min-w-0 max-md:[&_tbody_td]:p-0! max-md:[&_tbody_td:nth-child(3)]:justify-self-end max-md:[&_tbody_td:nth-child(4)]:col-span-2 max-md:[&_tbody_td:nth-child(4)]:col-start-2 max-md:[&_tbody_td:nth-child(5)]:col-start-2 max-md:[&_tbody_td:last-child:not([colspan])]:justify-self-end max-md:[&_tbody_td[colspan]]:col-span-full',
+              )
+            : 'lg:absolute lg:inset-0 lg:max-h-none',
+        )}>
           {page.isLoading ? (
             <Loading />
           ) : (
@@ -259,27 +363,35 @@ export default function Tasks({
                 {
                   label: '设备',
                   render: (r) => (
-                    <div className="inline-flex items-center gap-1">
-                      <code className="font-mono text-xs">{r.deviceId}</code>
+                    <div className={cn('items-center gap-1', isVerification ? 'flex min-w-0' : 'inline-flex')}>
+                      <code className={cn('font-mono text-xs', isVerification && 'truncate')} title={r.deviceId}>
+                        {r.deviceId}
+                      </code>
                       <CopyIdButton value={r.deviceId} label="设备 ID" />
                     </div>
                   ),
                 },
                 { label: '状态', render: (r) => <Status value={r.state} /> },
                 {
-                  label: '阶段 / 进度',
-                  render: (r) => (
-                    <span>
-                      {r.phase ?? '—'}
-                      {r.progressPercent != null ? ` · ${r.progressPercent}%` : ''}
-                    </span>
-                  ),
+                  label: isVerification ? '升级进度' : '阶段 / 进度',
+                  render: (r) =>
+                    isVerification ? (
+                      <VerificationTaskProgress task={r} />
+                    ) : (
+                      <span>
+                        {r.phase ?? '—'}
+                        {r.progressPercent != null ? ` · ${r.progressPercent}%` : ''}
+                      </span>
+                    ),
                 },
                 {
-                  label: '处理情况',
+                  label: isVerification ? '执行说明' : '处理情况',
                   render: (r) => (
-                    <span className="block max-w-64 whitespace-normal text-xs leading-5">
-                      {r.state === 'WAIT_DISPATCH'
+                    <span className={cn(
+                      'block whitespace-normal text-xs leading-5 [overflow-wrap:anywhere]',
+                      isVerification ? 'text-muted-foreground' : 'max-w-64',
+                    )}>
+                      {isVerification ? verificationTaskNote(r) : r.state === 'WAIT_DISPATCH'
                         ? r.dispatchReasonCode
                           ? dispatchResultLabel(r.dispatchReasonCode)
                           : '暂无近期下发诊断'
@@ -290,7 +402,7 @@ export default function Tasks({
                 {
                   label: '操作',
                   render: (r) => (
-                    <Button size="sm" variant="outline" onClick={() => setDetail(r)}>
+                    <Button size="sm" variant={isVerification ? 'ghost' : 'outline'} className={isVerification ? 'md:w-32 md:justify-start' : undefined} onClick={() => setDetail(r)}>
                       <History aria-hidden="true" />
                       执行记录
                     </Button>

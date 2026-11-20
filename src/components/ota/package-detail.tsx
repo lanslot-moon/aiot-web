@@ -11,6 +11,7 @@ import useSWR from 'swr';
 import { ArrowLeft, ChevronDown, ChevronUp, ClipboardList, Download, Info, RefreshCw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   DropdownMenu,
@@ -33,6 +34,8 @@ import {
 } from '@/api/ota/client';
 import { Choice, Failure, Field, Help, Loading, Modal, RemoteChoice, Status } from './shared';
 import Tasks from './tasks';
+import UpgradePath from './upgrade-path';
+import { verificationTableLayout } from './verification-table-layout';
 import ScopePicker from './scope-picker';
 import ReleaseWizard from './release-wizard';
 import { useDraftRegistration } from '@/components/iam/drafts';
@@ -75,6 +78,7 @@ function FirmwareUpload({
           );
           return file;
         }}
+        getUploadSha256={(file) => hashes.current.get(file) ?? ''}
         onFileChange={(file) => {
           hash.current = file ? (hashes.current.get(file) ?? '') : '';
           onChange(undefined);
@@ -99,6 +103,7 @@ export function CreatePackage({
 }) {
   useDraftRegistration(true);
   const [kind, setKind] = useState('FULL');
+  const [packageName, setPackageName] = useState('');
   const [source, setSource] = useState<FirmwareVersion>();
   const [algorithm, setAlgorithm] = useState('BSDIFF');
   const [upload, setUpload] = useState<Upload>();
@@ -112,6 +117,8 @@ export function CreatePackage({
   async function save() {
     await action.run(
       async () => {
+        const name = packageName.trim();
+        if (!name) throw new Error('请填写升级包名称。');
         if (isDelta && (!source || !isDeltaSource(source, version)))
           throw new Error('源版本必须属于同一模块，且版本号低于目标版本，不允许同版本升级或降级。');
         if (!targetFile || (kind === 'DELTA' && (!source || !sourceFile)))
@@ -120,6 +127,7 @@ export function CreatePackage({
           created ??
           (await otaRequest<Package>(projectId, 'packages', 'POST', {
             targetVersionId: version.id,
+            packageName: name,
             packageType: kind,
             targetImageSha256: targetFile.sha256,
             ...(kind === 'DELTA'
@@ -167,7 +175,7 @@ export function CreatePackage({
           >
             {created ? '查看已创建的包' : '取消'}
           </Button>
-          <Button disabled={action.busy || !targetFile || (isDelta && (!sourceFile || !source || !isDeltaSource(source, version)))} onClick={() => void save()}>
+          <Button disabled={action.busy || !packageName.trim() || !targetFile || (isDelta && (!sourceFile || !source || !isDeltaSource(source, version)))} onClick={() => void save()}>
             {action.busy
               ? '提交中…'
               : created
@@ -180,6 +188,10 @@ export function CreatePackage({
       }
     >
       <fieldset disabled={action.busy || !!created} className="space-y-5">
+        <Field title="升级包名称" required>
+          <Input aria-label="升级包名称" required maxLength={64} value={packageName}
+            onChange={(event) => setPackageName(event.target.value)} />
+        </Field>
         <Field title="升级包类型">
           <Choice
             label="升级包类型"
@@ -230,7 +242,7 @@ export function CreatePackage({
             {source && <FullPackagePicker key={source.id} input={base} title="源全量包"
               empty={`${source.versionText} 没有已封存的全量包，无法生成这条差分包。`} />}
             <FullPackagePicker input={target} title="目标全量包" empty="请先为当前版本创建并封存全量包。" />
-            {source && <p className="text-sm">适用升级路径：{source.versionText} → {version.versionText}</p>}
+            {source && <Field title="适用升级路径"><UpgradePath source={source.versionText} target={version.versionText} /></Field>}
           </>
         )}
         {!isDelta && <FirmwareUpload label="目标固件文件" onChange={setUpload} />}
@@ -368,7 +380,7 @@ export default function PackageDetail({
     sealed ? 5000 : 0,
   );
   const [picker, setPicker] = useState(false);
-  const [selectedVerification, setVerification] = useState<string>();
+  const [verification, setVerification] = useState('');
   const [releaseOpen, setReleaseOpen] = useState(false);
   const action = useAction();
   const download = useAction();
@@ -376,7 +388,6 @@ export default function PackageDetail({
   const create = usePermission('ota:create');
   const update = usePermission('ota:update');
   const runningVerification = verifications.rows.find((r) => r.state === 'RUNNING');
-  const verification = selectedVerification ?? runningVerification?.id;
   const record = useSWR(
     verification ? [projectId, 'verification', verification] : null,
     () => otaRequest<Verification>(projectId, `verifications/${verification}`),
@@ -408,7 +419,6 @@ export default function PackageDetail({
       try {
         await otaRequest(projectId, `verifications/${result.id}/start`, 'POST');
       } finally {
-        setVerification(result.id);
         await verifications.mutate();
       }
     }, '样机验证已启动');
@@ -428,13 +438,6 @@ export default function PackageDetail({
     data?.state === 'DRAFT' &&
     (isDelta ? buildTask === null && !build.error : !readyToSeal);
   const targetVersion = version?.id === data?.targetVersionId ? version : undefined;
-  const summary = [
-    isDelta && data?.sourceVersionText
-      ? `适用升级路径：${data.sourceVersionText} → ${targetVersion?.versionText ?? '…'}`
-      : targetVersion && `目标版本 ${targetVersion.versionText}`,
-    files.length > 0 &&
-      `文件大小 ${formatFirmwareSize(files.reduce((sum, file) => sum + file.sizeBytes, 0))}`,
-  ].filter(Boolean);
   const verifying = !!runningVerification || record.data?.state === 'RUNNING';
   const waitingForVerification =
     verifications.data &&
@@ -460,10 +463,11 @@ export default function PackageDetail({
           <div className="min-w-0 space-y-1">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-lg font-semibold">
-                {data ? (isDelta ? '差分升级包' : '全量升级包') : '升级包详情'}
+                {data?.packageName || '升级包详情'}
               </h2>
               {data && (
                 <>
+                  <Badge variant="outline">{isDelta ? '差分包' : '全量包'}</Badge>
                   <Status
                     value={
                       data.state === 'BUILDING' && canRetryBuild ? buildTask.status : data.state
@@ -515,10 +519,11 @@ export default function PackageDetail({
                 </>
               )}
             </div>
-            {summary.length > 0 && (
-              <p className="text-sm text-muted-foreground [overflow-wrap:anywhere]">
-                {summary.join(' · ')}
-              </p>
+            {data && (
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+                <UpgradePath source={isDelta ? data.sourceVersionText : undefined} target={targetVersion?.versionText} />
+                {files.length > 0 && <span>文件大小 {formatFirmwareSize(files.reduce((sum, file) => sum + file.sizeBytes, 0))}</span>}
+              </div>
             )}
           </div>
         </div>
@@ -667,42 +672,44 @@ export default function PackageDetail({
               {verifications.isLoading ? (
                 <Loading />
               ) : verifications.rows.length > 0 ? (
-                <DeviceTable
-                  rows={verifications.rows}
-                  columns={[
-                    { label: '验证批次', render: (r) => r.id },
-                    { label: '状态', render: (r) => <Status value={r.state} /> },
-                    {
-                      label: '创建时间',
-                      render: (r) => (r.createTime != null ? formatDateTime(r.createTime) : '—'),
-                    },
-                    {
-                      label: '包一致性',
-                      render: (r) => (
-                        <VerificationInfo record={r} currentManifest={data.manifestSha256} />
-                      ),
-                    },
-                    {
-                      label: '操作',
-                      render: (r) => (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="w-32 justify-start"
-                          aria-expanded={r.id === verification}
-                          onClick={() => setVerification(r.id === verification ? '' : r.id)}
-                        >
-                          {r.id === verification ? <ChevronUp /> : <ChevronDown />}
-                          {r.id === verification
-                            ? '收起设备任务'
-                            : sealed && update && r.state === 'DRAFT'
-                              ? '继续验证'
-                              : '查看设备任务'}
-                        </Button>
-                      ),
-                    },
-                  ]}
-                />
+                <div className={verificationTableLayout}>
+                  <DeviceTable
+                    rows={verifications.rows}
+                    columns={[
+                      { label: '验证批次', render: (r) => r.id },
+                      { label: '状态', render: (r) => <Status value={r.state} /> },
+                      {
+                        label: '创建时间',
+                        render: (r) => (r.createTime != null ? formatDateTime(r.createTime) : '—'),
+                      },
+                      {
+                        label: '包一致性',
+                        render: (r) => (
+                          <VerificationInfo record={r} currentManifest={data.manifestSha256} />
+                        ),
+                      },
+                      {
+                        label: '操作',
+                        render: (r) => (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-32 justify-start"
+                            aria-expanded={r.id === verification}
+                            onClick={() => setVerification(r.id === verification ? '' : r.id)}
+                          >
+                            {r.id === verification ? <ChevronUp /> : <ChevronDown />}
+                            {r.id === verification
+                              ? '收起设备任务'
+                              : sealed && update && r.state === 'DRAFT'
+                                ? '继续验证'
+                                : '查看设备任务'}
+                          </Button>
+                        ),
+                      },
+                    ]}
+                  />
+                </div>
               ) : verifications.data && !verifications.error ? (
                 <Empty className="min-h-44 flex-none rounded-lg border">
                   <EmptyHeader>
@@ -754,7 +761,7 @@ export default function PackageDetail({
                             启动验证
                           </Button>
                         )}
-                        <Button size="sm" variant="outline" onClick={() => setVerification('')}>
+                        <Button size="sm" variant="outline" className="md:w-32 md:justify-start" onClick={() => setVerification('')}>
                           <ChevronUp /> 收起设备任务
                         </Button>
                       </>

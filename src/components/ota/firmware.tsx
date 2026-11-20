@@ -48,6 +48,7 @@ import {
 } from '@/api/ota/client';
 import { Choice, Failure, Field, Input, Loading, Modal, RemoteChoice, Status } from './shared';
 import PackageDetail, { CreatePackage } from './package-detail';
+import UpgradePath from './upgrade-path';
 
 // 通道值与后端 FirmwareChannel 枚举一致，建议编码采用项目命名约定。
 const standardChannels = [
@@ -182,6 +183,7 @@ export default function Firmware({
     versions.rows.find((v) => v.id === versionId) ??
     selectedResource.data ??
     (version?.id === versionId ? version : undefined);
+  const canPreparePackage = create && selectedVersion?.lifecycleState === 'DRAFT';
   const publishablePackage = useSWR(
     selectedVersion?.lifecycleState === 'DRAFT' && update
       ? [projectId, 'ota-publishable-package', versionId]
@@ -351,7 +353,7 @@ export default function Firmware({
       <Failure error={action.error} />
       <Failure error={selectedResource.error} retry={() => selectedResource.mutate()} />
       {moduleId ? (
-        <div className="grid gap-4 lg:min-h-72 lg:flex-1 lg:grid-cols-[clamp(24rem,43%,35rem)_minmax(0,1fr)]">
+        <div className="grid gap-4 lg:min-h-72 lg:flex-1 lg:grid-cols-[clamp(25rem,46%,39rem)_minmax(0,1fr)]">
           <section
             aria-label="固件版本"
             className="flex min-h-72 min-w-0 flex-col rounded-lg border"
@@ -380,7 +382,7 @@ export default function Firmware({
                   >
                     <TableHeader>
                       <TableRow>
-                        <TableHead scope="col" className="w-[30%] sm:w-[33%]">
+                        <TableHead scope="col" className="w-1/4">
                           版本号
                         </TableHead>
                         <TableHead scope="col" className="w-14 sm:w-20">
@@ -531,7 +533,7 @@ export default function Firmware({
                   </DropdownMenu>
                 )}
                 {selectedVersion && create && (
-                  <Button size="sm" onClick={() => setForm('package')}>
+                  <Button size="sm" disabled={!canPreparePackage} onClick={() => setForm('package')}>
                     准备升级包
                   </Button>
                 )}
@@ -557,19 +559,19 @@ export default function Firmware({
                     rows={packages.rows}
                     columns={[
                       {
-                        label: '升级包',
-                        render: (p) => (
-                          <div className="space-y-1">
-                            <span>{p.packageType === 'FULL' ? '全量包' : '差分包'}</span>
-                            <div className="font-mono text-xs text-muted-foreground">{p.id}</div>
-                          </div>
-                        ),
+                        label: '升级包名称',
+                        render: (p) => p.packageName || <span className="text-muted-foreground">暂无名称</span>,
+                      },
+                      {
+                        label: '类型',
+                        render: (p) => p.packageType === 'FULL' ? '全量包' : '差分包',
                       },
                       {
                         label: '升级路径',
-                        render: (p) => p.packageType === 'DELTA'
-                          ? `${p.sourceVersionText} → ${selectedVersion?.versionText ?? '…'}`
-                          : selectedVersion?.versionText ?? '—',
+                        render: (p) => (
+                          <UpgradePath source={p.packageType === 'DELTA' ? p.sourceVersionText : undefined}
+                            target={selectedVersion?.versionText} />
+                        ),
                       },
                       { label: '状态', render: (p) => <Status value={packageStatus(p)} /> },
                       {
@@ -785,7 +787,7 @@ export default function Firmware({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      {form === 'package' && selectedVersion && (
+      {form === 'package' && canPreparePackage && (
         <CreatePackage
           projectId={projectId}
           moduleId={moduleId}
