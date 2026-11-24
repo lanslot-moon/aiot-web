@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
+import { copyText } from '@/lib/clipboard';
 import { cn } from '@/lib/utils';
 
 export function CopyIdButton({
@@ -18,12 +19,12 @@ export function CopyIdButton({
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(value);
+      await copyText(value);
       setCopied(true);
-      toast.success(`${label} copied`);
+      toast.success(`已复制 ${label}`);
       window.setTimeout(() => setCopied(false), 1500);
     } catch {
-      toast.error(`Failed to copy ${label}`);
+      toast.error(`无法复制 ${label}，请手动复制。`);
     }
   };
 

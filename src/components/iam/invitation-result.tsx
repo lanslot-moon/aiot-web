@@ -1,3 +1,4 @@
+import { copyText } from '@/lib/clipboard';
 import { formatDateTime } from '@/lib/date-time';
 import { Link } from 'react-router';
 import { toast } from 'sonner';
@@ -23,7 +24,7 @@ function InvitationDelivery({ invitation }: { invitation: ProjectInvitationVO })
   const url = `${window.location.origin}/project-invitations/${segment(invitation.invitationId)}`;
   return (
     <div className="space-y-4 text-sm">
-      {invitation.invitationToken && <Button onClick={async () => { try { await navigator.clipboard.writeText(`邀请你加入项目。\n邀请地址：${url}\n邀请令牌：${invitation.invitationToken}\n有效期至：${formatDateTime(invitation.expiresAt)}\n请使用受邀邮箱或账号登录并接受邀请。`); toast.success('邀请信息已复制'); } catch { toast.error('复制失败，请分别复制地址与令牌。'); } }}>复制完整邀请信息</Button>}
+      {invitation.invitationToken && <Button onClick={async () => { try { await copyText(`邀请你加入项目。\n邀请地址：${url}\n邀请令牌：${invitation.invitationToken}\n有效期至：${formatDateTime(invitation.expiresAt)}\n请使用受邀邮箱或账号登录并接受邀请。`); toast.success('邀请信息已复制'); } catch { toast.error('复制失败，请分别复制地址与令牌。'); } }}>复制完整邀请信息</Button>}
       <p>受邀人：{invitation.inviteeEmail ?? invitation.inviteeAccountId}</p>
       <p>到期时间：{formatDateTime(invitation.expiresAt)}</p>
       <div className="space-y-2"><label htmlFor="invitation-address" className="font-medium">1. 复制邀请地址</label><div className="flex items-center gap-2"><Input id="invitation-address" value={url} readOnly /><CopyIdButton value={url} label="邀请地址" /></div></div>

@@ -1,3 +1,4 @@
+import { copyText } from '@/lib/clipboard';
 import { apiCode } from '@/api/response';
 import { formatDateTime } from '@/lib/date-time';
 import { get, OpenPlatformApiError, post, put, remove, segment } from '@/api/iam/client';
@@ -211,7 +212,7 @@ function ProjectCredentials({ projectId }: { projectId: string }) {
                   variant="outline"
                   onClick={async () => {
                     try {
-                      await navigator.clipboard.writeText(material.clientSecret ?? '');
+                      await copyText(material.clientSecret ?? '');
                       toast.success('密钥已复制');
                     } catch {
                       toast.error('无法复制，请手动选择密钥。');

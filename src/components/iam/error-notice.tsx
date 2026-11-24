@@ -1,3 +1,4 @@
+import { copyText } from '@/lib/clipboard';
 import { useEffect, useId, useRef, useState } from 'react';
 import { CircleAlert, CloudOff, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -70,7 +71,7 @@ export function ErrorNotice({ error, retry, title, description, retryLabel = '�
       </div>
       {copyStatus && <span role="status" className="text-xs text-muted-foreground">{copyStatus}</span>}
       <DialogFooter><Button type="button" variant="ghost" size="sm" onClick={async () => {
-        try { await navigator.clipboard.writeText(diagnostic); setCopyStatus('已复制'); }
+        try { await copyText(diagnostic); setCopyStatus('已复制'); }
         catch { setCopyStatus('复制失败，请手动选择诊断信息复制'); }
       }}>复制信息</Button>{action}</DialogFooter>
     </DialogContent>

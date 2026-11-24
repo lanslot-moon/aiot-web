@@ -1,3 +1,4 @@
+import { copyText } from '@/lib/clipboard';
 import { formatDateTime } from '@/lib/date-time';
 import {
 ArrowLeft,
@@ -224,7 +225,7 @@ function OneTimeSecretDialog({
   const copySecret = async () => {
     if (!delivery) return;
     try {
-      await navigator.clipboard.writeText(delivery.secret);
+      await copyText(delivery.secret);
       toast.success('Secret 已复制，请立即保存到安全位置。');
     } catch {
       toast.error('复制失败，请手动复制。');

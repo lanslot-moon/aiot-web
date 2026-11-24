@@ -1,5 +1,6 @@
 
 
+import { copyText } from "@/lib/clipboard"
 import React, { useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -40,7 +41,7 @@ const Page = () => {
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(website)
+      await copyText(website)
       setCopied(true)
       setTimeout(() => setCopied(false), 1500)
     } catch (err) {
