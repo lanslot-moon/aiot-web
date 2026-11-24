@@ -3,12 +3,15 @@ import { ChevronDown, X } from 'lucide-react';
 import { Pager } from '@/components/policy/shared';
 import { Combobox, ComboboxContent, ComboboxItem, ComboboxList, ComboboxTrigger } from '@/components/ui/combobox';
 import ScopePicker from './scope-picker';
+import ScopeSearch from './scope-search';
 import UpgradeRoute from './upgrade-route';
 import { useDraftRegistration } from '@/components/iam/drafts';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { DateTimePicker } from '@/components/shared/date-time-picker';
 import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import ProductPicker from '@/components/policy/product-picker';
 import {
@@ -22,6 +25,7 @@ import {
 } from '@/api/ota/client';
 import { cn } from '@/lib/utils';
 import { Choice, Failure, Field, Input, Modal, RemoteChoice } from './shared';
+
 const initial = (productId: string): ReleasePolicy => ({
   productId,
   moduleId: '',
@@ -110,6 +114,7 @@ export default function ReleaseWizard({
   onCreated: (id: string) => void;
 }) {
   useDraftRegistration(true);
+  const confirmationId = useId();
   const [picker, setPicker] = useState(false);
   const [step, setStep] = useState(prepared ? 1 : 0);
   const [policy, setPolicy] = useState(() => ({
@@ -124,7 +129,9 @@ export default function ReleaseWizard({
   const [moduleName, setModuleName] = useState('');
   const [versionName, setVersionName] = useState(prepared?.version.versionText ?? '');
   const [scope, setScope] = useState('all');
-  const [deviceText, setDeviceText] = useState('');
+  const [deviceIdMode, setDeviceIdMode] = useState<'tags' | 'text'>('tags');
+  const [deviceIdText, setDeviceIdText] = useState('');
+  const deviceIds = deviceIdMode === 'text' ? splitValues(deviceIdText) : policy.deviceIds;
   const sourceVersions = pkg?.packageType === 'DELTA' ? [pkg.sourceVersionText!] : policy.sourceVersions;
   const [hardwareText, setHardwareText] = useState('');
   const [tagText, setTagText] = useState('');
@@ -135,6 +142,23 @@ export default function ReleaseWizard({
   function patch(values: Partial<ReleasePolicy>) {
     if (values.mode === 'DYNAMIC') setStart('');
     setPolicy((p) => ({ ...p, ...values }));
+  }
+  function addDevice(id: string) {
+    if (deviceIds.includes(id)) return;
+    if (deviceIdMode === 'text') {
+      setDeviceIdText((text) => [text.trimEnd(), id].filter(Boolean).join('\n'));
+    } else {
+      patch({ deviceIds: [...deviceIds, id] });
+    }
+  }
+  function toggleDeviceIdMode() {
+    if (deviceIdMode === 'tags') {
+      setDeviceIdText(policy.deviceIds.join('\n'));
+      setDeviceIdMode('text');
+    } else {
+      patch({ deviceIds });
+      setDeviceIdMode('tags');
+    }
   }
   function payload(): ReleasePolicy {
     const tags: Record<string, string> = {};
@@ -152,7 +176,7 @@ export default function ReleaseWizard({
       ...policy,
       sourceVersions,
       hardwareVersions: splitValues(hardwareText),
-      deviceIds: scope === 'devices' ? splitValues(deviceText) : [],
+      deviceIds: scope === 'devices' ? deviceIds : [],
       groupId: scope === 'group' ? policy.groupId : undefined,
       tags,
       effectiveFrom: start ? new Date(start).getTime() : undefined,
@@ -173,7 +197,7 @@ export default function ReleaseWizard({
     )
       throw new Error('请选择产品、已发布版本及验证成功的升级包。');
     if (step >= 1) {
-      if (scope === 'devices' && !splitValues(deviceText).length)
+      if (scope === 'devices' && !deviceIds.length)
         throw new Error('请填写至少一个设备 ID。');
       if (scope === 'group' && !policy.groupId?.trim()) throw new Error('请填写设备组 ID。');
       if (
@@ -390,25 +414,87 @@ export default function ReleaseWizard({
             </Field>
           </div>
           {scope === 'devices' && (
-            <Field title="设备 ID">
-              <Button variant="outline" size="sm" onClick={() => setPicker(true)}>
-                选择设备
-              </Button>
-              <Textarea
-                aria-label="设备 ID"
-                placeholder="每行一个设备 ID，或使用逗号分隔"
-                value={deviceText}
-                onChange={(e) => setDeviceText(e.target.value)}
-              />
-            </Field>
+            <div className="min-w-0 space-y-2">
+              <div className="flex min-h-6 items-center justify-between gap-2">
+                <span className="text-xs font-medium">设备 ID</span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6! px-2 text-xs"
+                  onClick={toggleDeviceIdMode}
+                >
+                  {deviceIdMode === 'tags' ? '切换为文本' : '切换为标签'}
+                </Button>
+              </div>
+              <div className="flex items-start gap-2">
+                <ScopeSearch
+                  projectId={projectId}
+                  productId={policy.productId}
+                  selected={deviceIds}
+                  onSelect={addDevice}
+                />
+                <Button type="button" variant="outline" size="sm" onClick={() => setPicker(true)}>
+                  浏览设备
+                </Button>
+              </div>
+              {deviceIdMode === 'text' ? (
+                <Textarea
+                  aria-label="设备 ID"
+                  placeholder="每行一个设备 ID，或用逗号分隔"
+                  value={deviceIdText}
+                  onChange={(event) => setDeviceIdText(event.target.value)}
+                  className="max-h-28 overflow-y-auto"
+                />
+              ) : (
+                <div className="min-h-8 rounded-lg border border-input px-2 py-1">
+                  {deviceIds.length > 0 ? (
+                    <ul
+                      aria-label="已添加的设备 ID"
+                      className="flex max-h-24 flex-wrap gap-1.5 overflow-y-auto p-0.5"
+                    >
+                      {deviceIds.map((id) => (
+                        <li key={id} className="min-w-0 max-w-full">
+                          <Badge variant="secondary" className="h-auto max-w-full rounded-md! py-0.5 pr-0.5">
+                            <span className="min-w-0 truncate font-mono" title={id}>{id}</span>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon-xs"
+                              className="size-5! shrink-0"
+                              aria-label={`移除设备 ${id}`}
+                              onClick={() => patch({ deviceIds: deviceIds.filter((value) => value !== id) })}
+                            >
+                              <X aria-hidden />
+                            </Button>
+                          </Badge>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="py-0.5 text-xs text-muted-foreground">尚未添加设备</p>
+                  )}
+                </div>
+              )}
+            </div>
           )}
           {scope === 'group' && (
             <Field title="设备组 ID">
-              <Button variant="outline" size="sm" onClick={() => setPicker(true)}>
-                选择设备组
-              </Button>
+              <div className="flex items-start gap-2">
+                <ScopeSearch
+                  projectId={projectId}
+                  productId={policy.productId}
+                  group
+                  selected={policy.groupId?.trim() ? [policy.groupId.trim()] : []}
+                  onSelect={(id) => patch({ groupId: id })}
+                />
+                <Button type="button" variant="outline" size="sm" onClick={() => setPicker(true)}>
+                  浏览设备组
+                </Button>
+              </div>
               <Input
                 aria-label="设备组 ID"
+                placeholder="也可直接输入完整设备组 ID"
                 value={policy.groupId ?? ''}
                 onChange={(e) => patch({ groupId: e.target.value })}
               />
@@ -467,34 +553,31 @@ export default function ReleaseWizard({
               title="批次开始时间"
               help="仅本次设备支持预约，范围为 5 分钟至 7 天。持续匹配在激活后立即开始。"
             >
-              <Input
-                aria-label="批次开始时间"
+              <DateTimePicker
+                label="批次开始时间"
                 disabled={policy.mode === 'DYNAMIC'}
-                type="datetime-local"
                 value={start}
-                onChange={(e) => setStart(e.target.value)}
+                onChange={setStart}
               />
             </Field>
             <Field
               title="批次截止时间"
               help="留空为不限制。预约批次的截止时间须为开始后 1 小时至 30 天；立即批次须晚于当前时间。"
             >
-              <Input
-                aria-label="批次截止时间"
-                type="datetime-local"
+              <DateTimePicker
+                label="批次截止时间"
                 value={end}
-                onChange={(e) => setEnd(e.target.value)}
+                onChange={setEnd}
               />
             </Field>
             <Field
               title="设备执行时间"
               help="留空表示收到任务后立即执行；设置后由设备按此时间处理。与批次匹配时间不同。"
             >
-              <Input
-                aria-label="设备执行时间"
-                type="datetime-local"
+              <DateTimePicker
+                label="设备执行时间"
                 value={execute}
-                onChange={(e) => setExecute(e.target.value)}
+                onChange={setExecute}
               />
             </Field>
             <Field title="推送速率（台/分钟）">
@@ -507,12 +590,25 @@ export default function ReleaseWizard({
               />
             </Field>
           </div>
-          <label className="flex items-center gap-2 text-sm">
-            <Checkbox
+          <label
+            htmlFor={confirmationId}
+            className="flex cursor-pointer items-center justify-between gap-4 rounded-lg border border-input bg-muted/20 px-3.5 py-3 transition-colors hover:bg-muted/40 focus-within:border-ring/60"
+          >
+            <span className="min-w-0 space-y-1">
+              <span id={confirmationId + '-label'} className="block text-sm font-medium">
+                下发前需要业务确认
+              </span>
+              <span id={confirmationId + '-hint'} className="block text-xs text-muted-foreground">
+                开启后，升级任务须在任务列表中确认，之后才会下发。
+              </span>
+            </span>
+            <Switch
+              id={confirmationId}
+              aria-labelledby={confirmationId + '-label'}
+              aria-describedby={confirmationId + '-hint'}
               checked={policy.requireAppConfirm}
-              onCheckedChange={(v) => patch({ requireAppConfirm: !!v })}
+              onCheckedChange={(checked) => patch({ requireAppConfirm: checked })}
             />
-            下发前需要业务确认
           </label>
           <Collapsible>
             <CollapsibleTrigger render={<Button variant="ghost" size="sm" />}>
@@ -578,7 +674,7 @@ export default function ReleaseWizard({
                 ? '当前产品匹配设备'
                 : scope === 'group'
                   ? `设备组 ${policy.groupId}`
-                  : `指定 ${splitValues(deviceText).length} 台设备`,
+                  : `指定 ${deviceIds.length} 台设备`,
             ],
             ['灰度比例', `${policy.rolloutPercent}%`],
             ['匹配方式', policy.mode === 'STATIC' ? '仅本次设备' : '持续匹配'],
@@ -609,11 +705,17 @@ export default function ReleaseWizard({
           productId={policy.productId}
           group={scope === 'group'}
           selected={
-            scope === 'group' ? (policy.groupId ? [policy.groupId] : []) : splitValues(deviceText)
+            scope === 'group' ? (policy.groupId ? [policy.groupId] : []) : deviceIds
           }
-          onChange={(ids) =>
-            scope === 'group' ? patch({ groupId: ids[0] }) : setDeviceText(ids.join('\n'))
-          }
+          onChange={(ids) => {
+            if (scope === 'group') {
+              patch({ groupId: ids[0] });
+            } else if (deviceIdMode === 'text') {
+              setDeviceIdText(ids.join('\n'));
+            } else {
+              patch({ deviceIds: ids });
+            }
+          }}
           onClose={() => setPicker(false)}
         />
       )}
