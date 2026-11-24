@@ -6,6 +6,7 @@ import { Link, useSearchParams } from 'react-router';
 import { ArrowLeft, Plus, RefreshCw, SlidersHorizontal, X } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { DeviceTable } from '@/components/device/layout';
 import { usePermission } from '@/context/iam-context/identity';
 import { formatDateTime } from '@/lib/date-time';
@@ -269,9 +270,14 @@ function ReleaseDetail({
                 : targets.isLoading ? <Loading /> : (
                   <DeviceTable embedded rows={targets.rows} emptyMessage="该批次尚无匹配设备。" columns={[
                     { label: '设备 ID', render: (row) => <code className="text-xs">{row.deviceId}</code> },
-                    { label: '校验结果', render: (row) => <span className={cn(row.matchState === 'INELIGIBLE' && 'text-red-700 dark:text-red-400')}>
+                    { label: '校验结果', render: (row) => <Badge variant="outline" className={cn(
+                      'h-6 rounded-md px-2',
+                      row.matchState === 'INELIGIBLE' && 'border-destructive/30! bg-destructive/10! text-destructive!',
+                      row.matchState === 'PENDING' && 'border-amber-500/25! bg-amber-500/10! text-amber-800! dark:text-amber-300!',
+                      row.matchState === 'TASK_CREATED' && 'border-emerald-500/25! bg-emerald-500/10! text-emerald-700! dark:text-emerald-400!',
+                    )}>
                       {{ PENDING: '待校验', INELIGIBLE: '未通过校验', TASK_CREATED: '已创建任务' }[row.matchState]}
-                    </span> },
+                    </Badge> },
                     { label: '未通过原因', render: (row) => row.matchState === 'INELIGIBLE'
                       ? <span className="block min-w-36 max-w-64 whitespace-normal">{row.matchReason || '暂无校验原因记录'}</span>
                       : '—' },
