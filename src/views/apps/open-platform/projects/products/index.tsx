@@ -1,5 +1,5 @@
 import { formatDateTime } from '@/lib/date-time';
-import { Library, PackagePlus, SearchIcon, X } from 'lucide-react';
+import { Library, PackagePlus, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { usePermission } from '@/context/iam-context/identity';
 import { Link, useParams } from 'react-router';
@@ -10,6 +10,7 @@ import { CopyIdButton } from '@/components/open-platform/copy-id-button';
 import { ProductLifecycleBadge } from '@/components/open-platform/product-lifecycle-badge';
 import { ProjectWorkspaceShell } from '@/components/open-platform/project-workspace-shell';
 import StyleAwareWrapper from '@/components/shared/StyleAwareWrapper';
+import { SearchFieldSelect } from '@/components/shared/search-field-select';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -45,9 +46,16 @@ const BCrumb = [
 
 const STATUS_ALL = 'ALL';
 const DEFAULT_PAGE_SIZE = 20;
+const PRODUCT_SEARCH_FIELDS = [
+  { value: 'productName', label: '产品名称' },
+  { value: 'productId', label: '产品 ID' },
+] as const;
+type ProductSearchField = (typeof PRODUCT_SEARCH_FIELDS)[number]['value'];
 
 const ProjectProductsPage = () => {
   const { projectId = '' } = useParams<{ projectId: string }>();
+  const [searchField, setSearchField] = useState<ProductSearchField>('productName');
+  const [draft, setDraft] = useState('');
   const [keyword, setKeyword] = useState('');
   const [status, setStatus] = useState(STATUS_ALL);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
@@ -61,13 +69,23 @@ const ProjectProductsPage = () => {
     setPageProjectId(projectId);
     setPageCursors([null]);
     setPageIndex(0);
+    setSearchField('productName');
+    setDraft('');
     setKeyword('');
   }, [pageProjectId, projectId]);
+
+  function updateSearch(value: string) {
+    setKeyword(value);
+    setPageCursors([null]);
+    setPageIndex(0);
+  }
+
   const productsKey = projectId ? (() => {
     const params = new URLSearchParams({ pageSize: String(pageSize) });
     const cursor = pageProjectId === projectId ? pageCursors[pageIndex] : null;
     if (cursor) params.set('cursor', cursor);
     if (status !== STATUS_ALL) params.set('lifecycleStatus', status);
+    if (pageProjectId === projectId && keyword) params.set(searchField, keyword);
     return `/api/v1/products?${params.toString()}`;
   })() : null;
   const {
@@ -78,19 +96,6 @@ const ProjectProductsPage = () => {
   } = useSWR<CursorResult<ProductListItem>>(productsKey, openPlatformGetFetcher);
 
   const products = useMemo(() => data?.items ?? [], [data?.items]);
-  const filtered = useMemo(() => {
-    const q = keyword.trim().toLowerCase();
-    return products.filter((product) => {
-      if (!q) return true;
-      return [
-        product.productName,
-        product.productId,
-        product.productModel ?? '',
-        product.categoryCode,
-      ].some((value) => value.toLowerCase().includes(q));
-    });
-  }, [keyword, products]);
-
   const counts = useMemo(
     () => ({
       all: products.length,
@@ -167,33 +172,55 @@ const ProjectProductsPage = () => {
             </p>
           ) : null}
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="relative w-full sm:max-w-72">
-              <SearchIcon
-                size={16}
-                className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-muted-foreground"
-                aria-hidden
-              />
-              <Input
-                value={keyword}
-                onChange={(event) => setKeyword(event.target.value)}
-                placeholder="搜索当前页产品名称 / ID"
-                aria-label="搜索当前页产品名称或 ID"
-                className="pr-8 pl-8"
-              />
-              {keyword ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-xs"
-                  className="absolute top-1/2 right-1 -translate-y-1/2 text-muted-foreground"
-                  aria-label="清除产品搜索"
-                  onClick={() => setKeyword('')}
-                >
-                  <X className="size-3.5" aria-hidden />
-                </Button>
-              ) : null}
-            </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <form
+              aria-label="产品查询"
+              className="flex w-full min-w-0 items-center gap-2 sm:w-auto"
+              onSubmit={(event) => {
+                event.preventDefault();
+                updateSearch(draft.trim());
+              }}
+            >
+              <div className="flex min-w-0 flex-1 sm:w-80">
+                <SearchFieldSelect
+                  label="产品查询字段"
+                  value={searchField}
+                  options={[...PRODUCT_SEARCH_FIELDS]}
+                  className="w-25"
+                  onChange={(field) => {
+                    setSearchField(field);
+                    setDraft('');
+                    updateSearch('');
+                  }}
+                />
+                <div className="relative min-w-0 flex-1">
+                  <Input
+                    value={draft}
+                    onChange={(event) => setDraft(event.target.value)}
+                    placeholder={searchField === 'productId' ? '输入完整产品 ID' : '输入产品名称'}
+                    aria-label="产品查询内容"
+                    maxLength={128}
+                    className="rounded-l-none! rounded-r-lg! pr-8"
+                  />
+                  {(draft || keyword) && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-xs"
+                      className="absolute top-1/2 right-1 -translate-y-1/2"
+                      aria-label="清除产品搜索"
+                      onClick={() => {
+                        setDraft('');
+                        updateSearch('');
+                      }}
+                    >
+                      <X className="size-3.5" aria-hidden />
+                    </Button>
+                  )}
+                </div>
+              </div>
+              <Button type="submit" variant="outline" size="sm">查询</Button>
+            </form>
             <Select value={status} onValueChange={(value) => {
               setStatus(value ?? STATUS_ALL);
               setPageCursors([null]);
@@ -258,16 +285,16 @@ const ProjectProductsPage = () => {
                       <TableCell />
                     </TableRow>
                   ))
-                ) : filtered.length === 0 ? (
+                ) : products.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={8} className="h-32 text-center text-muted-foreground">
-                      {products.length === 0 && status === STATUS_ALL && !keyword.trim()
+                      {status === STATUS_ALL && !keyword
                         ? '当前项目还没有产品，点击“创建产品”开始。'
                         : '当前筛选条件下没有产品'}
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filtered.map((product) => (
+                  products.map((product) => (
                     <TableRow key={product.productId}>
                       <TableCell>
                         <Button

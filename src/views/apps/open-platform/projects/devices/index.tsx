@@ -4,6 +4,7 @@ import { Link, useParams, useSearchParams } from 'react-router';
 import { useIam } from '@/context/iam-context/identity';
 import { ProjectWorkspaceShell } from '@/components/open-platform/project-workspace-shell';
 import StyleAwareWrapper from '@/components/shared/StyleAwareWrapper';
+import { SearchFieldSelect } from '@/components/shared/search-field-select';
 import { BreadcrumbTrail } from '@/layouts/full/shared/breadcrumb/BreadcrumbComp';
 
 import { Button } from '@/components/ui/button';
@@ -16,13 +17,20 @@ import { GroupList, GroupDetails, CreateGroup } from '@/components/device/groups
 import CreateVirtualDevice from '@/components/device/create-virtual';
 import { query, lifecycleLabels, nodeLabels, type DeviceSummary } from '@/api/device/client';
 
+const deviceSearchFields = [
+  { value: 'keyword', label: '设备名称前缀' },
+  { value: 'deviceId', label: '设备 ID' },
+  { value: 'productId', label: '产品 ID' },
+  { value: 'hardwareUuid', label: '硬件标识' },
+] as const;
+
 function Workspace({ projectId }: { projectId: string }) {
   const [params, setParams] = useSearchParams();
   const section = params.get('section') === 'groups' ? 'groups' : 'devices';
   const deviceId = params.get('device');
   const groupId = params.get('group');
-  const requestedSearchBy = params.get('searchBy') ?? 'keyword';
-  const searchBy = ['keyword', 'deviceId', 'productId', 'hardwareUuid'].includes(requestedSearchBy) ? requestedSearchBy : 'keyword';
+  const searchBy = deviceSearchFields.find((field) => field.value === params.get('searchBy'))?.value
+    ?? 'keyword';
   const search = params.get('search') ?? '';
   const [draft, setDraft] = useState(search);
   const productScope = params.get('productScope') ?? '';
@@ -64,12 +72,34 @@ function Workspace({ projectId }: { projectId: string }) {
           <DeviceSelect label="节点类型" value={nodeType} onChange={v => update('nodeType', v)} options={[{ value: '', label: '全部节点' }, ...Object.entries(nodeLabels).map(([value, label]) => ({ value, label }))]} />
         </div>
         <div className="col-span-2 min-w-0 space-y-1.5 sm:col-span-3 xl:col-span-1">
-          <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center justify-start gap-2 sm:grid-cols-[9rem_minmax(8rem,14rem)_auto_auto]">
-            <div className="col-span-3 min-w-0 sm:col-span-1"><DeviceSelect label="查询字段" value={searchBy} options={[{ value: 'keyword', label: '设备名称前缀' }, { value: 'deviceId', label: '设备 ID' }, { value: 'productId', label: '产品 ID' }, { value: 'hardwareUuid', label: '硬件标识' }]} onChange={v => {
-            setDraft(''); setDraftProduct('');
-            setParams(previous => { const next = new URLSearchParams(previous); next.set('searchBy', v); next.delete('search'); next.delete('productScope'); return next; });
-          }} /></div>
-          <Input className="w-full" aria-label="设备查询内容" placeholder={searchBy === 'keyword' ? '输入设备名称前缀' : '输入完整标识，精确查询'} value={draft} maxLength={128} onChange={e => setDraft(e.target.value)} />
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex min-w-48 flex-1 sm:max-w-sm">
+              <SearchFieldSelect
+                label="设备查询字段"
+                value={searchBy}
+                options={[...deviceSearchFields]}
+                className="h-9! w-29"
+                onChange={(field) => {
+                  setDraft('');
+                  setDraftProduct('');
+                  setParams((previous) => {
+                    const next = new URLSearchParams(previous);
+                    next.set('searchBy', field);
+                    next.delete('search');
+                    next.delete('productScope');
+                    return next;
+                  });
+                }}
+              />
+              <Input
+                className="flex-1 rounded-l-none! rounded-r-lg!"
+                aria-label="设备查询内容"
+                placeholder={searchBy === 'keyword' ? '输入设备名称前缀' : '输入完整标识'}
+                value={draft}
+                maxLength={searchBy === 'deviceId' ? 64 : 128}
+                onChange={(event) => setDraft(event.target.value)}
+              />
+            </div>
           <Button type="submit" variant="outline">查询</Button>
           <Button type="button" variant="ghost" onClick={() => { setDraft(''); setDraftProduct(''); setParams(previous => { const next = new URLSearchParams(previous); ['search', 'searchBy', 'productScope', 'lifecycle', 'virtualDevice', 'nodeType'].forEach(key => next.delete(key)); return next; }); }}>重置</Button>
           </div>

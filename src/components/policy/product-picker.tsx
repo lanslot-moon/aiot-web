@@ -1,8 +1,6 @@
 import { useState } from 'react';
 import useSWR from 'swr';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { CircleHelp, ChevronDown } from 'lucide-react';
+import { SearchFieldSelect } from '@/components/shared/search-field-select';
 import {
   Combobox,
   ComboboxCollection,
@@ -12,8 +10,6 @@ import {
   ComboboxItem,
   ComboboxList,
 } from '@/components/ui/combobox';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { policyRequest, query, type Page } from '@/api/policy/client';
 import { Failure, Pager } from './shared';
 
@@ -38,6 +34,8 @@ export default function ProductPicker({
   compact?: boolean;
   showSearchHint?: boolean;
 }) {
+  const [field, setField] = useState<'productName' | 'productId'>('productName');
+  const [typedId, setTypedId] = useState('');
   const [open, setOpen] = useState(false);
   const [cursors, setCursors] = useState<string[]>(['']);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -58,6 +56,10 @@ export default function ProductPicker({
     selected && !products.some((product) => product.productId === value)
       ? [selected, ...products]
       : products;
+
+  const manualProduct = field === 'productId' && typedId && !options.some(
+    (product) => product.productId.toLowerCase() === typedId.toLowerCase(),
+  ) ? { productName: typedId, productId: typedId } : null;
 
   const pagination = (cursors.length > 1 || resource.data?.hasMore) && (
     <div className="flex items-center justify-between gap-3 [&>div]:mt-0">
@@ -90,95 +92,87 @@ export default function ProductPicker({
       <div className="space-y-2">
         <div className="flex h-5 items-center gap-1 text-xs font-medium">
           所属产品
-          {compact && (
-            <Popover>
-              <PopoverTrigger
-                render={
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    className="size-5"
-                    aria-label="产品选择说明"
-                  />
-                }
-              >
-                <CircleHelp className="size-3.5" />
-              </PopoverTrigger>
-              <PopoverContent className="space-y-2 text-xs" align="start">
-                <p>可搜索当前页的产品名称或 ID，翻页可查看其他产品。</p>
-                <label>
-                  直接填写产品 ID
-                  <Input
-                    aria-label="产品 ID"
-                    placeholder="输入完整产品 ID"
-                    value={value}
-                    disabled={disabled}
-                    onChange={(e) => onChange(e.target.value)}
-                  />
-                </label>
-              </PopoverContent>
-            </Popover>
-          )}
         </div>
-        <Combobox
-          key={cursor}
-          open={open}
-          onOpenChange={setOpen}
-          items={options}
-          value={selected}
-          itemToStringLabel={(product: Product) => product.productName}
-          isItemEqualToValue={(a: Product, b: Product) => a.productId === b.productId}
-          filter={(product: Product, search: string) =>
-            (product.productName + ' ' + product.productId)
-              .toLowerCase()
-              .includes(search.toLowerCase())
-          }
-          disabled={disabled || resource.isLoading}
-          onValueChange={(product: Product | null) => {
-            setSelectedProduct(product);
-            onChange(product?.productId ?? '');
-          }}
-        >
-          <ComboboxInput
-            className="w-full rounded-md! [&_input]:text-xs!"
-            aria-label="所属产品"
-            placeholder={resource.isLoading ? '正在读取产品…' : '选择或搜索产品'}
-            disabled={disabled || resource.isLoading}
-            showClear
+        <div className="flex min-w-0">
+          <SearchFieldSelect
+            label="产品查询字段"
+            className="w-25"
+            value={field}
+            disabled={disabled}
+            options={[
+              { value: 'productName', label: '产品名称' },
+              { value: 'productId', label: '产品 ID' },
+            ]}
+            onChange={(nextField) => {
+              setField(nextField);
+              setTypedId('');
+              setOpen(false);
+            }}
           />
-          <ComboboxContent className="min-w-0">
-            <ComboboxEmpty className="px-3 py-6">
-              {products.length
-                ? '当前页没有匹配的产品'
-                : publishedOnly
-                  ? '当前页暂无已发布产品'
-                  : '当前页暂无产品'}
-            </ComboboxEmpty>
-            <ComboboxList className="max-h-64">
-              <ComboboxCollection>
-                {(product: Product) => (
-                  <ComboboxItem key={product.productId} value={product} className="py-2 text-xs!">
-                    <span className="grid min-w-0 gap-0.5">
-                      <span
-                        className="truncate text-xs font-normal leading-5"
-                        title={product.productName}
-                      >
-                        {product.productName}
+          <Combobox
+            key={field}
+            open={open}
+            onOpenChange={(nextOpen) => {
+              setOpen(nextOpen);
+              if (!nextOpen) setTypedId('');
+            }}
+            onInputValueChange={(text, details) => {
+              setTypedId(details.reason === 'input-change' ? text.trim() : '');
+            }}
+            items={manualProduct ? [...options, manualProduct] : options}
+            value={selected}
+            itemToStringLabel={(product: Product) => product[field]}
+            isItemEqualToValue={(a: Product, b: Product) => a.productId === b.productId}
+            filter={(product: Product, search: string) =>
+              product[field].toLowerCase().includes(search.trim().toLowerCase())
+            }
+            disabled={disabled}
+            onValueChange={(product: Product | null) => {
+              setSelectedProduct(product);
+              onChange(product?.productId ?? '');
+            }}
+          >
+            <ComboboxInput
+              className="min-w-0 flex-1 rounded-l-none! rounded-r-lg! [&_input]:text-xs!"
+              aria-label="所属产品"
+              placeholder={field === 'productId' ? '搜索或输入完整产品 ID' : '输入产品名称搜索'}
+              disabled={disabled}
+              showClear
+            />
+            <ComboboxContent className="min-w-0">
+              <ComboboxEmpty className="px-3 py-6">
+                {resource.isLoading ? '正在读取产品…' : products.length
+                  ? '当前页没有匹配的产品'
+                  : publishedOnly
+                    ? '当前页暂无已发布产品'
+                    : '当前页暂无产品'}
+              </ComboboxEmpty>
+              <ComboboxList className="max-h-64">
+                <ComboboxCollection>
+                  {(product: Product) => (
+                    <ComboboxItem key={product.productId} value={product} className="py-2 text-xs!">
+                      <span className="grid min-w-0 gap-0.5">
+                        <span
+                          className="truncate text-xs font-normal leading-5"
+                          title={product.productName}
+                        >
+                          {product === manualProduct ? '使用此产品 ID' : product.productName}
+                        </span>
+                        <span
+                          className="truncate text-[11px] leading-4 text-muted-foreground"
+                          title={product.productId}
+                        >
+                          {product.productId}
+                        </span>
                       </span>
-                      <span
-                        className="truncate text-[11px] leading-4 text-muted-foreground"
-                        title={product.productId}
-                      >
-                        {product.productId}
-                      </span>
-                    </span>
-                  </ComboboxItem>
-                )}
-              </ComboboxCollection>
-            </ComboboxList>
-            {compact && pagination && <div className="border-t p-2">{pagination}</div>}
-          </ComboboxContent>
-        </Combobox>
+                    </ComboboxItem>
+                  )}
+                </ComboboxCollection>
+              </ComboboxList>
+              {compact && pagination && <div className="border-t p-2">{pagination}</div>}
+            </ComboboxContent>
+          </Combobox>
+        </div>
         {!compact && showSearchHint && (
           <p className="text-xs text-muted-foreground">
             {publishedOnly
@@ -196,33 +190,6 @@ export default function ProductPicker({
         </p>
       )}
       {!compact && pagination}
-      {!compact && (
-        <Collapsible>
-          <CollapsibleTrigger
-            disabled={disabled}
-            render={
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="group -ml-2 text-xs text-muted-foreground"
-              />
-            }
-          >
-            <ChevronDown className="size-3.5 transition-transform group-data-panel-open:rotate-180" />
-            直接填写产品 ID
-          </CollapsibleTrigger>
-          <CollapsibleContent className="pt-2">
-            <Input
-              aria-label="产品 ID"
-              placeholder="输入完整产品 ID"
-              value={value}
-              disabled={disabled}
-              onChange={(e) => onChange(e.target.value)}
-            />
-          </CollapsibleContent>
-        </Collapsible>
-      )}
     </div>
   );
 }
