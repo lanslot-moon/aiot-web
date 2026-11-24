@@ -1,13 +1,15 @@
 import { Pager } from '@/components/policy/shared';
-import { by, useAction, usePage } from './hooks';
+import { by, manualRefreshOptions, useAction, usePage } from './hooks';
 import { useEffect, useState, type ReactNode } from 'react';
 import useSWR from 'swr';
 import { History, RefreshCw } from 'lucide-react';
 import { dispatchResultLabel } from './task-dispatch-reasons';
 import AttemptTimeline from './attempt-timeline';
 import { verificationTableLayout } from './verification-table-layout';
+import { taskStatusLabels, type TaskStatus } from './task-filters';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Sheet,
   SheetContent,
@@ -20,7 +22,7 @@ import { CopyIdButton } from '@/components/open-platform/copy-id-button';
 import { usePermission } from '@/context/iam-context/identity';
 import { cn } from '@/lib/utils';
 import { otaRequest, type Task, type Attempt, type AttemptEventTimeline, type Page } from '@/api/ota/client';
-import { Choice, Failure, Help, Loading, Modal, Status } from './shared';
+import { Failure, Help, Loading, Modal, Status } from './shared';
 const eligible: Record<string, string[]> = {
   confirm: ['WAIT_CONFIRM'],
   cancel: ['WAIT_CONFIRM', 'WAIT_DISPATCH', 'NOTIFIED'],
@@ -99,11 +101,16 @@ function verificationTaskNote(task: Task) {
   }
 }
 
-function Attempts({ projectId, task }: { projectId: string; task: Task }) {
+function Attempts({ projectId, task, autoRefresh }: {
+  projectId: string;
+  task: Task;
+  autoRefresh: boolean;
+}) {
   const page = usePage<Attempt>(
     projectId,
     by('tasks/attempts', { taskId: task.id }),
-    attemptRefreshInterval,
+    autoRefresh ? attemptRefreshInterval : 0,
+    autoRefresh ? undefined : manualRefreshOptions,
   );
   const [selectedAttemptNo, setSelectedAttemptNo] = useState<number | null>();
   const activeAttemptNo = selectedAttemptNo === undefined ? task.attemptNo : selectedAttemptNo;
@@ -113,11 +120,12 @@ function Attempts({ projectId, task }: { projectId: string; task: Task }) {
     eventsPath ? [projectId, 'ota', eventsPath] : null,
     () => otaRequest<AttemptEventTimeline>(projectId, eventsPath!),
     {
-      refreshInterval: (timeline) => {
+      refreshInterval: autoRefresh ? (timeline) => {
         if (activeAttempt?.finishedAt == null) return 5000;
         const expiry = Math.min(...(timeline?.events.map((event) => event.expiresAt) ?? []));
         return Number.isFinite(expiry) ? Math.max(5000, expiry - Date.now()) : 0;
-      },
+      } : 0,
+      ...(!autoRefresh && manualRefreshOptions),
       shouldRetryOnError: false,
     },
   );
@@ -166,14 +174,27 @@ export default function Tasks({
   sourceId,
   requireAppConfirm,
   toolbarActions,
+  listSwitcher,
+  stateFilter,
+  emptyMessage,
+  onTasksRefresh,
 }: {
   projectId: string;
   sourceType: 'RELEASE' | 'VERIFICATION';
   sourceId: string;
   requireAppConfirm: boolean;
+  listSwitcher?: ReactNode;
   toolbarActions?: ReactNode;
+  emptyMessage?: string;
+  onTasksRefresh?: () => Promise<unknown>;
+  stateFilter?: { value: TaskStatus[]; onChange: (value: TaskStatus[]) => void };
 }) {
-  const [state, setState] = useState('');
+  const [localStates, setLocalStates] = useState<TaskStatus[]>([]);
+  const selectedStates = stateFilter?.value ?? localStates;
+  const setStates = stateFilter?.onChange ?? setLocalStates;
+  const state = [...selectedStates].sort().join(',');
+  const filterLabel = selectedStates.map((value) => taskStatusLabels[value]).join('、') || '全部状态';
+  const [previousState, setPreviousState] = useState(state);
   const [selected, setSelected] = useState<string[]>([]);
   const [detail, setDetail] = useState<Task>();
   const [operation, setOperation] = useState('');
@@ -184,6 +205,11 @@ export default function Tasks({
     0,
     { revalidateOnFocus: false, revalidateOnReconnect: false },
   );
+  if (state !== previousState) {
+    setPreviousState(state);
+    setSelected([]);
+    page.resetPage();
+  }
   const hasRunningVerification = isVerification && page.rows.some((task) => task.state === 'RUNNING');
   const { mutate: refreshTasks, isValidating } = page;
   useEffect(() => {
@@ -207,6 +233,9 @@ export default function Tasks({
       navigate();
     };
   }
+  function refreshList() {
+    return Promise.all([page.mutate(), onTasksRefresh?.()]);
+  }
   async function submit() {
     await action.run(async () => {
       await otaRequest(projectId, `tasks/batch/${operation}`, 'POST', {
@@ -214,7 +243,7 @@ export default function Tasks({
       });
       setSelected([]);
       setOperation('');
-      await page.mutate();
+      await refreshList();
     }, '任务操作已提交');
   }
   return (
@@ -228,50 +257,28 @@ export default function Tasks({
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 px-4 py-3">
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-1">
-            <h3 className="text-sm font-semibold">设备任务</h3>
+            {listSwitcher ?? <h3 className="text-sm font-semibold">设备任务</h3>}
             <Help label="任务进度">
               {isVerification ? '设备上报进度 100% 后显示「等待版本确认」，平台确认目标版本后显示 100%。' : '设备上报进度 100% 后，仍需等待目标版本确认。'}
               重试会保留原任务和每轮执行结果。仅对当前页选中的任务执行操作。
             </Help>
           </div>
-          <div className="w-36">
-            <Choice
-              label="任务状态"
-              value={state}
-              onValueChange={(v) => {
-                setState(v);
-                setSelected([]);
-              }}
-              options={[
-                { value: '', label: '全部状态' },
-                ...[
-                  'WAIT_CONFIRM',
-                  'WAIT_DISPATCH',
-                  'NOTIFIED',
-                  'RUNNING',
-                  'SUCCEEDED',
-                  'FAILED',
-                  'TIMED_OUT',
-                  'RETRY_WAIT',
-                  'CANCELED',
-                ].filter((value) => value !== 'WAIT_CONFIRM' || requireAppConfirm).map((value) => ({
-                  value,
-                  label: (
-                    {
-                      WAIT_CONFIRM: '待确认',
-                      WAIT_DISPATCH: '等待下发',
-                      NOTIFIED: '已通知',
-                      RUNNING: '执行中',
-                      SUCCEEDED: '成功',
-                      FAILED: '失败',
-                      TIMED_OUT: '超时',
-                      RETRY_WAIT: '等待重试',
-                      CANCELED: '取消',
-                    } as Record<string, string>
-                  )[value],
-                })),
-              ]}
-            />
+          <div className="flex items-center gap-1.5">
+            <Select<TaskStatus, true> multiple value={selectedStates} onValueChange={setStates}>
+              <SelectTrigger aria-label="任务状态" className="w-40" title={filterLabel}>
+                <SelectValue><span className="truncate">{filterLabel}</span></SelectValue>
+              </SelectTrigger>
+              <SelectContent alignItemWithTrigger={false} className="rounded-md!">
+                {Object.entries(taskStatusLabels).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>{label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {selectedStates.length > 0 && (
+              <Button type="button" variant="ghost" size="sm" onClick={() => setStates([])}>
+                清除筛选
+              </Button>
+            )}
           </div>
           {sourceType === 'VERIFICATION' && (
             <p className="text-xs text-muted-foreground [overflow-wrap:anywhere]">
@@ -304,7 +311,7 @@ export default function Tasks({
             variant="outline"
             size="sm"
             disabled={page.isValidating || action.busy}
-            onClick={() => void page.mutate()}
+            onClick={() => void refreshList()}
           >
             <RefreshCw className="size-4" />
             {page.isValidating ? '刷新中…' : '刷新'}
@@ -335,6 +342,7 @@ export default function Tasks({
             <DeviceTable
               embedded
               rows={page.rows}
+              emptyMessage={page.error ? '任务列表加载失败' : selectedStates.length ? '当前筛选条件下没有设备任务。' : emptyMessage}
               columns={[
                 {
                   label: (
@@ -451,7 +459,9 @@ export default function Tasks({
         }}
       >
         <SheetContent className="w-full! max-w-lg! gap-2 overflow-y-auto">
-          {detailTask && <Attempts key={detailTask.id} projectId={projectId} task={detailTask} />}
+          {detailTask && (
+            <Attempts key={detailTask.id} projectId={projectId} task={detailTask} autoRefresh={isVerification} />
+          )}
         </SheetContent>
       </Sheet>
     </section>

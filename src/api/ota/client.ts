@@ -142,8 +142,21 @@ export interface Attempt {
   finishedAt?: number;
   createTime: number;
 }
+export interface ReleaseTarget {
+  deviceId: string;
+  matchState: 'PENDING' | 'INELIGIBLE' | 'TASK_CREATED';
+  matchReason: string | null;
+  matchedRevisionNo: number | null;
+  bucketNo: number;
+  createTime: number;
+  updateTime: number;
+}
+
 export interface Statistics {
-  matchedDevices: number;
+  candidateCount: number;
+  pendingCount: number;
+  ineligibleCount: number;
+  createdTaskCount: number;
   successCount: number;
   failedCount: number;
   runningCount: number;

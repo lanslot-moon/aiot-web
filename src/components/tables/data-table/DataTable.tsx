@@ -533,10 +533,12 @@ export function GatewayDataTable<T>({
   rows,
   columns,
   embedded = false,
+  emptyMessage = '暂无数据，请调整筛选或创建记录。',
 }: {
   rows: T[];
   columns: { label: React.ReactNode; render: (row: T) => React.ReactNode }[];
   embedded?: boolean;
+  emptyMessage?: string;
 }) {
   const definitions: ColumnDef<T>[] = columns.map((column, i) => ({
     id: String(i),
@@ -582,7 +584,7 @@ export function GatewayDataTable<T>({
                 className="h-24 text-center text-muted-foreground in-data-[fill-tables]:h-full"
               >
                 <span className="in-data-[fill-tables]:flex in-data-[fill-tables]:min-h-20 in-data-[fill-tables]:items-center in-data-[fill-tables]:justify-center">
-                  暂无数据，请调整筛选或创建记录。
+                  {emptyMessage}
                 </span>
               </TableCell>
             </TableRow>

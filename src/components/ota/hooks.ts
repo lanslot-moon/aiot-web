@@ -2,6 +2,13 @@ import { useState, useRef } from 'react';
 import useSWR, { type SWRConfiguration } from 'swr';
 import { toast } from 'sonner';
 import { otaRequest, query, type Page } from '@/api/ota/client';
+
+export const manualRefreshOptions = {
+  revalidateOnFocus: false,
+  revalidateOnReconnect: false,
+  shouldRetryOnError: false,
+} as const;
+
 export function useAction() {
   const lock = useRef(false);
   const [busy, setBusy] = useState(false);
