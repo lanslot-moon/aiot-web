@@ -21,7 +21,9 @@ function AttemptHistory({ attempt, timeline, loading, error, retry }: EventQuery
   const events = recent.map((event) => ({
     key: event.eventId,
     at: event.occurredAt,
-    title: event.message || event.reasonCode || event.type,
+    title: event.type === 'DISPATCH_ACCEPTED'
+      ? '下行服务已受理升级通知，等待设备响应'
+      : event.message || event.reasonCode || event.type,
   }));
   if (!recent.some((event) => event.type === 'ATTEMPT_CREATED')) {
     events.push({ key: 'created', at: attempt.createTime, title: '创建执行轮次' });

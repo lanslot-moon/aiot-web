@@ -230,7 +230,7 @@ export const states: Record<string, string> = {
   RETRY_WAIT: '等待重试',
   WAIT_CONFIRM: '待业务确认',
   WAIT_DISPATCH: '等待下发',
-  NOTIFIED: '已下发',
+  NOTIFIED: '待设备响应',
   TIMED_OUT: '已超时',
 };
 export const splitValues = (value: string) => [

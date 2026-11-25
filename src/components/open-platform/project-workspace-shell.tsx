@@ -578,7 +578,16 @@ export function ProjectWorkspaceShell({
           ) : null}
         </div>}
 
-        <section className={cn('min-w-0 p-4 md:p-6', primaryTab === 'devices' && 'pt-2 md:pt-2', fillHeight && 'flex flex-1 flex-col')}>{children}</section>
+        <section
+          className={cn(
+            'min-w-0 p-4 md:p-6',
+            primaryTab === 'devices' && 'pt-2 md:pt-2',
+            primaryTab === 'ota' && 'pt-0 md:pt-0',
+            fillHeight && 'flex flex-1 flex-col',
+          )}
+        >
+          {children}
+        </section>
       </Card>
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
