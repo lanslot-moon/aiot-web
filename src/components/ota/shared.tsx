@@ -1,5 +1,7 @@
 import { useState, type ReactNode } from 'react';
-import { CircleHelp } from 'lucide-react';
+import { CopyIdButton } from '@/components/open-platform/copy-id-button';
+import { Link } from 'react-router';
+import { CircleHelp, Tag } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -59,6 +61,40 @@ export function Field({
     </div>
   );
 }
+export function DeviceIdCell({ projectId, deviceId }: { projectId: string; deviceId: string }) {
+  return (
+    <span className="inline-flex max-w-full items-center gap-1">
+      <Link
+        to={`/projects/${encodeURIComponent(projectId)}/devices?${new URLSearchParams({ device: deviceId })}`}
+        className="truncate font-mono text-xs text-primary underline underline-offset-4"
+        title={deviceId}
+      >
+        {deviceId}
+      </Link>
+      <CopyIdButton value={deviceId} label="设备 ID" className="shrink-0 text-foreground" />
+    </span>
+  );
+}
+
+export function ProductIdLink({ projectId, productId }: { projectId: string; productId: string }) {
+  return (
+    <Link
+      to={`/projects/${projectId}/products/${encodeURIComponent(productId)}`}
+      className="font-mono text-[11px] leading-tight text-muted-foreground underline underline-offset-2 hover:text-primary"
+    >
+      {productId}
+    </Link>
+  );
+}
+
+export function FirmwareVersionBadge({ version }: { version?: string }) {
+  return (
+    <Badge variant="outline" className="border-violet-200 bg-violet-50 text-violet-800 dark:border-violet-800 dark:bg-violet-950 dark:text-violet-200">
+      <Tag aria-hidden="true" />{version || '—'}
+    </Badge>
+  );
+}
+
 export function Status({ value }: { value: string }) {
   const failed = value === 'FAILED' || value === 'TIMED_OUT';
   return (
@@ -69,6 +105,8 @@ export function Status({ value }: { value: string }) {
         ['PASSED', 'SUCCEEDED', 'SEALED', 'VERIFIED', 'PUBLISHED', 'ACTIVE'].includes(value) &&
           'border-emerald-500/25! bg-emerald-500/10! text-emerald-700! dark:text-emerald-400!',
         failed && 'border-destructive/30!',
+        value === 'STOPPED' &&
+          'border-orange-500/35! bg-orange-500/10! text-orange-800! dark:text-orange-300!',
         ['RUNNING', 'NOTIFIED'].includes(value) &&
           'border-blue-500/25! bg-blue-500/10! text-blue-700! dark:text-blue-400!',
         ['WAIT_CONFIRM', 'WAIT_DISPATCH', 'RETRY_WAIT'].includes(value) &&

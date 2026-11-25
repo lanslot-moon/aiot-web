@@ -68,6 +68,7 @@ export interface Verification {
   createTime?: number;
 }
 export interface Release {
+  description?: string | null;
   id: string;
   productId: string;
   moduleId: string;
@@ -83,6 +84,7 @@ export interface Release {
   createTime?: number;
 }
 export interface ReleasePolicy {
+  description?: string;
   productId: string;
   moduleId: string;
   targetVersionId: string;

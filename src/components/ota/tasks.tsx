@@ -18,12 +18,11 @@ import {
   SheetDescription,
 } from '@/components/ui/sheet';
 import { DeviceTable } from '@/components/device/layout';
-import { CopyIdButton } from '@/components/open-platform/copy-id-button';
 import { usePermission } from '@/context/iam-context/identity';
 import { cn } from '@/lib/utils';
 import { formatDateTime } from '@/lib/date-time';
 import { otaRequest, type Task, type Attempt, type AttemptEventTimeline, type Page } from '@/api/ota/client';
-import { Failure, Help, Loading, Modal, Status } from './shared';
+import { Failure, DeviceIdCell, FirmwareVersionBadge, Help, Loading, Modal, Status } from './shared';
 const eligible: Record<string, string[]> = {
   confirm: ['WAIT_CONFIRM'],
   cancel: ['WAIT_CONFIRM', 'WAIT_DISPATCH', 'NOTIFIED'],
@@ -203,7 +202,7 @@ function Attempts({ projectId, task, autoRefresh }: {
           </Button>
         </div>
         <SheetDescription className="space-y-1 break-all">
-          <span className="block">{task.deviceId}</span>
+          <DeviceIdCell projectId={projectId} deviceId={task.deviceId} />
           <span className="block">任务 ID {task.id}</span>
         </SheetDescription>
       </SheetHeader>
@@ -232,6 +231,7 @@ export default function Tasks({
   sourceType,
   sourceId,
   requireAppConfirm,
+  targetVersion,
   toolbarActions,
   listSwitcher,
   stateFilter,
@@ -243,6 +243,7 @@ export default function Tasks({
   sourceId: string;
   requireAppConfirm: boolean;
   listSwitcher?: ReactNode;
+  targetVersion?: string;
   toolbarActions?: ReactNode;
   emptyMessage?: string;
   onTasksRefresh?: () => Promise<unknown>;
@@ -430,14 +431,13 @@ export default function Tasks({
                 {
                   label: '设备',
                   render: (r) => (
-                    <div className={cn('items-center gap-1', isVerification ? 'flex min-w-0' : 'inline-flex')}>
-                      <code className={cn('font-mono text-xs', isVerification && 'truncate')} title={r.deviceId}>
-                        {r.deviceId}
-                      </code>
-                      <CopyIdButton value={r.deviceId} label="设备 ID" />
-                    </div>
+                    <DeviceIdCell projectId={projectId} deviceId={r.deviceId} />
                   ),
                 },
+                ...(sourceType === 'RELEASE' ? [{
+                  label: '目标版本',
+                  render: () => <FirmwareVersionBadge version={targetVersion} />,
+                }] : []),
                 { label: '状态', render: (r) => <Status value={r.state} /> },
                 {
                   label: isVerification ? '升级进度' : '阶段 / 进度',

@@ -1,5 +1,6 @@
 import { by, useAction, usePage } from './hooks';
 import { ChevronDown, X } from 'lucide-react';
+import { addDays, format, parseISO } from 'date-fns';
 import { Pager } from '@/components/policy/shared';
 import { Combobox, ComboboxContent, ComboboxItem, ComboboxList, ComboboxTrigger } from '@/components/ui/combobox';
 import ScopePicker from './scope-picker';
@@ -26,13 +27,15 @@ import {
 import { cn } from '@/lib/utils';
 import { Choice, Failure, Field, Input, Modal, RemoteChoice } from './shared';
 
-const initial = (productId: string): ReleasePolicy => ({
+type ReleaseDraft = Omit<ReleasePolicy, 'rolloutPercent'> & { rolloutPercent: string };
+
+const initial = (productId: string): ReleaseDraft => ({
   productId,
   moduleId: '',
   targetVersionId: '',
   packageId: '',
   mode: 'STATIC',
-  rolloutPercent: 5,
+  rolloutPercent: '5',
   pushPerMinute: 20,
   rateMode: 'CONSTANT',
   rateStep: 10,
@@ -136,10 +139,12 @@ export default function ReleaseWizard({
   const [hardwareText, setHardwareText] = useState('');
   const [tagText, setTagText] = useState('');
   const [start, setStart] = useState('');
-  const [end, setEnd] = useState('');
+  const [openedAt] = useState(() => new Date());
+  const [customEnd, setEnd] = useState<string>();
+  const end = customEnd ?? format(addDays(start ? parseISO(start) : openedAt, 2), "yyyy-MM-dd'T'HH:mm");
   const [execute, setExecute] = useState('');
   const action = useAction();
-  function patch(values: Partial<ReleasePolicy>) {
+  function patch(values: Partial<ReleaseDraft>) {
     if (values.mode === 'DYNAMIC') setStart('');
     setPolicy((p) => ({ ...p, ...values }));
   }
@@ -174,6 +179,8 @@ export default function ReleaseWizard({
     }
     const result = {
       ...policy,
+      description: policy.description?.trim() || undefined,
+      rolloutPercent: Number(policy.rolloutPercent),
       sourceVersions,
       hardwareVersions: splitValues(hardwareText),
       deviceIds: scope === 'devices' ? deviceIds : [],
@@ -201,9 +208,7 @@ export default function ReleaseWizard({
         throw new Error('请填写至少一个设备 ID。');
       if (scope === 'group' && !policy.groupId?.trim()) throw new Error('请填写设备组 ID。');
       if (
-        !Number.isInteger(policy.rolloutPercent) ||
-        policy.rolloutPercent < 0 ||
-        policy.rolloutPercent > 100
+        !/^\d+$/.test(policy.rolloutPercent) || Number(policy.rolloutPercent) > 100
       )
         throw new Error('灰度比例须为 0–100 的整数。');
       payload();
@@ -314,6 +319,11 @@ export default function ReleaseWizard({
       </ol>
       {step === 0 && (
         <div className="space-y-4">
+          <Field title="批次描述（选填）">
+            <Input aria-label="批次描述" maxLength={200} value={policy.description ?? ''}
+              placeholder="例如：研发验证首批 3 台设备"
+              onChange={(event) => patch({ description: event.target.value })} />
+          </Field>
           <ProductPicker
             showSearchHint={false}
             projectId={projectId}
@@ -516,7 +526,7 @@ export default function ReleaseWizard({
                 min={0}
                 max={100}
                 value={policy.rolloutPercent}
-                onChange={(e) => patch({ rolloutPercent: Number(e.target.value) })}
+                onChange={(e) => patch({ rolloutPercent: e.target.value })}
               />
             </Field>
           </div>
@@ -562,7 +572,7 @@ export default function ReleaseWizard({
             </Field>
             <Field
               title="批次截止时间"
-              help="留空为不限制。预约批次的截止时间须为开始后 1 小时至 30 天；立即批次须晚于当前时间。"
+              help="默认两天后截止；预约时从开始时间算起。可修改或清除，清除后批次不会自动截止。"
             >
               <DateTimePicker
                 label="批次截止时间"
@@ -667,6 +677,7 @@ export default function ReleaseWizard({
         <dl className="grid gap-4 rounded-lg border p-5 text-sm sm:grid-cols-2">
           {[
             ['目标固件', `${moduleName} / ${versionName}`],
+            ['批次描述', policy.description?.trim() || '—'],
             ['升级包', pkg?.packageName],
             [
               '设备范围',

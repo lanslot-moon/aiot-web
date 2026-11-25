@@ -3,7 +3,7 @@ import { by, manualRefreshOptions, useAction, usePage } from './hooks';
 import { useState } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
 import { Link, useSearchParams } from 'react-router';
-import { ArrowLeft, ArrowRight, CircleHelp, ListChecks, Plus, RefreshCw, Repeat2, SlidersHorizontal, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CircleHelp, ListChecks, Plus, RefreshCw, Repeat2, SlidersHorizontal } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -12,10 +12,8 @@ import { DeviceTable } from '@/components/device/layout';
 import { usePermission } from '@/context/iam-context/identity';
 import { formatDateTime } from '@/lib/date-time';
 import { cn } from '@/lib/utils';
-import { request } from '@/api/iam/client';
-import { otaRequest, type Configuration, type Release, type ReleaseTarget, type Statistics } from '@/api/ota/client';
-import type { ProductDetailView } from '@/types/apps/open-platform';
-import { Choice, Failure, Field, Input, Loading, Modal, Status } from './shared';
+import { otaRequest, type Configuration, type FirmwareVersion, type Release, type ReleaseTarget, type Statistics } from '@/api/ota/client';
+import { Choice, Failure, Field, DeviceIdCell, ProductIdLink, FirmwareVersionBadge, Input, Loading, Modal, Status } from './shared';
 import ReleaseWizard from './release-wizard';
 import Tasks from './tasks';
 import { taskStatusGroups, type TaskStatus } from './task-filters';
@@ -96,6 +94,8 @@ function ReleaseDetail({
   const [percent, setPercent] = useState(100);
   const [rate, setRate] = useState(20);
   const config = configuration.data;
+  const version = useSWR(config ? [projectId, 'ota-selected-version', config.targetVersionId] : null,
+    ([project, , versionId]) => otaRequest<FirmwareVersion>(project, `firmware/versions/${versionId}`));
   const labels: Record<string, string> = {
     activate: '激活批次',
     pause: '暂停批次',
@@ -163,7 +163,6 @@ function ReleaseDetail({
           </Button>
           {config && (
             <div className="flex min-w-0 items-center gap-2 border-l pl-3">
-              <code className="break-all text-xs text-muted-foreground" title={id}>{id}</code>
               <Status value={config.state} />
             </div>
           )}
@@ -274,6 +273,7 @@ function ReleaseDetail({
               <Tasks
                 listSwitcher={listSwitcher}
                 projectId={projectId}
+                targetVersion={version.data?.versionText}
                 sourceType="RELEASE"
                 sourceId={id}
                 requireAppConfirm={config.requireAppConfirm}
@@ -293,7 +293,7 @@ function ReleaseDetail({
               {targets.error ? <Failure error={targets.error} retry={() => targets.mutate()} />
                 : targets.isLoading ? <Loading /> : (
                   <DeviceTable embedded rows={targets.rows} emptyMessage="该批次尚无匹配设备。" columns={[
-                    { label: '设备 ID', render: (row) => <code className="text-xs">{row.deviceId}</code> },
+                    { label: '设备 ID', render: (row) => <DeviceIdCell projectId={projectId} deviceId={row.deviceId} /> },
                     { label: '校验结果', render: (row) => <Badge variant="outline" className={cn(
                       'h-6 rounded-md px-2',
                       row.matchState === 'INELIGIBLE' && 'border-destructive/30! bg-destructive/10! text-destructive!',
@@ -450,14 +450,13 @@ export default function Releases({ projectId }: { projectId: string }) {
   const [create, setCreate] = useState(false);
   const allowed = usePermission('ota:create');
   const page = usePage<Release>(projectId, id ? null : by('releases', { productId, state }));
-  const { data: product } = useSWR(
-    productId && !id ? [projectId, 'ota-product', productId] : null,
-    () =>
-      request<ProductDetailView>(`/api/v1/products/${encodeURIComponent(productId)}`, 'GET', undefined, {
-        projectId,
-      }),
-  );
-  const productName = product?.productName ?? '当前产品';
+  function filterByProduct(value: string) {
+    const next = new URLSearchParams(params);
+    const filter = value.trim();
+    if (filter) next.set('product', filter);
+    else next.delete('product');
+    setParams(next);
+  }
   if (id)
     return (
       <ReleaseDetail
@@ -485,25 +484,14 @@ export default function Releases({ projectId }: { projectId: string }) {
               ]}
             />
           </div>
-          {productId && (
-            <Button
-              size="sm"
-              variant="secondary"
-              className="max-w-full min-w-0"
-              aria-label={`清除产品筛选：${productName}`}
-              title={`清除产品筛选：${productName}`}
-              onClick={() =>
-                setParams((current) => {
-                  const next = new URLSearchParams(current);
-                  next.delete('product');
-                  return next;
-                })
-              }
-            >
-              <span className="truncate">产品筛选：{productName}</span>
-              <X className="size-3.5 shrink-0" />
-            </Button>
-          )}
+          <form key={productId} className="flex flex-wrap items-center gap-2" onSubmit={(event) => {
+            event.preventDefault();
+            filterByProduct(String(new FormData(event.currentTarget).get('productId') ?? ''));
+          }}>
+            <Input name="productId" aria-label="产品 ID" placeholder="输入产品 ID" defaultValue={productId} className="w-64 max-w-full" />
+            <Button type="submit" variant="outline">筛选</Button>
+            {productId && <Button type="button" variant="ghost" onClick={() => filterByProduct('')}>清除产品筛选</Button>}
+          </form>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <Button
@@ -530,15 +518,21 @@ export default function Releases({ projectId }: { projectId: string }) {
           rows={page.rows}
           columns={[
             {
-              label: '目标固件',
+              label: '模块 / 产品 ID',
               render: (r) => (
-                <div className="space-y-1">
-                  <div className="font-medium">
-                    {r.moduleName ?? r.moduleId} · {r.targetVersionText ?? r.targetVersionId}
-                  </div>
-                  <div className="font-mono text-xs text-muted-foreground">{r.id}</div>
+                <div className="flex flex-col items-start gap-1">
+                  <span className="font-medium">{r.moduleName ?? r.moduleId}</span>
+                  <ProductIdLink projectId={projectId} productId={r.productId} />
                 </div>
               ),
+            },
+            {
+              label: '目标版本',
+              render: (r) => <FirmwareVersionBadge version={r.targetVersionText ?? r.targetVersionId} />,
+            },
+            {
+              label: '批次描述',
+              render: (r) => <span className="block max-w-64 whitespace-normal [overflow-wrap:anywhere]">{r.description || '—'}</span>,
             },
             { label: '状态', render: (r) => <Status value={r.state} /> },
             {
