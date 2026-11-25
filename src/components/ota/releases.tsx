@@ -3,10 +3,11 @@ import { by, manualRefreshOptions, useAction, usePage } from './hooks';
 import { useState } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
 import { Link, useSearchParams } from 'react-router';
-import { ArrowLeft, Plus, RefreshCw, SlidersHorizontal, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CircleHelp, ListChecks, Plus, RefreshCw, Repeat2, SlidersHorizontal, X } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { DeviceTable } from '@/components/device/layout';
 import { usePermission } from '@/context/iam-context/identity';
 import { formatDateTime } from '@/lib/date-time';
@@ -14,10 +15,33 @@ import { cn } from '@/lib/utils';
 import { request } from '@/api/iam/client';
 import { otaRequest, type Configuration, type Release, type ReleaseTarget, type Statistics } from '@/api/ota/client';
 import type { ProductDetailView } from '@/types/apps/open-platform';
-import { Choice, Failure, Field, Help, Input, Loading, Modal, Status } from './shared';
+import { Choice, Failure, Field, Input, Loading, Modal, Status } from './shared';
 import ReleaseWizard from './release-wizard';
 import Tasks from './tasks';
 import { taskStatusGroups, type TaskStatus } from './task-filters';
+
+function MatchModeTag({ mode }: { mode: Release['mode'] }) {
+  const continuous = mode === 'DYNAMIC';
+  const label = continuous ? '持续匹配' : mode === 'STATIC' ? '仅本次匹配' : mode;
+  const Icon = continuous ? Repeat2 : ListChecks;
+  return (
+    <Popover>
+      <PopoverTrigger
+        render={<Button type="button" variant="secondary" size="sm" className="inline-grid h-7 w-max cursor-pointer grid-cols-[0.875rem_minmax(5em,max-content)_0.875rem] items-center gap-0.5 rounded-full bg-sky-100 px-1.5 text-left text-sky-800 hover:bg-sky-200 dark:bg-sky-950 dark:text-sky-200 dark:hover:bg-sky-900" />}
+        aria-label={`查看${label}模式说明`}
+      >
+        <Icon className="size-3.5" aria-hidden="true" />
+        <span className="whitespace-nowrap">{label}</span>
+        <CircleHelp className="size-3.5" aria-hidden="true" />
+      </PopoverTrigger>
+      <PopoverContent className="w-64 text-sm leading-6">
+        {continuous ? '批次激活后会持续检查新增设备。符合本批次升级条件的设备会自动加入升级任务。'
+          : mode === 'STATIC' ? '仅匹配本次选定范围内的设备，之后新增的设备不会自动加入本批次。'
+          : '暂无此匹配模式的说明。'}
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 function emptyTaskMessage(config: Configuration, stats?: Statistics) {
   if (config.state === 'DRAFT') return '激活批次后开始匹配设备，通过升级条件的设备会出现在这里。';
@@ -445,23 +469,9 @@ export default function Releases({ projectId }: { projectId: string }) {
     );
   return (
     <div className="space-y-5">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-1">
-          <h2 className="text-lg font-semibold">OTA 升级批次</h2>
-          <Help label="升级批次">
-            先在「固件管理」中完成升级包封存与样机验证，再创建升级批次。批次创建为草稿，激活后开始按配置匹配设备。
-          </Help>
-        </div>
-        {allowed && (
-          <Button onClick={() => setCreate(true)}>
-            <Plus className="size-4" />
-            新建升级批次
-          </Button>
-        )}
-      </header>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <div className="w-36">
+      <header aria-label="升级批次筛选与操作" className="flex items-start justify-between gap-2">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+          <div className="w-36 max-w-full">
             <Choice
               label="批次状态"
               value={state}
@@ -495,16 +505,23 @@ export default function Releases({ projectId }: { projectId: string }) {
             </Button>
           )}
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={page.isValidating}
-          onClick={() => void page.mutate()}
-        >
-          <RefreshCw className="size-4" />
-          刷新
-        </Button>
-      </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <Button
+            variant="outline"
+            disabled={page.isValidating}
+            onClick={() => void page.mutate()}
+          >
+            <RefreshCw className="size-4" />
+            刷新
+          </Button>
+          {allowed && (
+            <Button onClick={() => setCreate(true)}>
+              <Plus className="size-4" />
+              新建升级批次
+            </Button>
+          )}
+        </div>
+      </header>
       <Failure error={page.error} retry={() => page.mutate()} />
       {page.isLoading ? (
         <Loading />
@@ -524,7 +541,10 @@ export default function Releases({ projectId }: { projectId: string }) {
               ),
             },
             { label: '状态', render: (r) => <Status value={r.state} /> },
-            { label: '匹配模式', render: (r) => (r.mode === 'STATIC' ? '仅本次设备' : '持续匹配') },
+            {
+              label: '匹配模式',
+              render: (r) => <MatchModeTag mode={r.mode} />,
+            },
             {
               label: '开始时间',
               render: (r) => (r.effectiveFrom ? formatDateTime(r.effectiveFrom) : '激活后立即'),
@@ -537,13 +557,16 @@ export default function Releases({ projectId }: { projectId: string }) {
               label: '操作',
               render: (r) => (
                 <Button
-                  variant="ghost"
+                  type="button"
+                  variant="outline"
                   size="sm"
+                  className="cursor-pointer border-primary/40 bg-primary/5 text-primary hover:border-primary hover:bg-primary/10 hover:text-primary"
                   onClick={() =>
                     setParams({ ...(productId ? { product: productId } : {}), release: r.id })
                   }
                 >
                   查看批次
+                  <ArrowRight aria-hidden="true" />
                 </Button>
               ),
             },

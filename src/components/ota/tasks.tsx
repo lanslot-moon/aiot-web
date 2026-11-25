@@ -2,7 +2,7 @@ import { Pager } from '@/components/policy/shared';
 import { by, manualRefreshOptions, useAction, usePage } from './hooks';
 import { useEffect, useState, type ReactNode } from 'react';
 import useSWR from 'swr';
-import { History, RefreshCw } from 'lucide-react';
+import { CircleCheck, CircleMinus, CircleAlert, Clock3, Activity, History, RefreshCw } from 'lucide-react';
 import { dispatchResultLabel } from './task-dispatch-reasons';
 import AttemptTimeline from './attempt-timeline';
 import { verificationTableLayout } from './verification-table-layout';
@@ -21,6 +21,7 @@ import { DeviceTable } from '@/components/device/layout';
 import { CopyIdButton } from '@/components/open-platform/copy-id-button';
 import { usePermission } from '@/context/iam-context/identity';
 import { cn } from '@/lib/utils';
+import { formatDateTime } from '@/lib/date-time';
 import { otaRequest, type Task, type Attempt, type AttemptEventTimeline, type Page } from '@/api/ota/client';
 import { Failure, Help, Loading, Modal, Status } from './shared';
 const eligible: Record<string, string[]> = {
@@ -79,26 +80,84 @@ function VerificationTaskProgress({ task }: { task: Task }) {
   );
 }
 
-function verificationTaskNote(task: Task) {
+const phaseLabels: Record<string, string> = {
+  UPGRADING: '升级中',
+  PRECHECK: '升级前检查',
+  DOWNLOADING: '下载中',
+  VERIFYING: '校验固件',
+  APPLYING: '安装中',
+  REBOOTING: '重启中',
+  CONFIRMING: '确认目标版本',
+};
+
+function ReleaseTaskProgress({ task }: { task: Task }) {
+  const complete = task.state === 'SUCCEEDED';
+  const percent = complete ? 100 : task.progressPercent;
+  const phase = task.phase && (phaseLabels[task.phase] ?? task.phase);
+  if (percent == null) return <span className="text-muted-foreground">{phase || '—'}</span>;
+
+  const confirming = task.state === 'RUNNING' && percent === 100;
+  return (
+    <span className="whitespace-nowrap">
+      {!complete && phase && `${phase} / `}
+      <span className={cn(
+        'font-medium tabular-nums text-sky-700 dark:text-sky-300',
+        confirming && 'text-amber-800 dark:text-amber-300',
+        complete && 'text-emerald-700 dark:text-emerald-300',
+      )}>{percent}%</span>
+    </span>
+  );
+}
+
+function taskNote(task: Task) {
   if (task.state === 'SUCCEEDED') return '目标版本已确认';
   if (task.state === 'WAIT_DISPATCH' && task.dispatchReasonCode) {
     return dispatchResultLabel(task.dispatchReasonCode);
   }
-  if (task.lastErrorCode) return `错误码 ${task.lastErrorCode}`;
+  if (['FAILED', 'TIMED_OUT', 'RETRY_WAIT'].includes(task.state) && task.lastErrorCode) {
+    return `错误码 ${task.lastErrorCode}`;
+  }
 
   switch (task.state) {
     case 'WAIT_CONFIRM': return '等待确认下发';
     case 'WAIT_DISPATCH': return '等待平台下发升级通知';
-    case 'NOTIFIED': return '等待设备首次上报进度';
+    case 'NOTIFIED': return '等待设备响应';
     case 'RUNNING':
       if (task.progressPercent === 100) return '等待设备上报目标版本';
-      return task.progressPercent == null ? '等待设备上报进度' : '设备正在执行升级';
+      return '设备已响应，正在升级';
     case 'RETRY_WAIT': return '等待下一轮下发';
-    case 'FAILED': return '验证失败，详情见执行记录';
-    case 'TIMED_OUT': return '在规定时间内未完成验证';
+    case 'FAILED': return '升级失败，详情见执行记录';
+    case 'TIMED_OUT': return '任务超时，详情见执行记录';
     case 'CANCELED': return '任务已取消';
     default: return '—';
   }
+}
+
+function ReleaseTaskNote({ task }: { task: Task }) {
+  const waiting = ['WAIT_CONFIRM', 'WAIT_DISPATCH', 'NOTIFIED', 'RETRY_WAIT'].includes(task.state)
+    || (task.state === 'RUNNING' && task.progressPercent === 100);
+  const failed = task.state === 'FAILED' || task.state === 'TIMED_OUT';
+  let Icon = CircleMinus;
+  let tone = 'text-muted-foreground';
+  if (waiting) {
+    Icon = Clock3;
+    tone = 'text-amber-800 dark:text-amber-300';
+  } else if (task.state === 'RUNNING') {
+    Icon = Activity;
+    tone = 'text-sky-700 dark:text-sky-300';
+  } else if (task.state === 'SUCCEEDED') {
+    Icon = CircleCheck;
+    tone = 'text-emerald-700 dark:text-emerald-300';
+  } else if (failed) {
+    Icon = CircleAlert;
+    tone = 'text-red-700 dark:text-red-300';
+  }
+  return (
+    <span className={cn('inline-flex max-w-64 items-start gap-1.5 whitespace-normal text-xs font-medium leading-5', tone)}>
+      <Icon aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+      <span className="[overflow-wrap:anywhere]">{taskNote(task)}</span>
+    </span>
+  );
 }
 
 function Attempts({ projectId, task, autoRefresh }: {
@@ -386,27 +445,21 @@ export default function Tasks({
                     isVerification ? (
                       <VerificationTaskProgress task={r} />
                     ) : (
-                      <span>
-                        {r.phase ?? '—'}
-                        {r.progressPercent != null ? ` · ${r.progressPercent}%` : ''}
-                      </span>
+                      <ReleaseTaskProgress task={r} />
                     ),
                 },
                 {
                   label: isVerification ? '执行说明' : '处理情况',
-                  render: (r) => (
-                    <span className={cn(
-                      'block whitespace-normal text-xs leading-5 [overflow-wrap:anywhere]',
-                      isVerification ? 'text-muted-foreground' : 'max-w-64',
-                    )}>
-                      {isVerification ? verificationTaskNote(r) : r.state === 'WAIT_DISPATCH'
-                        ? r.dispatchReasonCode
-                          ? dispatchResultLabel(r.dispatchReasonCode)
-                          : '暂无近期下发诊断'
-                        : r.lastErrorCode ?? '—'}
+                  render: (r) => isVerification ? (
+                    <span className="block whitespace-normal text-xs leading-5 text-muted-foreground [overflow-wrap:anywhere]">
+                      {taskNote(r)}
                     </span>
-                  ),
+                  ) : <ReleaseTaskNote task={r} />,
                 },
+                ...(!isVerification ? [{
+                  label: '本轮首次进度上报',
+                  render: (r: Task) => formatDateTime(r.firstProgressAt),
+                }] : []),
                 {
                   label: '操作',
                   render: (r) => (
