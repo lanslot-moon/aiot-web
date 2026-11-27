@@ -1,0 +1,67 @@
+{
+  "deviceId": "pump-01",
+  "startTime": 1800000000000,
+  "endTime": 1800000120000,
+  "samples": [
+    {
+      "time": 1800000000000,
+      "event": {
+        "eventType": "deviceMessage.propertyReport"
+      },
+      "values": {
+        "temperature": {
+          "type": "number",
+          "value": 81
+        }
+      }
+    },
+    {
+      "time": 1800000030000,
+      "event": {
+        "eventType": "deviceMessage.propertyReport"
+      },
+      "values": {
+        "temperature": {
+          "type": "number",
+          "value": 83
+        }
+      }
+    },
+    {
+      "time": 1800000060000,
+      "event": {
+        "eventType": "deviceMessage.propertyReport"
+      },
+      "values": {
+        "temperature": {
+          "type": "number",
+          "value": 84
+        }
+      }
+    },
+    {
+      "time": 1800000090000,
+      "event": {
+        "eventType": "deviceMessage.propertyReport"
+      },
+      "values": {
+        "temperature": {
+          "type": "number",
+          "value": 71
+        }
+      }
+    },
+    {
+      "time": 1800000120000,
+      "event": {
+        "eventType": "deviceMessage.propertyReport"
+      },
+      "values": {
+        "temperature": {
+          "type": "number",
+          "value": 70
+        }
+      }
+    }
+  ]
+}

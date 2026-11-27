@@ -4,6 +4,7 @@ ArrowLeft,
 Braces,
 ChevronDown,
 Cpu,
+GitBranch,
 LayoutDashboard,
 ListTree,
 Loader2,
@@ -69,6 +70,7 @@ type PrimaryTab =
   | 'devices'
   | 'ota'
   | 'policies'
+  | 'rule-chains'
   | 'settings';
 
 type SettingsTab =
@@ -119,6 +121,9 @@ const PRIMARY_NAV: {
     id: 'ota', label: 'OTA 升级', icon: Package, path: (id) => `/projects/${id}/ota`,
   },
   {
+    id: 'rule-chains', label: '规则引擎', icon: GitBranch, path: (id) => `/projects/${id}/rule-chains`,
+  },
+  {
     id: 'policies',
     label: '策略与授权',
     icon: ShieldCheck,
@@ -155,6 +160,7 @@ const SETTINGS_NAV: {
 function primaryFromPath(pathname: string): PrimaryTab {
   if (pathname.includes('/ota')) return 'ota';
   if (pathname.includes('/policies')) return 'policies';
+  if (pathname.includes('/rule-chains')) return 'rule-chains';
   if (pathname.includes('/categories')) return 'categories';
   if (pathname.includes('/parser-profiles')) return 'parserProfiles';
   if (pathname.includes('/products') || pathname.includes('/thing-model')) {

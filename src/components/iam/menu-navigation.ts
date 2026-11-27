@@ -1,6 +1,6 @@
 import type { MenuItemVO } from '@/api/iam/contracts';
 import type { ChildItem, MenuItem } from '@/layouts/full/vertical/sidebar/sidebaritems';
-import { CircleUserRound, FolderKanban, House, KeyRound, Settings, ShieldCheck, UserPlus, Users, Package, ListTree, Braces, Cpu } from 'lucide-react';
+import { CircleUserRound, FolderKanban, GitBranch, House, KeyRound, Settings, ShieldCheck, UserPlus, Users, Package, ListTree, Braces, Cpu } from 'lucide-react';
 
 export function projectIdFromPath(pathname: string): string | undefined {
   const match = pathname.match(/^\/projects\/([^/]+)(?:\/|$)/);
@@ -53,6 +53,7 @@ const permissions: Record<string, string[]> = {
   devices: ['device:view'],
   // Policy 请求经网关执行权限校验；此处仅提供项目内导航入口。
   policies: [],
+  'rule-chains': [],
   ota: ['ota:view'],
   members: ['project-member:view'],
   'access-requests': ['project-member:review'],
@@ -82,6 +83,7 @@ export function projectNavigation(projectId: string): MenuItem[] {
       { name: '协议解析', icon: Braces, url: `${base}/parser-profiles` },
       { name: '设备', icon: Cpu, url: `${base}/devices` },
       { name: 'OTA 升级', icon: Package, url: `${base}/ota` },
+      { name: '规则引擎', icon: GitBranch, url: `${base}/rule-chains`, labelSource: 'app' },
     ] },
     { heading: '项目协作', items: [
       { name: '成员与邀请', icon: Users, url: `${base}/members` },
